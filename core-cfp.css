@@ -1,0 +1,232 @@
+h1 {
+	text-align:center;
+}
+
+#warning {
+	width:50%;
+	text-align:center;
+	margin:1em auto;
+	border-radius:.5em;
+	padding:.5em;
+	color:red;
+	font-weight:bolder;
+	font-size:1.2em;
+}
+
+#warning:before {
+	content: "⚠ "
+}
+
+#legend dt {
+	margin:0 .1em 0 .5em;
+	float:left;
+	clear:left;
+}
+
+#legend dd {
+	text-align:left;
+	margin:0 .5em 0 .1em;
+	float:left;
+	word-wrap:break-word;
+}
+
+@media all and (min-width: 800px) {
+	#legend {
+		display: flex;
+		flex-wrap:nowrap;
+		align-content:stretch;
+		width:100%;
+	}
+
+	#legend dd {
+		word-wrap:break-word;
+		float:none;
+		flex-grow:1;
+		flex-shrink:1;
+		flex-basis:auto;
+	}
+
+	#legend dt {
+		float:none;
+		flex-grow:0;
+		flex-shrink:0;
+		flex-basis:0;
+	}
+}
+
+#confs_wrapper {
+	padding-top:2em;
+	clear:both;
+}
+
+#filters {
+	position: absolute;
+	right:0;
+	display:none;
+	background: #eee;
+	border:thin solid;
+	border-radius:10px;
+	z-index:9999999;
+}
+
+#filters p {
+	padding: .5em;
+	display:inline-block;
+	vertical-align: top;
+	text-align:center;
+}
+
+#filters p * {
+	width:100%;
+}
+
+#show_filters button {
+	margin:0 2em 0 .5em;
+	font-weight:bolder;
+	text-align:center;
+}
+
+#show_filters button.rotated {
+	transform: rotate(90deg) translate(5px, 5px);
+	transition-duration: 400ms;
+}
+
+/* hard part: the timeline */
+#timeline_holder {
+	position:relative;
+	padding-top:1em;
+	overflow:hidden;
+	width:90%;
+	margin:0 auto;
+}
+
+#header {
+	position:absolute;
+	overflow-y:hidden;
+}
+
+#years,
+#months {
+	white-space:nowrap;
+	margin:0;
+	padding:0;
+	line-height:1.5em;
+	overflow-x:hidden;
+}
+#years {
+	height:1.5em;
+}
+#months {
+	width:inherit;
+}
+
+#timeline {
+	margin-top:3em;
+	resize:both;
+	overflow:auto;
+	white-space:nowrap;
+	height:30em;
+	z-index:2;
+}
+
+#timeline p {
+	margin:0;
+	padding:0;
+	height:1.5em;
+	line-height:1.5em;
+}
+
+#legend dt span {
+	display:inline-block;
+	width:1.5em;
+	height:1.5em;
+}
+
+#years > span,
+#months > span,
+#timeline p > span {
+	display:inline-block;
+	text-align:center;
+    position: relative;
+	height:1.5em;
+}
+
+#years > span.acronyms,
+#months > span.acronyms,
+#timeline p > span.acronyms {
+	width:8em;
+	padding-right:0.5em;
+	text-align:right;
+}
+
+#years span:not(.acronyms),
+#months span.december,
+#months span:not(.acronyms):last-child {
+	background-color:#eee;
+	border-left: black thin solid;
+	border-right: black thin solid;
+}
+#months span:not(.acronyms) {
+	background-color:#eee;
+	border-left: black 1px solid;
+	padding-bottom:1000px;
+	z-index:-1;
+}
+
+
+/* tooltip and aura (aka shadow) */
+
+#timeline p > span .tooltip {
+    visibility: hidden;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: .1em .5em;
+	font-weight:bold;
+
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 10;
+    top: 100%;
+    margin:0 auto;
+}
+
+#timeline p > span:not(.acronyms):hover {
+    box-shadow: 0px 0px 12px 10px #fff;
+	border-radius:5px;
+	cursor: default;
+}
+
+#timeline p > span:hover .tooltip {
+    visibility: visible;
+}
+
+
+/* colours and content for coloured parts in timeline */
+
+#timeline span.abstract,
+#legend span.abstract {
+	background-color:#f55;
+}
+#timeline span.submit,
+#legend span.submit {
+	color:#d00;
+}
+#timeline span.review,
+#legend span.review {
+	background-color:#d00;
+}
+#timeline span.conf,
+#legend span.conf {
+	background-color:#00f;
+	text-align:center;
+}
+.extrapolated {
+	background: #eee;
+	color: #333;
+}
+.extrapolated:after {
+	content: "†";
+}
+

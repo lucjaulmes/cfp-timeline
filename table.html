@@ -1,0 +1,38 @@
+ <!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Computer Science conferences timeline</title>
+	<link rel="stylesheet" type="text/css" href="datatables.min.css"/>
+	<link rel="stylesheet" type="text/css" href="table.css"/>
+  </head>
+  <body>
+    <h1>Computer Science conferences timeline</h1>
+	<p>This page references conferences listed on <a href="http://portal.core.edu.au/conf-ranks/">the CORE conference portal</a>, cross-referenced with their calls for papers from <a href="http://www.wikicfp.com/cfp/">WikiCFP</a> for dates, and presents them on a timeline.
+	Missing dates are extrapolated from the previous years' cfp.
+	<br />The data mangement done in <a href="#confs" title="skip to the datable">the table below &darr;</a> you can search it, change sorting, etc. to update the timeline, and powered by <a href="https://datatables.net/">DataTables</a>. The last scraping took place on 02-10-2017.</p>
+	<p id="warning">This information is provided without any guarantee of validity of any kind.</p>
+
+  <div id="timeline_holder">
+	  <div id="header"></div>
+	  <div id="timeline"></div>
+
+  </div>
+  <dl id="legend">
+	<dt><span class="conf">&nbsp;</span></dt><dd>Conference</dd>
+	<dt><span class="review">&nbsp;</span></dt><dd>Review (submission to notification)<wbr></dd>
+	<dt><span class="abstract">&nbsp;</span></dt><dd>Pre-submission (abstract registration)<wbr></dd>
+	<dt><span class="submit"><sup>◆</sup></span></dt><dd>Submission date (notification unknown)<wbr></dd>
+	<dt><span class="camera"><sup>∎</sup><!-- QED --></span></dt><dd>Final version due<wbr></dd>
+	<dt><span class="extrapolated">&nbsp;</span></dt><dd>Dates unavailable, extrapolated from last years'<wbr></dd>
+  </dl>
+
+  <table id="confs"></table>
+
+
+  <script type="text/javascript" src="jquery-3.2.1.min.js"></script>
+  <script type="text/javascript" src="datatables.min.js"></script>
+  <script type="text/javascript" src="table.js"></script>
+
+  </body>
+</html>
