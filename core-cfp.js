@@ -78,7 +78,7 @@ function parse_date(str) {
 
 function addToTimeline(n, data) {
 	var s = timeline_scale, last = timeline_zero, tooltip, block;
-	var p = $('<p></p>').append($('<span class="acronyms"></span>').append(data[0]));
+	var p = $('<p></p>').append($('<span class="acronyms"></span>').append(renderAcronym(data[0], 'display', data)));
 
 	var abst = parse_date(data[3]);
 	var submit = parse_date(data[4]);
