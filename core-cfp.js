@@ -1,5 +1,5 @@
 var datatable, today = new Date();
-var timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6);
+var timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6, 1);
 // px per month
 var timeline_scale = 50 / Date.UTC(1970, 1, 1)
 
@@ -45,7 +45,7 @@ function makeTimelineLegend(maxdate) {
 	$('<span class="acronyms">&nbsp;</span>').appendTo(pm);
 	for (m = today.getMonth() - 6; last < endDate; m++)
 	{
-		var next = Date.UTC(today.getFullYear(), m + 1), month = new Date(last).getMonth();
+		var next = Date.UTC(today.getFullYear(), m + 1, 1), month = new Date(last).getMonth();
 		$('<span></span>').append(month_name[month])
 			.addClass((month == 11 ? 'december' : ''))
 			.css('width', (next - last) * timeline_scale - (month == 11 ? 2 : 1)).appendTo(pm);
@@ -56,8 +56,8 @@ function makeTimelineLegend(maxdate) {
 	$('<span class="acronyms">&nbsp;</span>').appendTo(py);
 	for (var y = startDate.getFullYear(); y <= endDate.getFullYear(); y++)
 	{
-		var from = Math.max(timeline_zero, Date.UTC(y, 0));
-		var to = Math.min(last, Date.UTC(y, 12));
+		var from = Math.max(timeline_zero, Date.UTC(y, 0, 1));
+		var to = Math.min(last, Date.UTC(y + 1, 0, 1));
 		$('<span></span>').append(y).css('width', (to - from) * timeline_scale - (to < last ? 2 : 1)).appendTo(py);
 	}
 
@@ -73,7 +73,7 @@ function makeTimelineLegend(maxdate) {
 function parse_date(str) {
 	if (!str) return null;
 	tok = str.split('-');
-	return Math.max(timeline_zero, Date.UTC(tok[0], tok[1], tok[2]));
+	return Math.max(timeline_zero, Date.UTC(tok[0], tok[1] - 1, tok[2]));
 }
 
 function addToTimeline(n, data) {
