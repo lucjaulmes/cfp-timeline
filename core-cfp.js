@@ -77,7 +77,7 @@ function parse_date(str) {
 }
 
 function addToTimeline(n, data) {
-	var s = timeline_scale, last = timeline_zero, tooltip;
+	var s = timeline_scale, last = timeline_zero, tooltip, block;
 	var p = $('<p></p>').append($('<span class="acronyms"></span>').append(data[0]));
 
 	var abst = parse_date(data[3]);
@@ -90,59 +90,86 @@ function addToTimeline(n, data) {
 	if (submit && notif) {
 		if (submit > abst) {
 			tooltip = $('<span></span>').addClass('tooltip').append(data[0]+' registration '+data[3]);
-			$('<span class="abstract"></span>')
+			block = $('<span class="abstract"></span>')
 				.css('margin-left', (abst - last) * s)
 				.css('padding-right', (submit - abst) * s)
-				.css('width', 0)
-				.html(data[11] === false ? '<sup>†</sup>' : '').append(tooltip).appendTo(p);
+				.css('width', 0);
 
-			last = submit
+			if (data[11] === false) {
+				block.html('<sup>†</sup>');
+				tooltip.prepend('Estimated ');
+			}
+
+			block.append(tooltip).appendTo(p);
+			last = submit;
 		}
 
-		tooltip = $('<span></span>').addClass('tooltip').append(data[0]+' submission '+data[4])
-									.append(',<br />notification '+data[5]);
-		$('<span class="review"></span>')
+		tooltip = $('<span></span>').addClass('tooltip').append(data[0]+' submission '+data[4]+',<br />')
+		block = $('<span class="review"></span>')
 			.css('margin-left', (submit - last) * s)
 			.css('padding-right', (notif - submit) * s)
-			.css('width', 0)
-			.html(data[12] === false ? '<sup>†</sup>' : '').append(tooltip).appendTo(p);
+			.css('width', 0);
 
-		if (data[13] === false)
+		if (data[12] === false) {
+			tooltip.prepend('Estimated ');
+			block.append('<sup>†</sup>');
+		}
+		block.append(tooltip).appendTo(p);
+
+		if (data[13] === false) {
+			tooltip.append('estimated ');
 			$('<span><sup>†</sup></span>').css('width', 0).appendTo(p);
+		}
+
+		tooltip.append('notification '+data[5]);
 		last = notif;
 
 	} else if (submit) {
 		tooltip = $('<span></span>').addClass('tooltip').append(data[0]+' submission '+data[4]);
+		block = $('<span class="submit"><sup>◆</sup></span>')
+			.css('margin-left', (submit - last) * s).css('width', 0);
 
-		$('<span class="submit"><sup>◆</sup></span>')
-			.css('margin-left', (submit - last) * s).css('width', 0)
-			.append(data[12] === false ? '<sup>†</sup>' : '').append(tooltip).appendTo(p);
-		last = submit
+		if (data[12] === false) {
+			tooltip.prepend('Estimated ');
+			block.append('<sup>†</sup>');
+		}
+
+		block.append(tooltip).appendTo(p);
+		last = submit;
 	}
 
 	var camera = parse_date(data[6]);
 	if (camera) {
 		tooltip = $('<span></span>').addClass('tooltip').append(data[0]+' final version '+data[6]);
-		$('<span class="camera"><sup>∎</sup></span>')
-			.css('margin-left', (camera - last) * s).css('width', 0)
-			.append(data[14] === false ? '<sup>†</sup>' : '').append(tooltip).appendTo(p);
-		last = camera
+		block = $('<span class="camera"><sup>∎</sup></span>')
+			.css('margin-left', (camera - last) * s).css('width', 0);
+
+		if (data[14] === false) {
+			tooltip.prepend('Estimated ');
+			block.append('<sup>†</sup>');
+		}
+
+		block.append(tooltip).appendTo(p);
+		last = camera;
 	}
 
 	var start = parse_date(data[7]);
 	var end = parse_date(data[8]);
 	if (start && end) {
-		tooltip = $('<span></span>').addClass('tooltip').append(data[0]+' from '+data[7]+' to '+data[8]);
-
-		$('<span class="conf"></span>')
+		tooltip = $('<span></span>').addClass('tooltip');
+		block = $('<span class="conf"></span>')
 			.css('margin-left', (start - last) * s)
-			.css('padding-right', (end - start) * s)
-			.css('width', 0)
-			.append(data[15] === false ? '<sup>†</sup>' : '').append(tooltip).appendTo(p);
+			.css('padding-left', (end - start) * s)
+			.css('width', 0);
 
-		if (data[16] === false)
-			$('<span><sup>†</sup></span>').css('width', 0).appendTo(p);
+		if (data[15] === false || data[16] == false) {
+			tooltip.append(data[0]+' estimated from '+data[7]+' to '+data[8]);
+			block.append('<sup>†</sup>');
+		} else {
+			tooltip.append(data[0]+' from '+data[7]+' to '+data[8]);
+		}
 
+		block.append(tooltip).appendTo(p);
 		last = end;
 	}
 
