@@ -1,5 +1,6 @@
 var datatable, today = new Date();
-var timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6, 1);
+var timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6, 1),
+	timeline_max = Date.UTC(today.getFullYear(), today.getMonth() + 18, 1);
 // px per month
 var timeline_scale = 50 / Date.UTC(1970, 1, 1)
 
@@ -16,27 +17,9 @@ function getScrollBarWidth() {
 
 var offset = getScrollBarWidth();
 
-function resizeHeaderBackground() {
-	var timeline = $('#timeline'), tl_dom = timeline.get(0);
-	var bar_v = tl_dom.scrollWidth > timeline.innerWidth() | 0;
-	var bar_h = tl_dom.scrollHeight > timeline.innerHeight() | 0;
-
-	$('#header').width(timeline.outerWidth(true) - offset * bar_h).height(timeline.outerHeight(true) - offset * bar_v);
-}
-
-function makeTimelineLegend(maxdate) {
-	var box = $('#header')
-	var startDate = new Date(timeline_zero);
-	var endDate = typeof maxdate !== 'undefined' ? new Date(maxdate) :
-		new Date(Date.UTC(today.getFullYear(), today.getMonth() + 12));
-
-	// get last day of month
-	// go to first day to avoid side effects of incrementing month
-	endDate.setDate(1);
-
-	// then increment month and go to day -1
-	endDate.setMonth(endDate.getMonth() + 36);
-	endDate.setDate(0);
+function makeTimelineLegend() {
+	var box = $('#timeline_header');
+	var startDate = new Date(timeline_zero), endDate = new Date(timeline_max);
 
 	box.empty()
 
@@ -61,12 +44,8 @@ function makeTimelineLegend(maxdate) {
 		$('<span></span>').append(y).css('width', (to - from) * timeline_scale - (to < last ? 2 : 1)).appendTo(py);
 	}
 
-	resizeHeaderBackground();
-	setInterval(resizeHeaderBackground, 100);
-
-	$('#timeline').on('scroll', function() {
-		$('#months').scrollLeft($(this).scrollLeft());
-		$('#years').scrollLeft($(this).scrollLeft());
+	$('#timeline_body').on('scroll', function(obj) {
+		$('#timeline_header').scrollLeft(obj.currentTarget.scrollLeft);
 	});
 }
 
@@ -77,8 +56,10 @@ function parse_date(str) {
 }
 
 function addToTimeline(n, data) {
-	var s = timeline_scale, last = timeline_zero, tooltip, block;
+	var s = timeline_scale, last = timeline_zero, tooltip, filler, block;
 	var p = $('<p></p>').append($('<span class="acronyms"></span>').append(renderAcronym(data[0], 'display', data)));
+	var marker = $('<sup>†</sup>').css('width', '.5em').css('margin-right', '-.5em');
+	var punctualMarker = marker.clone().css('width', '.5em').css('margin-left', '.5em').css('margin-right', '-1em');
 
 	var abst = parse_date(data[3]);
 	var submit = parse_date(data[4]);
@@ -87,95 +68,94 @@ function addToTimeline(n, data) {
 	if (!abst) abst = submit;
 	else if (!submit) submit = abst;
 
-	if (submit && notif) {
+	if (submit && notif && submit >= last && notif >= submit) {
 		if (submit > abst) {
 			tooltip = $('<span></span>').addClass('tooltip').append(data[0]+' registration '+data[3]);
-			block = $('<span class="abstract"></span>')
-				.css('margin-left', (abst - last) * s)
-				.css('padding-right', (submit - abst) * s)
-				.css('width', 0);
+			filler = $('<span class="filler"></span>').css('width', (abst - last) * s);
+			block = $('<span class="abstract"></span>').css('width', (submit - abst) * s);
+
+			p.append(filler).append(block.append(tooltip));
 
 			if (data[11] === false) {
-				block.html('<sup>†</sup>');
+				block.append(marker.clone());
 				tooltip.prepend('Estimated ');
 			}
 
-			block.append(tooltip).appendTo(p);
 			last = submit;
 		}
 
 		tooltip = $('<span></span>').addClass('tooltip').append(data[0]+' submission '+data[4]+',<br />')
-		block = $('<span class="review"></span>')
-			.css('margin-left', (submit - last) * s)
-			.css('padding-right', (notif - submit) * s)
-			.css('width', 0);
+		filler = $('<span class="filler"></span>').css('width', (submit - last) * s);
+		block = $('<span class="review"></span>').css('width', (notif - submit) * s);
 
 		if (data[12] === false) {
 			tooltip.prepend('Estimated ');
-			block.append('<sup>†</sup>');
+			block.append(marker.clone());
 		}
-		block.append(tooltip).appendTo(p);
+		p.append(filler).append(block.append(tooltip));
 
 		if (data[13] === false) {
 			tooltip.append('estimated ');
-			$('<sup>†</sup>').css('width', 0).appendTo(p);
+			p.append(marker.clone());
 		}
 
 		tooltip.append('notification '+data[5]);
 		last = notif;
 
-	} else if (submit) {
+	} else if (submit && submit >= last) {
 		tooltip = $('<span></span>').addClass('tooltip').append(data[0]+' submission '+data[4]);
-		block = $('<span class="submit"><sup>◆</sup></span>')
-			.css('margin-left', (submit - last) * s).css('width', 0);
+		filler = $('<span class="filler"></span>').css('width', (submit - last) * s);
+		block = $('<span class="submit"><sup>◆</sup></span>');
+
+		p.append(filler).append(block.append(tooltip));
 
 		if (data[12] === false) {
 			tooltip.prepend('Estimated ');
-			block.append('<sup>†</sup>');
+			p.append(punctualMarker.clone());
 		}
 
-		block.append(tooltip).appendTo(p);
 		last = submit;
 	}
 
 	var camera = parse_date(data[6]);
-	if (camera) {
+	if (camera && camera >= last) {
 		tooltip = $('<span></span>').addClass('tooltip').append(data[0]+' final version '+data[6]);
-		block = $('<span class="camera"><sup>∎</sup></span>')
-			.css('margin-left', (camera - last) * s).css('width', 0);
+		filler = $('<span class="filler"></span>').css('width', (camera - last) * s);
+		block = $('<span class="camera"><sup>∎</sup></span>');
+
+		p.append(filler).append(block.append(tooltip));
 
 		if (data[14] === false) {
 			tooltip.prepend('Estimated ');
-			block.append('<sup>†</sup>');
+			block.append(punctualMarker.clone());
 		}
 
-		block.append(tooltip).appendTo(p);
 		last = camera;
 	}
 
 	var start = parse_date(data[7]);
 	var end = parse_date(data[8]);
-	if (start && end) {
+	if (start && end && start >= last && end >= start) {
 		tooltip = $('<span></span>').addClass('tooltip');
-		block = $('<span class="conf"></span>')
-			.css('margin-left', (start - last) * s)
-			.css('padding-left', (end - start) * s)
-			.css('width', 0);
+		filler = $('<span class="filler"></span>').css('width', (start - last) * s);
+		block = $('<span class="conf"></span>').css('width', (end - start) * s);
+
+		p.append(filler).append(block.append(tooltip));
 
 		if (data[15] === false || data[16] == false) {
 			tooltip.append(data[0]+' estimated from '+data[7]+' to '+data[8]);
-			block.append('<sup>†</sup>');
+			p.append(marker.clone());
 		} else {
 			tooltip.append(data[0]+' from '+data[7]+' to '+data[8]);
 		}
 
-		block.append(tooltip).appendTo(p);
 		last = end;
 	}
 
 	// ignore conferences for which we don't have a single date
 	if (last > timeline_zero) {
-		$('#timeline').append(p)
+		$('<span class="filler"></span>').css('width', (timeline_max - last) * s).appendTo(p);
+		$('#timeline').append(p);
 	}
 }
 
@@ -255,8 +235,6 @@ function populatePage(json) {
 
 	datatable.draw().on('search.dt', filterUpdated);
 
-	$.each(datatable.rows().data(), addToTimeline)
-
 	var maxdate = timeline_zero;
 	for (var col = 3; col <= 8; col++)
 	{
@@ -264,8 +242,18 @@ function populatePage(json) {
 		// lexical sort works thanks to format, just parse once
 		maxdate = Math.max(maxdate, parse_date(colmax));
 	}
+	var endDate = new Date(maxdate);
 
-	makeTimelineLegend(maxdate);
+	// get last day of month
+	// go to first day to avoid side effects of incrementing month
+	endDate.setDate(1);
+	endDate.setMonth(endDate.getMonth() + 1);
+	endDate.setDate(0);
+	timeline_max = endDate.getTime();
+	$('#timeline').width('calc(8.5em + ' + (timeline_max - timeline_zero) * timeline_scale + 'px)');
+
+	makeTimelineLegend();
+	$.each(datatable.rows().data(), addToTimeline);
 }
 
 $(document).ready(function() {

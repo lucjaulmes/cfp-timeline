@@ -92,41 +92,51 @@ h1 {
 }
 
 /* hard part: the timeline */
-#timeline_holder {
+#timeline_scrollbox {
 	position:relative;
-	padding-top:1em;
 	overflow:hidden;
-	width:90%;
+	height:30em;
+	resize:both;
+	width:80%;
 	margin:0 auto;
 }
 
-#header {
+#timeline_body {
+	position:relative;
+	overflow:auto;
+	height:calc(100% - 3em);
+	margin:3em 0 0;
+}
+
+#timeline {
+	position:relative;
+	overflow:hidden;
+	white-space:nowrap;
+	padding-bottom:3em;
+	z-index:2;
+}
+
+#timeline_header {
 	position:absolute;
-	overflow-y:hidden;
+	height:100%;
+	width:100%;
+	overflow:hidden;
 }
 
 #years,
 #months {
-	white-space:nowrap;
 	margin:0;
 	padding:0;
+	white-space:nowrap;
 	line-height:1.5em;
-	overflow-x:hidden;
+	width:200%;
 }
 #years {
 	height:1.5em;
 }
 #months {
-	width:inherit;
-}
-
-#timeline {
-	margin-top:3em;
-	resize:both;
-	overflow:auto;
-	white-space:nowrap;
-	height:30em;
-	z-index:2;
+	height:100%;
+	vertical-align:top;
 }
 
 #timeline p {
@@ -146,9 +156,13 @@ h1 {
 #months > span,
 #timeline p > span {
 	display:inline-block;
-	text-align:center;
     position: relative;
 	height:1.5em;
+}
+
+#years > span,
+#months > span {
+	text-align:center;
 }
 
 #years > span.acronyms,
@@ -169,7 +183,7 @@ h1 {
 #months span:not(.acronyms) {
 	background-color:#eee;
 	border-left: black 1px solid;
-	padding-bottom:1000px;
+	height:100%;
 	z-index:-1;
 }
 
@@ -192,14 +206,14 @@ h1 {
     margin:0 auto;
 }
 
-#timeline p > span:not(.acronyms):hover {
+#timeline p > span:hover .tooltip {
+    visibility: visible;
+}
+
+#timeline p > span:not(.acronyms):not(.filler):hover {
     box-shadow: 0px 0px 12px 10px #fff;
 	border-radius:5px;
 	cursor: default;
-}
-
-#timeline p > span:hover .tooltip {
-    visibility: visible;
 }
 
 
@@ -220,7 +234,13 @@ h1 {
 #timeline span.conf,
 #legend span.conf {
 	background-color:#00f;
+}
+#timeline span.submit,
+#timeline span.camera,
+#legend span.camera {
+	width:1em;
 	text-align:center;
+	margin:0 -.5em;
 }
 .extrapolated {
 	background: #eee;
