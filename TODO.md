@@ -1,0 +1,3 @@
+- [ ] Sync filters with URL fragment
+- [ ] Fix acronym collisions
+- [ ] Fix timeline scroll
