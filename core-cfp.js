@@ -118,7 +118,7 @@ function addToTimeline(n, data) {
 
 		if (data[13] === false) {
 			tooltip.append('estimated ');
-			$('<span><sup>†</sup></span>').css('width', 0).appendTo(p);
+			$('<sup>†</sup>').css('width', 0).appendTo(p);
 		}
 
 		tooltip.append('notification '+data[5]);
