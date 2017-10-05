@@ -45,6 +45,14 @@ function parse_date(str) {
 	return Math.max(timeline_zero, Date.UTC(tok[0], tok[1] - 1, tok[2]));
 }
 
+function tooltipPosition(date, obj) {
+	var t = 200 * (date - timeline_zero) / (timeline_max - timeline_zero) - 100;
+	if (t < 0)
+		obj.css('left', (- t) + '%');
+	else
+		obj.css('right', t + '%');
+}
+
 function addToTimeline(n, data) {
 	var s = timeline_scale, last = timeline_zero, tooltip, filler, block;
 	var p = $('<p></p>').append($('<span class="acronyms"></span>').append(renderAcronym(data[0], 'display', data)));
@@ -71,6 +79,7 @@ function addToTimeline(n, data) {
 				tooltip.prepend('Estimated ');
 			}
 
+			tooltipPosition((abst + submit) / 2, tooltip);
 			last = submit;
 		}
 
@@ -89,6 +98,7 @@ function addToTimeline(n, data) {
 			p.append(marker.clone());
 		}
 
+		tooltipPosition((submit + notif) / 2, tooltip);
 		tooltip.append('notification '+data[5]);
 		last = notif;
 
@@ -104,6 +114,7 @@ function addToTimeline(n, data) {
 			p.append(punctualMarker.clone());
 		}
 
+		tooltipPosition(submit, tooltip);
 		last = submit;
 	}
 
@@ -120,6 +131,7 @@ function addToTimeline(n, data) {
 			block.append(punctualMarker.clone());
 		}
 
+		tooltipPosition(camera, tooltip);
 		last = camera;
 	}
 
@@ -139,6 +151,7 @@ function addToTimeline(n, data) {
 			tooltip.append(data[0]+' from '+data[7]+' to '+data[8]);
 		}
 
+		tooltipPosition((start + end) / 2, tooltip);
 		last = end;
 	}
 

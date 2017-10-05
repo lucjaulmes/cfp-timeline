@@ -110,7 +110,6 @@ h1 {
 
 #timeline {
 	position:relative;
-	overflow:hidden;
 	white-space:nowrap;
 	padding-bottom:3em;
 	z-index:2;
