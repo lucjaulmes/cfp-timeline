@@ -7,16 +7,6 @@ var timeline_scale = 50 / Date.UTC(1970, 1, 1)
 var ranks = ['A*', 'A', 'B', 'C', 'D'];
 function ranksort(a, b) { return ranks.indexOf(a) - ranks.indexOf(b); }
 
-/* https://stackoverflow.com/a/19015262 */
-function getScrollBarWidth() {
-    var outer = $('<div>').css({visibility: 'hidden', width: 100, overflow: 'scroll'}).appendTo('body'),
-        widthWithScroll = $('<div>').css({width: '100%'}).appendTo(outer).outerWidth();
-    outer.remove();
-    return 100 - widthWithScroll;
-};
-
-var offset = getScrollBarWidth();
-
 function makeTimelineLegend() {
 	var box = $('#timeline_header');
 	var startDate = new Date(timeline_zero), endDate = new Date(timeline_max);
