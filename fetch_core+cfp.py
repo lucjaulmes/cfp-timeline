@@ -134,9 +134,11 @@ def parse_cfp_soup(soup):
 	"""
 	# Find the the table containing the interesting data about the conference
 	# There's always a "When" and a "Where" in the info table, even though they might be N/A
-	info_table = soup.find('th', text = 'Where')
-	while info_table.name != 'table':
-		info_table = info_table.parent
+	for info_table in soup.find('th', text = 'Where').parents:
+		if info_table.name == 'table':
+			break
+	else:
+		raise ValueError('Cound not find parent table!')
 
 	# Populate data with {left cell: right cell} for every line in the table
 	it = ((tr.find('th').text, tr.find('td').text.strip()) for tr in info_table.findAll('tr'))
@@ -154,6 +156,26 @@ def parse_cfp_soup(soup):
 	return data
 
 
+def find_link(search_soup, conf, year):
+	""" Find the link to the conference page in the search page's soup
+	"""
+	search = '{} {}'.format(conf['Acronym'], year).lower()
+	conf_link = search_soup.findAll('a', href = True, text = lambda t: t and t.lower() == search)
+	print(search,': ',conf_link)
+
+	for cl in conf_link:
+		for tr in cl.parents:
+			if tr.name == 'tr':
+				break
+		else:
+			raise ValueError('Cound not find parent row!')
+		conf_name = [td.text for td in tr.findAll('td') if td not in cl.parents]
+		print(conf_name)
+		print(conf['Title'])
+
+		return wiki_cfp + cl['href']
+
+
 def get_cfp(conf, year):
 	""" Fetch the cfp from wiki-cfp for the given conference at the given year.
 	"""
@@ -166,9 +188,9 @@ def get_cfp(conf, year):
 		search_f='cache/search_cfp_{}-{}.html'.format(conf['Acronym'].replace('/', '_'), year)
 		search_soup = get_soup(url_cfpsearch, search_f, params = {'q': conf['Acronym'], 'y': year})
 
-		conf_page = search_soup.find('a', href = True, text = lambda t: t and t.lower() == '{} {}'.format(conf['Acronym'], year).lower())
+		conf_page = find_link(search_soup, conf, year)
 		if conf_page:
-			soup = get_soup(wiki_cfp + conf_page['href'], f)
+			soup = get_soup(conf_page, f)
 		else:
 			return {}
 
@@ -198,7 +220,7 @@ def update_confs(out):
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
-	for conf in fetch_core():
+	for conf in head(5, fetch_core()):
 		last_year = {}
 		for y in years:
 			if (conf['Acronym'].upper(), y) in hardcoded:

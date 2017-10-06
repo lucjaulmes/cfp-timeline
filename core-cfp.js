@@ -73,7 +73,7 @@ function makeTimelineLegend() {
 	{
 		var from = Math.max(timeline_zero, Date.UTC(y, 0, 1));
 		var to = Math.min(last, Date.UTC(y + 1, 0, 1));
-		$('<span></span>').append(y).css('width', (to - from) * timeline_scale - (to < last ? 2 : 1)).appendTo(py);
+		$('<span></span>').append(y).css('width', (to - from) * timeline_scale - 2).appendTo(py);
 	}
 
 	$('#timeline_body').on('scroll', function(obj) {
