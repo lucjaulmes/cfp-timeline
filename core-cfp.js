@@ -7,6 +7,48 @@ var timeline_scale = 50 / Date.UTC(1970, 1, 1)
 var ranks = ['A*', 'A', 'B', 'C', 'D'];
 function ranksort(a, b) { return ranks.indexOf(a) - ranks.indexOf(b); }
 
+function parseFragment() {
+	var hash = window.location.hash.substr(1).split('&');
+	var goto = null;
+
+	var result = hash.reduce(function (result, item) {
+		var parts = item.split('=', 2);
+
+		if (parts.length > 1) {
+			if (!result[parts[0]])
+				result[parts[0]] = [];
+
+			result[parts[0]].push(decodeURIComponent(parts[1]));
+		}
+		else if (item && $('#' + item).length)
+			goto = item;
+
+		return result;
+	}, {});
+
+	if (result.length && goto) {
+		$('html, body').scrollTop($('#'+goto).offset().top);
+	}
+
+	return result;
+}
+
+function updateFragment() {
+	var params = $("#filters select").serializeArray().map(function(item) {
+		return item['name'] + '=' + item['value']
+	});
+
+	/* get last part of &-separated fragment that contains no '=' */
+	var goto = window.location.hash.substr(1).split('&').reduce(function (prev, item) {
+		return item.indexOf('=') < 0 ? item : prev;
+	}, null);
+
+	if (goto)
+		params.push(goto);
+
+	window.location.hash = '#' + params.join('&');
+}
+
 function makeTimelineLegend() {
 	var box = $('#timeline_header');
 	var startDate = new Date(timeline_zero), endDate = new Date(timeline_max);
@@ -168,25 +210,29 @@ function filterUpdated(search) {
 	$.each(filteredData, addToTimeline)
 }
 
-function makeFilter(column, sortfunction) {
+function makeFilter(column, name, initFilters, sortfunction) {
 	var values = column.data().unique().sort(sortfunction);
 
-	var select = $('<select multiple></select>')
-		.attr('size', Math.min(10, values.length))
-		.on('change', function () {
+	var select = $('<select multiple></select>').attr("name", name).attr('size', Math.min(10, values.length));
+	$("#filters").append($('<p></p>').append(column.header().innerHTML).append(select).append(
+		$('<button>clear</button>').click(function(){ select.val([]).change() })
+	));
+
+	var selected = initFilters[name] ? initFilters[name] : [];
+	values.each(function (t) {
+		select.append('<option value="'+t+'"' + (selected.indexOf(t) < 0 ? '' : ' selected="selected"')+ '>'+t+'</option>');
+	});
+
+	select.on('change', function () {
 			var val = $.map($(this).val(), $.fn.dataTable.util.escapeRegex), regex = '';
 			if (val.length)
 				regex = '^('+val.join('|')+')$';
 			column.search(regex, true, false).draw();
+			updateFragment();
 		});
 
-	values.each(function (t) {
-		select.append('<option value="'+t+'">'+t+'</option>');
-	});
-
-	$('<p></p>').appendTo( $("#filters") ).append(column.header().innerHTML).append(select).append(
-		$('<button>clear</button>').click(function(){ select.val([]).change() })
-	);
+	if (selected.length)
+		select.change();
 }
 
 function renderAcronym(data, type, row) {
@@ -223,18 +269,22 @@ function populatePage(json) {
 		order: [[4, "asc"], [3, "asc"], [7, "asc"], [8, "asc"]]
 	});
 
-	show = $('<button>&gt;</button>')
-	filter = $('<div id="filters"></div>')
+	show = $('<button>&gt;</button>').wrap('<label id="show_filters">Filters</label>');
+	filter = $('<div id="filters"></div>');
+	$('#confs_filter').append(filter).prepend(show.parent());
 
 	show.click(function() {
 		filter.slideToggle();
 		show.toggleClass('rotated');
 	});
-	show.wrap('<label id="show_filters">Filters</label>');
-	$('#confs_filter').append(filter).prepend(show.parent())
-	makeFilter(datatable.column(0));
-	makeFilter(datatable.column(2), ranksort);
-	makeFilter(datatable.column(9));
+
+	var initFilters = parseFragment();
+
+	makeFilter(datatable.column(0), "conf", initFilters);
+	makeFilter(datatable.column(2), "core", initFilters, ranksort);
+	makeFilter(datatable.column(9), "field", initFilters);
+
+	updateFragment();
 
 	datatable.draw().on('search.dt', filterUpdated);
 

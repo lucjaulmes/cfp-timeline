@@ -1,3 +1,3 @@
-- [ ] Sync filters with URL fragment
+- [x] Sync filters with URL fragment
 - [ ] Fix acronym collisions
 - [x] Fix timeline scroll
