@@ -3,6 +3,7 @@
 import re
 import sys
 import json
+import inflection
 import requests
 import datetime
 from requests.exceptions import ConnectionError, MissingSchema
@@ -69,19 +70,24 @@ class PeekIter(object):
 
 
 	def peek(self, n = 0):
-		""" Tries peeking ahead. Raises IndexError if we go beyond the iterator length.
+		""" Returns next element(s) that will be returned from the iterator.
 
 		Args:
-			n (`int`): how many positions ahead to look in the iterator, 0 means next element.
+			n (`int`): Number of positions to look ahead in the iterator.
+					0 (by default) means next element, raises IndexError if there is none.
+					Any value n > 0 returns a list of length up to n.
 		"""
 		if n < 0: raise ValueError('n < 0 but can not peek back, only ahead')
 
 		try:
 			self._ahead.extend(next(self._it) for _ in range(n - len(self._ahead) + 1))
 		except StopIteration:
-			raise IndexError
+			pass
 
-		return self._ahead[-n - 1]
+		if n == 0:
+			return self._ahead[0]
+		else:
+			return self._ahead[:n]
 
 
 def memoize(f):
@@ -110,7 +116,6 @@ def get_soup(url, filename, **kwargs):
 		with open(filename, 'r') as fh:
 			soup = BeautifulSoup(fh.read(), 'lxml')
 	except FileNotFoundError:
-		if url:raise ConnectionError # DEBUG
 		r = requests.get(url, **kwargs)
 		with open(filename, 'w') as fh:
 			print(r.text, file=fh)
@@ -134,8 +139,20 @@ class ConfMetaData(object):
 
 	_org = {'acm', 'ieee', 'ifip', 'siam', 'usenix'} | {"sig"+s for s in _sig}
 
+	_meeting_types = {'congress', 'conference', 'seminar', 'symposium', 'workshop', 'tutorial'}
+	_qualifiers = {'asian', 'australasian', 'australian', 'annual', 'european', 'international', 'joint', 'national'}
+
+	# NB simple acronym management, only works while first word -> acronym mapping is unique
+	_acronyms = {''.join(s[0] for s in a.split()):[inflection.singularize(s) for s in a.split()] for a in \
+						{'call for papers', 'operating system', 'special interest group'}}
+	_acro_first_word = {v[0]:a for a, v in _acronyms.items()}
+
+
 	_tens = {'twenty', 'thirty', 'fourty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'}
 	_ordinal = re.compile(r'[0-9]+(st|nd|rd|th)|(({tens})?(first|second|third|(four|fif|six|seven|eigh|nine?)th))|(ten|eleven|twelf|(thir|fourt|fif|six|seven|eigh|nine?)teen)th'.format(tens = '|'.join(_tens)))
+
+	_sigcmp = {inflection.singularize(s):s for s in _sig}
+	_orgcmp = {inflection.singularize(s):s for s in _org}
 
 	topic_keywords = None
 	organisers = None
@@ -144,7 +161,7 @@ class ConfMetaData(object):
 	qualifiers = None
 
 
-	def __init__(self, title, acronym, year = '', **kwargs):
+	def __init__(self, title, conf_acronym, year = '', **kwargs):
 		super(ConfMetaData, self).__init__(**kwargs)
 
 		self.topic_keywords = []
@@ -153,22 +170,28 @@ class ConfMetaData(object):
 		self.type_ = ''
 		self.qualifiers = []
 
-		if acronym.startswith('sig') and acronym[3:] in self._sig:
+		if conf_acronym.startswith('sig') and conf_acronym[3:] in self._sig:
 			# temporary, want to see if this happens. E.g. SIGMETRICS?
-			raise ValueError('Special case acronym == interest group: {}'.format(acronym))
+			raise ValueError('Special case acronym == interest group: {}'.format(conf_acronym))
 
 		# lower case, replace characters in dict by whitepace, repeated spaces will be removed by split()
-		words = title.lower().translate({ord(c):' ' for c in "-/&,():_~'"}).split()
+		words = title.lower().translate({ord(c):' ' for c in "-/&,():_~'."}).split()
 
 		# remove articles, conjunctions, acronym and year of conference if they are repeated
 		# semantically filter conference editors/organisations, special interest groups (sig...), etc.
-		words = PeekIter(w for w in words if w not in {'the', 'on', 'for', 'of', 'in', 'and', 'cfp', acronym.lower(), str(year), str(year)[2:]})
+		words = PeekIter(inflection.singularize(w) for w in words if w not in {'the', 'on', 'for', 'of', 'in', 'and', conf_acronym.lower(), str(year), str(year)[2:]})
 
 		for w in words:
+			acronym = self._acro_first_word.get(w, None)
+			if acronym and words.peek(len(self._acronyms[acronym]) - 1) == self._acronyms[acronym][1:]:
+				for _ in range(len(self._acronyms[acronym]) - 1):next(words)
+				self.topic_keywords.append(acronym)
+				continue
+
 			if w == "sig":
 				try:
-					if words.peek() in self._sig:
-						self.organisers.add(w + next(words))
+					if words.peek() in self._sigcmp:
+						self.organisers.add(self._sigcmp[w] + next(words))
 						continue
 				except IndexError: pass
 
@@ -182,24 +205,36 @@ class ConfMetaData(object):
 				except IndexError: pass
 
 
-			if w in self._org:
-				self.organisers.add(w)
+			if w in self._orgcmp:
+				self.organisers.add(self._orgcmp[w])
+				continue
 
-			elif w in {'congress', 'conference', 'seminar', 'symposium', 'workshop', 'tutorial'}:
+			if w in self._meeting_types:
 				self.type_ += w
+				continue
 
-			elif w in {'annual', 'european', 'international', 'joint', 'national'}:
+			# Also seen but risk colliding with topic words: Mini Conference, Working Conference
+			if w in self._qualifiers:
 				self.qualifiers.append(w)
+				continue
 
-			else:
-				m = ConfMetaData._ordinal.match(w)
-				if m:
-					self.number = m.group(0)
-					continue
+			if w.isnumeric():
+				try:
+					if words.peek() == inflection.ordinal(int(w)):
+						self.number = w + next(words)
+						continue
+				except IndexError:pass
 
-				self.topic_keywords.append(w)
-		# TODO Expand acronyms such as OS A/V, etc: Network Os Support Digital A V == Network Operating Systems Support Digital Audio Video
+			m = ConfMetaData._ordinal.match(w)
+			if m:
+				self.number = m.group(0)
+				continue
+
+			self.topic_keywords.append(w)
+
+		# TODO Expand acronyms such as OS A/V, etc: Network Os Support Digital A V == Network Operating Systems Support Digital Audio Video, Conf = Conference
 		# Also in the other way: Special Interest Group [...] -> sig... , Call for papers: cfp, etc.
+		# TODO space before suffix: "10 th"
 
 
 	def topic(self, sep = ' '):
@@ -357,9 +392,9 @@ class CallForPapers(ConfMetaData):
 		search_f = 'cache/' + 'search_cfp_{}-{}.html'.format(conf.acronym, year).replace('/', '_')
 		soup = get_soup(cls._url_cfpsearch, search_f, params = {'q': conf.acronym, 'y': year})
 
-		# DEBUG
 		#options = (CallForPapers(conf, desc, year, url) for desc, url in cls.parse_search(conf, year, soup))
 		#return min(options, key = CallForPapers.rating)
+		# DEBUG
 
 		options = sorted((cls(conf, desc, year, url) for desc, url in cls.parse_search(conf, year, soup)), key = lambda o: sum(o.rating()))
 		print('Searching for {} ({}) {}#{}#{}'.format(conf.acronym, conf.rank, year, conf.title, conf.topic()))
