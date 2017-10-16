@@ -12,6 +12,11 @@ from collections import defaultdict
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
+try:
+	from enchant import Dict
+except ImportError:
+	def Dict(*args):
+		return None
 
 def head(n, iterable):
 	""" Generator listing the first (up to) n elements of an iterable
@@ -123,6 +128,11 @@ def get_soup(url, filename, **kwargs):
 	return soup
 
 
+def normalize(string):
+	# Asia -> Asium and Meta -> Metum, really?
+	return inflection.singularize(string.lower()) if len(string) > 3 else string.lower()
+
+
 class ConfMetaData(object):
 	""" Heuristic to reduce a conference title to a matchable set of words.
 
@@ -132,27 +142,61 @@ class ConfMetaData(object):
 		year (`int` or `str`): the year of the conference
 	"""
 
-	#ACM Special Interest Groups
-	_sig = set(map(str.lower, {"ACCESS", "ACT", "Ada", "AI", "APP", "ARCH", "BED", "Bio", "CAS", "CHI", "COMM", "CSE", "DA",
-			"DOC", "ecom", "EVO", "GRAPH", "HPC", "IR", "ITE", "KDD", "LOG", "METRICS", "MICRO", "MIS", "MM", "MOBILE",
-			"MOD", "OPS", "PLAN", "SAC", "SAM", "SIM", "SOFT", "SPATIAL", "UCCS", "WEB"}))
+	# associations, societies, institutes, etc. that organize conferences
+	_org = {'ACIS':'Association for Computer and Information Science', 'ACL':'Association for Computational Linguistics', 'ACM':'Association for Computing Machinery',
+			'ACS':'Arab Computer Society', 'AoM':'Academy of Management', 'CSI':'Computer Society of Iran', 'DIMACS':'Center for Discrete Mathematics and Theoretical Computer Science',
+			'ERCIM':'European Research Consortium for Informatics and Mathematics', 'Eurographics':'Eurographics', 'Euromicro':'Euromicro',
+			'IADIS':'International Association for the Development of the Information Society', 'IAPR':'International Association for Pattern Recognition',
+			'IAVoSS':'International Association for Voting Systems Sciences', 'ICSC':'ICSC Interdisciplinary Research', 'IEEE':'Institute of Electrical and Electronics Engineers',
+			'IFAC':'International Federation of Automatic Control', 'IFIP':'International Federation for Information Processing', 'IMA':'Institute of Mathematics and its Applications',
+			'KES':'KES International', 'MSRI':'Mathematical Sciences Research Institute', 'RSJ':'Robotics Society of Japan', 'SCS':'Society for Modeling and Simulation International',
+			'SIAM':'Society for Industrial and Applied Mathematics', 'SLKOIS':'State Key Laboratory of Information Security', 'SIGOPT':'DMV Special Interest Group in Optimization',
+			'SIGNLL':'ACL Special Interest Group in Natural Language Learning', 'SPIE':'International Society for Optics and Photonics',
+			'TC13':'IFIP Technical Committee on Human–Computer Interaction', 'Usenix':'Advanced Computing Systems Association', 'WIC':'Web Intelligence Consortium'}
 
-	_org = {'acm', 'ieee', 'ifip', 'siam', 'usenix'} | {"sig"+s for s in _sig}
+	#ACM Special Interest Groups
+	_sig = {'ACCESS':'Accessible Computing', 'ACT':'Algorithms Computation Theory', 'Ada':'Ada Programming Language', 'AI':'Artificial Intelligence',
+			'APP':'Applied Computing', 'ARCH':'Computer Architecture', 'BED':'Embedded Systems', 'Bio':'Bioinformatics', 'CAS':'Computers Society',
+			'CHI':'Computer-Human Interaction', 'COMM':'Data Communication', 'CSE':'Computer Science Education', 'DA':'Design Automation',
+			'DOC':'Design Communication', 'ecom':'Electronic Commerce', 'EVO':'Genetic Evolutionary Computation', 'GRAPH':'Computer Graphics Interactive Techniques',
+			'HPC':'High Performance Computing', 'IR':'Information Retrieval', 'ITE':'Information Technology Education', 'KDD':'Knowledge Discovery Data',
+			'LOG':'Logic Computation', 'METRICS':'Measurement Evaluation', 'MICRO':'Microarchitecture', 'MIS':'Management Information Systems', 'MM':'Multimedia',
+			'MOBILE':'Mobility Systems, Users, Data Computing', 'MOD':'Management Data', 'OPS':'Operating Systems', 'PLAN':'Programming Languages',
+			'SAC':'Security, Audit Control', 'SAM':'Symbolic Algebraic Manipulation', 'SIM':'Simulation Modeling', 'SOFT':'Software Engineering',
+			'SPATIAL':'SIGSPATIAL', 'UCCS':'University College Computing Services', 'WEB':'Hypertext Web', 'ART': 'Artificial Intelligence'} # NB ART was renamed AI
 
 	_meeting_types = {'congress', 'conference', 'seminar', 'symposium', 'workshop', 'tutorial'}
-	_qualifiers = {'asian', 'australasian', 'australian', 'annual', 'european', 'international', 'joint', 'national'}
+	_qualifiers = {'american', 'asian', 'australasian', 'australian', 'annual', 'biennial', 'european', 'iberoamerican', 'international', 'joint', 'national'}
+	_replace = { # remove shortenings and typos, and americanize text
+			**{'intl': 'international', 'conf': 'conference', 'dev': 'development'},
+			**{'visualisation':'visualization', 'modelling':'modeling', 'internationalisation':'internationalization', 'defence':'defense',
+				'standardisation':'standardization', 'organisation':'organization', 'optimisation':'optimization,', 'realising':'realizing', 'centre':'center'},
+			**{'syste':'system', 'computi':'computing', 'artifical':'artificial', 'librari':'library', 'databa':'database,', 'conferen':'conference',
+				'bioinformatic':'bioinformatics', 'symposi':'symposium', 'evoluti':'evolution', 'proce':'processes', 'provi':'proving', 'techology':'technology',
+				'bienniel':'biennial', 'entertainme':'entertainment', 'retriev':'retrieval', 'engineeri':'engineering', 'sigraph':'siggraph',
+				'intelleligence':'intelligence', 'simululation':'simulation', 'inteligence':'intelligence', 'manageme':'management', 'applicatio':'application',
+				'developme':'development', 'cyberworl':'cyberworld', 'scien':'science', 'personalizati':'personalization', 'computati':'computation',
+				'implementati':'implementation', 'languag':'language', 'traini':'training', 'servic':'services', 'intenational':'international', 'complexi':'complexity',
+				'storytelli':'storytelling', 'measureme':'measurement', 'comprehensi':'comprehension', 'synthe':'synthesis', 'evaluatin':'evaluation', 'technologi':'technology'}
+			}
 
 	# NB simple acronym management, only works while first word -> acronym mapping is unique
-	_acronyms = {''.join(s[0] for s in a.split()):[inflection.singularize(s) for s in a.split()] for a in \
-						{'call for papers', 'operating system', 'special interest group'}}
-	_acro_first_word = {v[0]:a for a, v in _acronyms.items()}
-
+	_acronyms = {''.join(s[0] for s in a.split()):[normalize(s) for s in a.split()] for a in \
+				{'call for papers', 'geographic information system', 'high performance computing', 'message passing interface', 'object oriented', 'operating system',
+					'parallel virtual machine', 'public key infrastructure', 'special interest group'}}
+	# Computer Performance Evaluation ? Online Analytical Processing: OLAP? aspect-oriented programming ?
 
 	_tens = {'twenty', 'thirty', 'fourty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'}
 	_ordinal = re.compile(r'[0-9]+(st|nd|rd|th)|(({tens})?(first|second|third|(four|fif|six|seven|eigh|nine?)th))|(ten|eleven|twelf|(thir|fourt|fif|six|seven|eigh|nine?)teen)th'.format(tens = '|'.join(_tens)))
 
-	_sigcmp = {inflection.singularize(s):s for s in _sig}
-	_orgcmp = {inflection.singularize(s):s for s in _org}
+	_sigcmp = {normalize('SIG' + s):s for s in _sig}
+	_orgcmp = {normalize(s):s for s in _org}
+
+	_acronym_start = {v[0]:a for a, v in _acronyms.items()}
+	_sig_start = {normalize(v.split()[0]):a for a, v in _sig.items() if a != 'ART'}
+
+	_dict = Dict('EN_US')
+	_misspelled = {}
 
 	topic_keywords = None
 	organisers = None
@@ -166,51 +210,26 @@ class ConfMetaData(object):
 
 		self.topic_keywords = []
 		self.organisers = set()
-		self.number = ''
-		self.type_ = ''
+		self.number = set()
+		self.type_ = set()
 		self.qualifiers = []
 
-		if conf_acronym.startswith('sig') and conf_acronym[3:] in self._sig:
-			# temporary, want to see if this happens. E.g. SIGMETRICS?
-			raise ValueError('Special case acronym == interest group: {}'.format(conf_acronym))
-
 		# lower case, replace characters in dict by whitepace, repeated spaces will be removed by split()
-		words = title.lower().translate({ord(c):' ' for c in "-/&,():_~'."}).split()
+		words = PeekIter(normalize(w) for w in title.translate({ord(c):' ' for c in "-/&,():_~'."}).split() \
+							if normalize(w) not in {'the', 'on', 'for', 'of', 'in', 'and', str(year)})
 
-		# remove articles, conjunctions, acronym and year of conference if they are repeated
 		# semantically filter conference editors/organisations, special interest groups (sig...), etc.
-		words = PeekIter(inflection.singularize(w) for w in words if w not in {'the', 'on', 'for', 'of', 'in', 'and', conf_acronym.lower(), str(year), str(year)[2:]})
-
 		for w in words:
-			acronym = self._acro_first_word.get(w, None)
-			if acronym and words.peek(len(self._acronyms[acronym]) - 1) == self._acronyms[acronym][1:]:
-				for _ in range(len(self._acronyms[acronym]) - 1):next(words)
-				self.topic_keywords.append(acronym)
-				continue
-
-			if w == "sig":
-				try:
-					if words.peek() in self._sigcmp:
-						self.organisers.add(self._sigcmp[w] + next(words))
-						continue
-				except IndexError: pass
-
-			if w in self._tens:
-				try:
-					m = self._ordinal.match(words.peek())
-					if m:
-						self.number = w + '-' + m.group(0)
-						next(words)
-						continue
-				except IndexError: pass
-
+			try:
+				w = self._replace[w]
+			except KeyError: pass
 
 			if w in self._orgcmp:
 				self.organisers.add(self._orgcmp[w])
 				continue
 
 			if w in self._meeting_types:
-				self.type_ += w
+				self.type_.add(w)
 				continue
 
 			# Also seen but risk colliding with topic words: Mini Conference, Working Conference
@@ -218,23 +237,76 @@ class ConfMetaData(object):
 				self.qualifiers.append(w)
 				continue
 
+			# Recompose acronyms
+			try:
+				acronym = self._acronym_start[w]
+				next_words = self._acronyms[acronym][1:]
+
+				if words.peek(len(next_words)) == next_words:
+					self.topic_keywords.append(normalize(acronym))
+					for _ in next_words: next(words)
+					continue
+
+				# TODO some acronyms have special characters, e.g. A/V, which means they appear as 2 words
+			except KeyError: pass
+
+			# Some specific attention brought to ACM special interest groups
+			if w.startswith('sig'):
+				try:
+					if len(w) > 3:
+						self.organisers.add('SIG' + self._sigcmp[w])
+						continue
+
+					sig = normalize('SIG' + next(words))
+					if sig in self._sigcmp:
+						self.organisers.add(self._sigcmp[sig])
+						continue
+
+					elif words.peek() in self._sig_start:
+						sig = self._sig_start[words.peek()]
+						next_words = [normalize(s) for s in self._sig[sig].split()][1:]
+						if next_words == words.peek(len(next_words)):
+							self.organisers.add('SIG' + sig)
+							for _ in next_words: next(words)
+							continue
+
+				except (KeyError, IndexError): pass
+
+			# three-part management for ordinals, to handle joint/separate words: twenty-fourth, 10 th, etc.
+			if w in self._tens:
+				try:
+					m = self._ordinal.match(words.peek())
+					if m:
+						self.number.add(w + '-' + m.group(0))
+						next(words)
+						continue
+				except IndexError: pass
+
+
 			if w.isnumeric():
 				try:
 					if words.peek() == inflection.ordinal(int(w)):
-						self.number = w + next(words)
+						self.number.add(w + next(words))
 						continue
 				except IndexError:pass
 
 			m = ConfMetaData._ordinal.match(w)
 			if m:
-				self.number = m.group(0)
+				self.number.add(m.group(0))
 				continue
 
-			self.topic_keywords.append(w)
+			# acronym and year of conference if they are repeated
+			if w == normalize(conf_acronym):
+				try:
+					if words.peek() == str(year)[2:]: next(words)
+				except IndexError: pass
+				continue
 
-		# TODO Expand acronyms such as OS A/V, etc: Network Os Support Digital A V == Network Operating Systems Support Digital Audio Video, Conf = Conference
-		# Also in the other way: Special Interest Group [...] -> sig... , Call for papers: cfp, etc.
-		# TODO space before suffix: "10 th"
+			# anything surviving to this point surely describes the topic of the conference
+			self.topic_keywords.append(w)
+			if self._dict and not self._dict.check(w):
+				if w not in (normalize(s) for s in self._dict.suggest(w)):
+					self._misspelled[w] = (conf_acronym, title)
 
 
 	def topic(self, sep = ' '):
@@ -243,17 +315,19 @@ class ConfMetaData(object):
 
 	@staticmethod
 	def _set_diff(left, right):
-		""" Return an int quantifying the difference between the sets.
+		""" Return an int quantifying the difference between the sets. Lower is better.
 
 		Penalize a bit for difference on a single side, more for differences on both sides, under the assumption that
 		partial information on one side is better than dissymetric information
 		"""
-		n_comm = len(set(left) & set(right))
-		# for 4 diffs => 4 + 0 -> 5, 3 + 1 -> 8, 2 + 2 -> 9
-		try:
-			return ((1 + len(left) - n_comm) * (1 + len(right) - n_comm) - 1) / (len(left) + len(right) - n_comm)
-		except ZeroDivisionError:
-			return 0
+		n_common = len(set(left) & set(right))
+		l = len(left) - n_common
+		r = len(right) - n_common
+
+		if len(left) > 0 and len(right) > 0 and n_common == 0:
+			return 1000
+		else:
+			return  l + r + 10 * l * r - 2 * n_common
 
 
 	@staticmethod
@@ -263,25 +337,32 @@ class ConfMetaData(object):
 		Uset the same as `~set_diff` and add penalties for dfferences in word order.
 		"""
 		# for 4 diffs => 4 + 0 -> 5, 3 + 1 -> 8, 2 + 2 -> 9
-		comm = set(left) & set(right)
+		common = set(left) & set(right)
+		n_common = len(common)
+		l = [w for w in left if w in common]
+		r = [w for w in right if w in common]
+		n_l, n_r = len(l) - n_common, len(r) - n_common
 		try:
-			set_diff = ((1 + len(left) - len(comm)) * (1 + len(right) - len(comm)) - 1) / (len(left) + len(right) - len(comm))
-			sort_diff = sum(abs(left.index(c) - right.index(c)) for c in comm) / (len(left) + len(right))
-
-			return set_diff + sort_diff
+			mid = round(sum(l.index(c) - r.index(c) for c in common) / len(common))
+			sort_diff = sum(abs(l.index(c) - r.index(c) - mid) for c in common) / n_common
 		except ZeroDivisionError:
-			return 0
+			sort_diff = 0
+
+		# disqualify if there is nothing in common
+		if left and right and not common:
+			return 1000
+		else:
+			return n_l + n_r + 10 * n_l * n_r - 4 * n_common + sort_diff
 
 
-	@staticmethod
 	def _difference(self, other):
 		""" Compare the two ConfMetaData instances and rate how similar they are.
 		"""
-		return (self._set_diff({self.type_}, {other.type_}),
+		return (self._set_diff(self.type_, other.type_),
 				self._set_diff(self.organisers, other.organisers),
 				self._list_diff(self.topic_keywords, other.topic_keywords),
 				self._list_diff(self.qualifiers, other.qualifiers),
-				self._set_diff({self.number}, {other.number})
+				self._set_diff(self.number, other.number)
 		)
 
 
@@ -326,7 +407,7 @@ class CallForPapers(ConfMetaData):
 	__slots__ = ('conf', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link')
 
 
-	def __init__(self, conf, desc, year = '', url_cfp = None, **kwargs):
+	def __init__(self, conf, year, desc = '', url_cfp = None, **kwargs):
 		# Initialize parent parsing with the description
 		super(CallForPapers, self).__init__(desc, conf.acronym, year, **kwargs)
 
@@ -392,19 +473,9 @@ class CallForPapers(ConfMetaData):
 		search_f = 'cache/' + 'search_cfp_{}-{}.html'.format(conf.acronym, year).replace('/', '_')
 		soup = get_soup(cls._url_cfpsearch, search_f, params = {'q': conf.acronym, 'y': year})
 
-		#options = (CallForPapers(conf, desc, year, url) for desc, url in cls.parse_search(conf, year, soup))
-		#return min(options, key = CallForPapers.rating)
-		# DEBUG
+		options = (cls(conf, year, desc, url) for desc, url in cls.parse_search(conf, year, soup))
 
-		options = sorted((cls(conf, desc, year, url) for desc, url in cls.parse_search(conf, year, soup)), key = lambda o: sum(o.rating()))
-		print('Searching for {} ({}) {}#{}#{}'.format(conf.acronym, conf.rank, year, conf.title, conf.topic()))
-		if options:
-			for o in options:
-				ratings = map('{:.2f}'.format, o.rating())
-				print('typ,org,tpc,qlf={}#{}#{}'.format(' '.join(ratings), o.desc, o.topic()))
-			return options[0]
-		else:
-			raise ValueError
+		return min((o for o in options if max(o.rating()) < 1000), key = lambda o: sum(o.rating()))
 
 
 	@classmethod
@@ -412,9 +483,8 @@ class CallForPapers(ConfMetaData):
 		""" Fetch the cfp from wiki-cfp for the given conference at the given year.
 		"""
 		try:
-			raise MissingSchema # DEBUG
 			# Try our cache without knowing the URL, will raise MissingSchema if we  miss in cache and try to access it
-			cfp = cls(conf, desc = '', year = year)
+			cfp = cls(conf, year, desc = '')
 			cfp.fetch_cfp_data()
 			return cfp
 
@@ -426,7 +496,7 @@ class CallForPapers(ConfMetaData):
 				cfp.fetch_cfp_data()
 				return cfp
 
-		except ConnectionError: pass #print('Connection error when fetching search for {} {}'.format(conf.acronym, year))
+		except ConnectionError: print('Connection error when fetching search for {} {}'.format(conf.acronym, year))
 		except ValueError: pass
 
 
@@ -453,7 +523,7 @@ class CallForPapers(ConfMetaData):
 	def rating(self):
 		""" Rate the (in)adequacy of the cfp with its conference: lower is better.
 		"""
-		return self._difference(self, self.conf)[:4]
+		return self._difference(self.conf)[:4]
 
 
 class WikicfpCFP(CallForPapers):
@@ -625,34 +695,32 @@ def update_confs(out):
 	writing_first_conf = True
 
 	for conf in uniq(CoreRanking.fetch_confs()):
-		if conf.ranksort() > 1: break # DEBUG
-
-		last_year = None
+		last_year = cfp = None
 		for y in years:
 			override_dates = hardcoded.get((conf.acronym.upper(), y), None)
+			last_year = cfp
 			if override_dates:
-				cfp = CallForPapers(conf, desc = '', year = y)
-				cfp.dates = {n: datetime.datetime.strptime(v, '%d-%m-%Y').date() for v, n in zip(override_dates, CallForPapers._date_names) if v}
-				cfp.orig  = {n: True for v, n in zip(override_dates, CallForPapers._date_names) if v}
+				cfp = CallForPapers(conf, y)
+				cfp.dates = {n: datetime.datetime.strptime(v, '%d-%m-%Y').date() for v, n in zip(override_dates, CallForPapers._date_fields) if v}
+				cfp.orig  = {n: True for v, n in zip(override_dates, CallForPapers._date_fields) if v}
 
 			else:
 				cfp = WikicfpCFP.get_cfp(conf, y)
 				# possibly try other CFP providers?
 
-				if cfp and last_year:
+				if last_year:
+					if not cfp: cfp = CallForPapers(conf, y)
 					cfp.extrapolate_missing_dates(last_year)
 
-			if cfp:
-				last_year = cfp
-
-				if cfp.max_date() > today:
-					if not writing_first_conf: print(',', file=out)
-					else: writing_first_conf = False
-
-					# filter out empty values for non-date columns
-					json.dump(cfp.values(), out, default = json_encode_dates)
-
+				if cfp and cfp.max_date() > today:
 					break
+
+		if cfp:
+			if not writing_first_conf: print(',', file=out)
+			else: writing_first_conf = False
+
+			# filter out empty values for non-date columns
+			json.dump(cfp.values(), out, default = json_encode_dates)
 
 	print('\n]}', file=out)
 
