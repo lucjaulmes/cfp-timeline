@@ -684,8 +684,7 @@ def update_confs(out):
 	years = [today.year, today.year + 1]
 
 	hardcoded = { # Manually correct some errors. TODO this is not scalable.
-		("SENSYS", 2017): ["03-04-2017", "10-04-2017", "17-07-2017", None, "05-11-2017", "08-11-2017"],
-		("ISCA",   2018): ["14-11-2017", "21-11-2017", "13-03-2018", None, "02-06-2018", "06-06-2018"]
+		("SENSYS", 2017): ["03-04-2017", "10-04-2017", "17-07-2017", None, "05-11-2017", "08-11-2017"], # in WikiCFP month and day are swapped
 	}
 
 
