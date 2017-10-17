@@ -4,8 +4,8 @@ var timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6, 1),
 // px per month
 var timeline_scale = 50 / Date.UTC(1970, 1, 1)
 
-var ranks = ['A*', 'A', 'B', 'C', 'D'];
-function ranksort(a, b) { return ranks.indexOf(a) - ranks.indexOf(b); }
+var ranks = ['D', 'C', 'B', 'A', 'A*'];
+function ranksort(a, b) { return ranks.indexOf(b) - ranks.indexOf(a); }
 
 function parseFragment() {
 	var hash = window.location.hash.substr(1).split('&');
