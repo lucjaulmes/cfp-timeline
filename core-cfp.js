@@ -269,6 +269,8 @@ function populatePage(json) {
 		order: [[4, "asc"], [3, "asc"], [7, "asc"], [8, "asc"]]
 	});
 
+	$('#head').append(' The last scraping took place on ' + json['date'] + '.')
+
 	show = $('<button>&gt;</button>').wrap('<label id="show_filters">Filters</label>');
 	filter = $('<div id="filters"></div>');
 	$('#confs_filter').append(filter).prepend(show.parent());

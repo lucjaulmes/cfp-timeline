@@ -3,6 +3,8 @@
 import re
 import sys
 import json
+import glob
+import os.path
 import inflection
 import requests
 import datetime
@@ -721,7 +723,8 @@ def update_confs(out):
 			# filter out empty values for non-date columns
 			json.dump(cfp.values(), out, default = json_encode_dates)
 
-	print('\n]}', file=out)
+	scrape_date = datetime.datetime.fromtimestamp(min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html')))
+	print(scrape_date.strftime('\n], "date":"%Y-%m-%d"}'), file=out)
 
 
 if __name__ == '__main__':
