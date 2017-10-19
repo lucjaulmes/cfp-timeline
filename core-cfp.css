@@ -57,6 +57,8 @@ h1 {
 #confs_wrapper {
 	padding-top:2em;
 	clear:both;
+	width:98%;
+	margin: 0 auto;
 }
 
 #filters {
