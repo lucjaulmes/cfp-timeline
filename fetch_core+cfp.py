@@ -368,6 +368,21 @@ class ConfMetaData(object):
 		)
 
 
+	def __str__(self):
+		vals = []
+		if self.topic_keywords:
+			vals.append('topic=[' + ', '.join(self.topic_keywords) + ']')
+		if self.organisers:
+			vals.append('organisers={' + ', '.join(self.organisers) + '}')
+		if self.number:
+			vals.append('number={' + ', '.join(self.number) + '}')
+		if self.type_:
+			vals.append('type={' + ', '.join(self.type_) + '}')
+		if self.qualifiers:
+			vals.append('qualifiers={' + ', '.join(self.qualifiers) + '}')
+		return ', '.join(vals)
+
+
 @total_ordering
 class Conference(ConfMetaData):
 	__slots__ = ('acronym', 'title', 'rank', 'field')
@@ -395,6 +410,14 @@ class Conference(ConfMetaData):
 
 	def __lt__(self, other):
 		return (self.ranksort(), self.acronym, self.title, other.field) < (other.ranksort(), other.acronym, other.title, other.field)
+
+
+	def __str__(self):
+		vals = ['{}={}'.format(s, getattr(self, s)) for s in self.__slots__ if getattr(self, s) not in {None, '(missing)'}]
+		dat = super(Conference, self).__str__()
+		if dat:
+			vals.append(dat)
+		return '{}({})'.format(type(self).__name__, ', '.join(vals))
 
 
 
@@ -526,6 +549,16 @@ class CallForPapers(ConfMetaData):
 		""" Rate the (in)adequacy of the cfp with its conference: lower is better.
 		"""
 		return self._difference(self.conf)[:4]
+
+
+	def __str__(self):
+		vals = ['{}={}'.format(s, getattr(self, s)) for s in self.__slots__ if s not in {'dates', 'orig'} and getattr(self, s) != None and getattr(self, s)  != '(missing)']
+		if self.dates:
+			vals.append('dates={' + ', '.join('{}:{}{}'.format(field, self.dates[field], '*' if not self.orig[field] else '') for field in self._date_fields if field in self.dates) + '}')
+		dat = super(CallForPapers, self).__str__()
+		if dat:
+			vals.append(dat)
+		return '{}({})'.format(type(self).__name__, ', '.join(vals))
 
 
 class WikicfpCFP(CallForPapers):
