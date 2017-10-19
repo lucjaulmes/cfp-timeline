@@ -409,7 +409,7 @@ class CallForPapers(ConfMetaData):
 	__slots__ = ('conf', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link')
 
 
-	def __init__(self, conf, year, desc = '', url_cfp = None, **kwargs):
+	def __init__(self, conf, year, desc = '', url_cfp = None, link = None, **kwargs):
 		# Initialize parent parsing with the description
 		super(CallForPapers, self).__init__(desc, conf.acronym, year, **kwargs)
 
@@ -418,7 +418,7 @@ class CallForPapers(ConfMetaData):
 		self.year = year
 		self.dates = {}
 		self.orig = {}
-		self.link = '(missing)'
+		self.link = link or '(missing)'
 		self.url_cfp = url_cfp
 
 
@@ -710,7 +710,7 @@ def update_confs(out):
 				# possibly try other CFP providers?
 
 				if last_year:
-					if not cfp: cfp = CallForPapers(conf, y)
+					if not cfp: cfp = CallForPapers(conf, y, desc = last_year.desc, link = last_year.link, url_cfp = last_year.url_cfp)
 					cfp.extrapolate_missing_dates(last_year)
 
 				if cfp and cfp.max_date() > today:
