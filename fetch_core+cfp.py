@@ -405,7 +405,7 @@ class Conference(ConfMetaData):
 
 
 	def __eq__(self, other):
-		return (self.rank, self.acronym, self.title, other.field) == (other.rank, other.acronym, other.title, other.field)
+		return isinstance(other, self.__class__) and (self.rank, self.acronym, self.title, other.field) == (other.rank, other.acronym, other.title, other.field)
 
 
 	def __lt__(self, other):
