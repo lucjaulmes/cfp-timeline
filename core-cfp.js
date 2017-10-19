@@ -236,10 +236,18 @@ function makeFilter(column, name, initFilters, sortfunction) {
 }
 
 function renderAcronym(data, type, row) {
-	if (type === 'display' && row[10] && row[10] != '(missing)')
-		return $('<a></a>').attr('href', row[10]).append(data)[0].outerHTML;
+	if (type === 'display') {
+		var a = data, i = '';
+		if (row[17] && row[17] != '(missing)')
+			i = $('<img />').attr('src', 'wikicfplogo.png').attr('alt', 'Wiki CFP logo').addClass('cfpurl')
+					.wrap('<a></a>').parent().attr('href', row[17]).attr('title', data +' CFP on WikiCFP');
+		if (row[10] && row[10] != '(missing)')
+			a = $('<a></a>').attr('href', row[10]).append(data);
+
+		return $('<p></p>').append(a).append('&nbsp;').append(i).html();
+	}
 	else
-		return data;
+		return data
 }
 
 function markExtrapolated(td, data, rowdata, row, col) {
@@ -257,7 +265,7 @@ function populatePage(json) {
 		columns: json['columns'],
 		columnDefs: [
 			// links, searchable but not displayed
-			{"targets": [10], "visible": false, "searchable": true},
+			{"targets": [10, 17], "visible": false, "searchable": true},
 			// acronyms, displayed wrapped in links if present
 			{"targets": [0], "render": renderAcronym},
 			// dates, display whether extrapolated

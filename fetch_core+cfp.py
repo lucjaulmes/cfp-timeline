@@ -508,14 +508,6 @@ class CallForPapers(ConfMetaData):
 		""" Fetch the cfp from wiki-cfp for the given conference at the given year.
 		"""
 		try:
-			# Try our cache without knowing the URL, will raise MissingSchema if we  miss in cache and try to access it
-			cfp = cls(conf, year, desc = '')
-			cfp.fetch_cfp_data()
-			return cfp
-
-		except MissingSchema: pass
-
-		try:
 			cfp = cls.find_link(conf, year)
 			if cfp:
 				cfp.fetch_cfp_data()
@@ -529,14 +521,14 @@ class CallForPapers(ConfMetaData):
 	def columns(cls):
 		""" Return column titles for cfp data.
 		"""
-		return ['Acronym', 'Title', 'CORE 2017 Rank'] + cls._date_names + ['Field', 'Link'] + ['orig_' + d for d in cls._date_fields]
+		return ['Acronym', 'Title', 'CORE 2017 Rank'] + cls._date_names + ['Field', 'Link'] + ['orig_' + d for d in cls._date_fields] + ['CFP url']
 
 
 	def values(self):
 		""" Return values of cfp data, in column order.
 		"""
 		return [self.conf.acronym, self.conf.title, self.conf.rank] + [self.dates.get(f, None) for f in self._date_fields] + \
-										[self.conf.field, self.link] + [self.orig.get(f, None) for f in self._date_fields]
+										[self.conf.field, self.link] + [self.orig.get(f, None) for f in self._date_fields] + [self.url_cfp]
 
 
 	def max_date(self):

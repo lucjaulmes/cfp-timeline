@@ -91,6 +91,10 @@ h1 {
 	transition-duration: 400ms;
 }
 
+img.cfpurl {
+	height: 1em;
+}
+
 /* hard part: the timeline */
 #timeline_scrollbox {
 	position:relative;
