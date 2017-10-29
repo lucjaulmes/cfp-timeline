@@ -317,6 +317,7 @@ function populatePage(json) {
 
 	makeTimelineLegend();
 	$.each(datatable.rows().data(), addToTimeline);
+	$('#loading').hide()
 }
 
 $(document).ready(function() {
