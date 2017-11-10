@@ -1,16 +1,16 @@
 h1 {
-	text-align:center;
+	text-align: center;
 }
 
 #warning {
-	width:50%;
-	text-align:center;
-	margin:1em auto;
-	border-radius:.5em;
-	padding:.5em;
-	color:red;
-	font-weight:bolder;
-	font-size:1.2em;
+	width: 50%;
+	text-align: center;
+	margin: 1em auto;
+	border-radius: .5em;
+	padding: .5em;
+	color: red;
+	font-weight: bolder;
+	font-size: 1.2em;
 }
 
 #warning:before {
@@ -18,74 +18,74 @@ h1 {
 }
 
 #legend dt {
-	margin:0 .1em 0 .5em;
-	float:left;
-	clear:left;
+	margin: 0 .1em 0 .5em;
+	float: left;
+	clear: left;
 }
 
 #legend dd {
-	text-align:left;
-	margin:0 .5em 0 .1em;
-	float:left;
-	word-wrap:break-word;
+	text-align: left;
+	margin: 0 .5em 0 .1em;
+	float: left;
+	word-wrap: break-word;
 }
 
 @media all and (min-width: 800px) {
 	#legend {
 		display: flex;
-		flex-wrap:nowrap;
-		align-content:stretch;
-		width:100%;
+		flex-wrap: nowrap;
+		align-content: stretch;
+		width: 100%;
 	}
 
 	#legend dd {
-		word-wrap:break-word;
-		float:none;
-		flex-grow:1;
-		flex-shrink:1;
-		flex-basis:auto;
+		word-wrap: break-word;
+		float: none;
+		flex-grow: 1;
+		flex-shrink: 1;
+		flex-basis: auto;
 	}
 
 	#legend dt {
-		float:none;
-		flex-grow:0;
-		flex-shrink:0;
-		flex-basis:0;
+		float: none;
+		flex-grow: 0;
+		flex-shrink: 0;
+		flex-basis: 0;
 	}
 }
 
 #confs_wrapper {
-	padding-top:2em;
-	clear:both;
-	width:98%;
+	padding-top: 2em;
+	clear: both;
+	width: 98%;
 	margin: 0 auto;
 }
 
 #filters {
 	position: absolute;
-	right:0;
-	display:none;
+	right: 0;
+	display: none;
 	background: #eee;
-	border:thin solid;
-	border-radius:10px;
-	z-index:9999999;
+	border: thin solid;
+	border-radius: 10px;
+	z-index: 9999999;
 }
 
 #filters p {
 	padding: .5em;
-	display:inline-block;
+	display: inline-block;
 	vertical-align: top;
-	text-align:center;
+	text-align: center;
 }
 
 #filters p * {
-	width:100%;
+	width: 100%;
 }
 
 #show_filters button {
-	margin:0 2em 0 .5em;
-	font-weight:bolder;
-	text-align:center;
+	margin: 0 2em 0 .5em;
+	font-weight: bolder;
+	text-align: center;
 }
 
 #show_filters button.rotated {
@@ -98,126 +98,130 @@ img.cfpurl {
 }
 
 /* hard part: the timeline */
+
 #timeline_scrollbox {
-	position:relative;
-	overflow:hidden;
-	height:30em;
-	resize:both;
-	width:80%;
-	margin:0 auto;
+	position: relative;
+	overflow: hidden;
+	height: 30em;
+	resize: both;
+	width: 80%;
+	margin: 0 auto;
 }
 
 #timeline_body {
-	position:relative;
-	overflow:auto;
-	height:calc(100% - 3em);
-	margin:3em 0 0;
+	position: relative;
+	overflow: auto;
+	height: calc(100% - 3em);
+	margin: 3em 0 0;
 }
 
 #timeline {
-	position:relative;
-	white-space:nowrap;
-	padding-bottom:3em;
-	z-index:2;
+	position: relative;
+	white-space: nowrap;
+	padding-bottom: 3em;
+	z-index: 2;
 }
 
 #timeline_header {
-	position:absolute;
-	height:100%;
-	width:100%;
-	overflow:hidden;
+	position: absolute;
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
 }
 
 #years,
 #months {
-	margin:0;
-	padding:0;
-	white-space:nowrap;
-	line-height:1.5em;
-	width:200%;
+	margin: 0;
+	padding: 0;
+	white-space: nowrap;
+	line-height: 1.5em;
+	width: 200%;
 }
+
 #years {
-	height:1.5em;
+	height: 1.5em;
 }
+
 #months {
-	height:100%;
-	vertical-align:top;
+	height: 100%;
+	vertical-align: top;
 }
 
 #timeline p {
-	margin:0;
-	padding:0;
-	height:1.5em;
-	line-height:1.5em;
+	margin: 0;
+	padding: 0;
+	height: 1.5em;
+	line-height: 1.5em;
 }
 
 #legend dt span {
-	display:inline-block;
-	width:1.5em;
-	height:1.5em;
+	display: inline-block;
+	width: 1.5em;
+	height: 1.5em;
 }
 
-#years > span,
-#months > span,
-#timeline p > span {
-	display:inline-block;
-    position: relative;
-	height:1.5em;
+#years>span,
+#months>span,
+#timeline p>span {
+	display: inline-block;
+	position: relative;
+	height: 1.5em;
 }
 
-#years > span,
-#months > span {
-	text-align:center;
+#years>span,
+#months>span {
+	text-align: center;
 }
 
-#years > span.acronyms,
-#months > span.acronyms,
-#timeline p > span.acronyms {
-	width:8em;
-	padding-right:0.5em;
-	text-align:right;
+#years>span.acronyms,
+#months>span.acronyms,
+#timeline p>span.acronyms {
+	width: 8em;
+	padding-right: 0.5em;
+	text-align: right;
 }
 
 #years span:not(.acronyms),
 #months span.december,
 #months span:not(.acronyms):last-child {
-	background-color:#eee;
+	background-color: #eee;
 	border-left: black thin solid;
 	border-right: black thin solid;
 }
+
 #months span:not(.acronyms) {
-	background-color:#eee;
+	background-color: #eee;
 	border-left: black 1px solid;
-	height:100%;
-	z-index:-1;
+	height: 100%;
+	z-index: -1;
 }
 
 
 /* tooltip and aura (aka shadow) */
 
-#timeline p > span .tooltip {
-    visibility: hidden;
-    background-color: black;
-    color: #fff;
-    text-align: center;
-    border-radius: 6px;
-    padding: .1em .5em;
-	font-weight:bold;
+#timeline p>span .tooltip {
+	visibility: hidden;
+	background-color: black;
+	color: #fff;
+	text-align: center;
+	border-radius: 6px;
+	padding: .1em .5em;
+	font-weight: bold;
 
-    /* Position the tooltip */
-    position: absolute;
-    z-index: 10;
-    top: 100%;
-    margin:0 auto;
+	/* Position the tooltip */
+	position: absolute;
+	z-index: 10;
+	top: 100%;
+	margin: 0 auto;
 }
 
-#timeline p > span:hover .tooltip {
-    visibility: visible;
+#timeline p>span:hover .tooltip {
+	visibility: visible;
 }
 
-#timeline p > span:not(.acronyms):not(.filler):hover {
-    box-shadow: 0px 0px 12px 10px #fff;
-	border-radius:5px;
+#timeline p>span:not(.acronyms):not(.filler):hover {
+	box-shadow: 0px 0px 12px 10px #fff;
+	border-radius: 5px;
 	cursor: default;
 }
 
@@ -226,31 +230,37 @@ img.cfpurl {
 
 #timeline span.abstract,
 #legend span.abstract {
-	background-color:#f55;
+	background-color: #f55;
 }
+
 #timeline span.submit,
 #legend span.submit {
-	color:#d00;
+	color: #d00;
 }
+
 #timeline span.review,
 #legend span.review {
-	background-color:#d00;
+	background-color: #d00;
 }
+
 #timeline span.conf,
 #legend span.conf {
-	background-color:#00f;
+	background-color: #00f;
 }
+
 #timeline span.submit,
 #timeline span.camera,
 #legend span.camera {
-	width:1em;
-	text-align:center;
-	margin:0 -.5em;
+	width: 1em;
+	text-align: center;
+	margin: 0 -.5em;
 }
+
 .extrapolated {
 	background: #eee;
 	color: #333;
 }
+
 .extrapolated:after {
 	content: "†";
 }
@@ -259,7 +269,8 @@ img.cfpurl {
 /* Loading bouncing ball from https://loading.io/spinner/ball/-bouncing-circle-loading-icon */
 
 @keyframes lds-ball {
-	0%, 100% {
+	0%,
+	100% {
 		animation-timing-function: cubic-bezier(0.45, 0, 0.9, 0.55);
 	}
 	0% {
@@ -276,8 +287,10 @@ img.cfpurl {
 		transform: translate(0, 0);
 	}
 }
+
 @-webkit-keyframes lds-ball {
-	0%, 100% {
+	0%,
+	100% {
 		animation-timing-function: cubic-bezier(0.45, 0, 0.9, 0.55);
 	}
 	0% {
@@ -296,16 +309,16 @@ img.cfpurl {
 }
 
 #loading {
-	margin:0 auto;
+	margin: 0 auto;
 	width: 200px;
 	-webkit-transform: translate(-100px, -100px) scale(1) translate(100px, 100px);
 	transform: translate(-100px, -100px) scale(1) translate(100px, 100px);
 }
 
 #loading p {
-	text-align:center;
-	font-weight:bold;
-	background-color:#eee;
+	text-align: center;
+	font-weight: bold;
+	background-color: #eee;
 }
 
 #loading #ball {
@@ -319,4 +332,3 @@ img.cfpurl {
 	-webkit-animation: lds-ball 1s linear infinite;
 	animation: lds-ball 1s linear infinite;
 }
-
