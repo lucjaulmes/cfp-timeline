@@ -631,7 +631,6 @@ class CoreRanking(object):
 	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.
 	"""
 	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2017&sort=arank&page={}'
-	_url_forcodes = 'http://www.uq.edu.au/research/research-management/era-for-codes'
 
 	_historical = re.compile(r'\b(previous(ly)?|was|(from|pre) [0-9]{4}|merge[dr])\b', re.IGNORECASE)
 
@@ -642,14 +641,8 @@ class CoreRanking(object):
 		"""
 		forcodes = {}
 
-		soup = get_soup(cls._url_forcodes, 'cache/for_codes.html')
-		for row in soup.find('table').findAll('tr'):
-			try:
-				code, field = [td.text.strip() for td in row.findAll('td')]
-				if field:
-					forcodes[code] = field.title()
-			except ValueError:
-				raise
+		with open('for_codes.json', 'r') as f:
+			forcodes = json.load(f)
 
 		return forcodes
 
@@ -688,7 +681,7 @@ class CoreRanking(object):
 				tpos = headers.index('title')
 				apos = headers.index('acronym')
 				rpos = headers.index('rank')
-				fpos = headers.index('for')
+				fpos = headers.index('primary for')
 
 				for row in rows:
 					val = [r.text.strip() for r in row.findAll('td')]
