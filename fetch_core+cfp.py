@@ -14,11 +14,80 @@ from collections import defaultdict
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 
+from time import time as get_time
+from sys import stdout
+from math import floor
+
 try:
 	from enchant import Dict
 except ImportError:
 	def Dict(*args):
 		return None
+
+
+class Progress():
+	maxpos = 0.0
+	update_freq = 0
+	start = 0
+	template = "\rProgress{}: {{: 3.1f}} %\tElapsed: {{:2}}:{{:02}}\tETA: {{:2}}:{{:02}} "
+
+	def change_max(self, maxpos):
+		self.maxpos = float(maxpos)
+		self.update_freq = max(1, int(floor(maxpos / 1000)))
+
+	def _print_update(self, pos):
+		if pos < self.maxpos:
+			ratio = pos / self.maxpos
+			elapsed = get_time() - self.start
+			est_remaining = elapsed * (1 - ratio) / ratio
+
+			stdout.write(self.template.format(100 * ratio, *(divmod(int(elapsed), 60) + divmod(int(est_remaining), 60))))
+			stdout.flush()
+
+	def update_diff(self, pos):
+		if pos != 0 and pos % self.update_freq == 0:
+			self._print_update(pos)
+		return pos != self.maxpos
+
+	def update_less(self, pos):
+		if pos != 0 and pos % self.update_freq == 0:
+			self._print_update(pos)
+		return pos < self.maxpos
+
+	update = update_less
+
+
+	def iterate(self, iterable):
+		if self.maxpos == 0.0:
+			try:
+				self.change_max(len(iterable))
+			except TypeError as e:
+				raise TypeError(("{}\nYou can use Progress.iterate() with an iterable that has no len() "
+					+ "by providing its (expected) length to the constructor: Progress(maxpos = ...).\n").format(e.args[0]))
+
+
+		next_pos = self.update_freq
+		for pos, item in enumerate(iterable):
+			if pos == next_pos:
+				self._print_update(pos)
+				next_pos += self.update_freq
+
+			yield item
+
+
+	def __init__(self, maxpos = 0.0, operation = ""):
+		self.template = self.template.format(' ' + operation if operation else '')
+		self.change_max(maxpos)
+
+	def __enter__(self):
+		self.start = get_time()
+		stdout.write(self.template.split('\t')[0].format(0))
+		stdout.flush()
+		return self
+
+	def __exit__(self, type, value, traceback):
+		print(self.template.format(100, *(divmod(int(get_time() - self.start), 60) + (0, 0))))
+
 
 def head(n, iterable):
 	""" Generator listing the first (up to) n elements of an iterable
@@ -713,33 +782,34 @@ def update_confs(out):
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
-	for conf in uniq(CoreRanking.fetch_confs()):
-		last_year = cfp = None
-		for y in years:
-			override_dates = hardcoded.get((conf.acronym.upper(), y), None)
-			last_year = cfp
-			if override_dates:
-				cfp = CallForPapers(conf, y)
-				cfp.dates = {n: datetime.datetime.strptime(v, '%d-%m-%Y').date() for v, n in zip(override_dates, CallForPapers._date_fields) if v}
-				cfp.orig  = {n: True for v, n in zip(override_dates, CallForPapers._date_fields) if v}
+	with Progress(operation = 'Fetching conferences') as prog:
+		for conf in prog.iterate(list(uniq(CoreRanking.fetch_confs()))):
+			last_year = cfp = None
+			for y in years:
+				override_dates = hardcoded.get((conf.acronym.upper(), y), None)
+				last_year = cfp
+				if override_dates:
+					cfp = CallForPapers(conf, y)
+					cfp.dates = {n: datetime.datetime.strptime(v, '%d-%m-%Y').date() for v, n in zip(override_dates, CallForPapers._date_fields) if v}
+					cfp.orig  = {n: True for v, n in zip(override_dates, CallForPapers._date_fields) if v}
 
-			else:
-				cfp = WikicfpCFP.get_cfp(conf, y)
-				# possibly try other CFP providers?
+				else:
+					cfp = WikicfpCFP.get_cfp(conf, y)
+					# possibly try other CFP providers?
 
-				if last_year:
-					if not cfp: cfp = CallForPapers(conf, y, desc = last_year.desc, link = last_year.link, url_cfp = last_year.url_cfp)
-					cfp.extrapolate_missing_dates(last_year)
+					if last_year:
+						if not cfp: cfp = CallForPapers(conf, y, desc = last_year.desc, link = last_year.link, url_cfp = last_year.url_cfp)
+						cfp.extrapolate_missing_dates(last_year)
 
-				if cfp and cfp.max_date() > today:
-					break
+					if cfp and cfp.max_date() > today:
+						break
 
-		if cfp:
-			if not writing_first_conf: print(',', file=out)
-			else: writing_first_conf = False
+			if cfp:
+				if not writing_first_conf: print(',', file=out)
+				else: writing_first_conf = False
 
-			# filter out empty values for non-date columns
-			json.dump(cfp.values(), out, default = json_encode_dates)
+				# filter out empty values for non-date columns
+				json.dump(cfp.values(), out, default = json_encode_dates)
 
 	scrape_date = datetime.datetime.fromtimestamp(min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html')))
 	print(scrape_date.strftime('\n], "date":"%Y-%m-%d"}'), file=out)
