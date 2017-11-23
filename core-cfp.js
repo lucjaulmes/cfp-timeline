@@ -3,6 +3,8 @@ var timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6, 1),
 	timeline_max = Date.UTC(today.getFullYear(), today.getMonth() + 18, 1);
 // px per month
 var timeline_scale = 50 / Date.UTC(1970, 1, 1)
+// the value we push into the hash
+var sethash = '';
 
 var ranks = ['D', 'C', 'B', 'A', 'A*'];
 
@@ -45,6 +47,10 @@ function updateFragment()
 	{
 		return item['name'] + '=' + item['value']
 	});
+	params = params.sort().filter(function (it, pos, arr)
+	{
+		return !pos || it != arr[pos - 1];
+	});
 
 	/* get last part of &-separated fragment that contains no '=' */
 	var goto = window.location.hash.substr(1).split('&').reduce(function (prev, item)
@@ -55,7 +61,9 @@ function updateFragment()
 	if (goto)
 		params.push(goto);
 
-	window.location.hash = '#' + params.join('&');
+	sethash = '#' + params.join('&');
+	if (window.location.hash != sethash)
+		window.location.hash = sethash;
 }
 
 function makeTimelineLegend()
@@ -246,10 +254,7 @@ function addToTimeline(n, data)
 
 function filterUpdated(search)
 {
-	var filteredData = datatable.rows(
-	{
-		filter: 'applied'
-	}).data();
+	var filteredData = datatable.rows({ filter: 'applied' }).data();
 	$('#timeline').empty()
 	$.each(filteredData, addToTimeline)
 }
@@ -284,6 +289,16 @@ function makeFilter(column, name, initFilters, sortfunction)
 
 	if (selected.length)
 		select.change();
+}
+
+function updateFilters()
+{
+	var filters = parseFragment();
+	$('#filters select').each(function (i, obj)
+	{
+		var sel = $(obj);
+		sel.val(filters[sel.attr('name')] || []).change();
+	})
 }
 
 function renderAcronym(data, type, row)
@@ -374,6 +389,7 @@ function populatePage(json)
 
 	updateFragment();
 
+	$(window).on('hashchange', updateFilters);
 	datatable.draw().on('search.dt', filterUpdated);
 
 	var maxdate = timeline_zero;
@@ -394,7 +410,9 @@ function populatePage(json)
 	$('#timeline').width('calc(8.5em + ' + (timeline_max - timeline_zero) * timeline_scale + 'px)');
 
 	makeTimelineLegend();
-	$.each(datatable.rows().data(), addToTimeline);
+	// add data to Timeline, but only filtered
+	filterUpdated();
+
 	$('#loading').hide()
 }
 
