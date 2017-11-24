@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 
 import re
+import os
 import sys
 import json
 import glob
 import shutil
-import os.path
 import inflection
 import requests
 import datetime
@@ -718,6 +718,7 @@ class CoreRanking(object):
 	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.
 	"""
 	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2017&sort=arank&page={}'
+	_core_file = 'core.csv'
 
 	_historical = re.compile(r'\b(previous(ly)?|was|(from|pre) [0-9]{4}|merge[dr])\b', re.IGNORECASE)
 
@@ -749,32 +750,81 @@ class CoreRanking(object):
 
 
 	@classmethod
-	def fetch_confs(cls):
+	def _fetch_confs(cls):
 		""" Generator of all conferences listed on the core site, as dicts
 		"""
-		with open('core.csv', 'w') as csv:
+		#NB hardcoded number of results per pages on the core site.
+		per_page = 50
+
+		# fetch page 0 outside loop to get page/result counts, will be in cache for loop access
+		soup = get_soup(cls._url_corerank.format(0), 'cache/ranked_{}-{}.html'.format(1, per_page))
+		n_results = int(soup.find(text = lambda t: 'Showing results 1 - {} of '.format(per_page) in t).strip().split()[-1])
+		pages = (n_results + per_page - 1) // per_page
+
+		forcodes = cls.get_forcodes()
+
+		with open(cls._core_file, 'w') as csv, Progress(operation = 'fetching CORE list', maxpos = n_results) as prog:
 			print('title;acronym;rank;field', file=csv)
 
-			for p in range(32): #NB hardcoded number of pages on the core site.
-				f = 'cache/ranked_{}-{}.html'.format(50 * p + 1, 50 * (p + 1))
+			for p in range(pages):
+				f = 'cache/ranked_{}-{}.html'.format(per_page * p + 1, per_page * (p + 1))
 				soup = get_soup(cls._url_corerank.format(p), f)
 
 				table = soup.find('table')
 				rows = iter(table.findAll('tr'))
 
 				headers = [r.text.strip().lower() for r in next(rows).findAll('th')]
-				forcodes = cls.get_forcodes()
 
 				tpos = headers.index('title')
 				apos = headers.index('acronym')
 				rpos = headers.index('rank')
 				fpos = headers.index('primary for')
 
-				for row in rows:
+				for row in prog.iterate(rows, p * per_page):
 					val = [r.text.strip() for r in row.findAll('td')]
 					yield Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
 
-					print(';'.join(map(str, (cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None)))), file=csv)
+
+	@classmethod
+	def _save_confs(cls, conflist):
+		""" Save conferences to a file where we have the values cached cleanly.
+		"""
+		with open(cls._core_file, 'w') as csv:
+			print('title;acronym;rank;field', file=csv)
+			for conf in conflist:
+				print(';'.join((conf.acronym, conf.title, conf.rank, conf.field)), file=csv)
+
+
+
+	@classmethod
+	def _load_confs(cls):
+		""" Load conferences from a file where we have the values cached cleanly.
+		"""
+		f_age = datetime.datetime.fromtimestamp(os.stat(cls._core_file).st_mtime)
+		if datetime.datetime.today() - f_age > datetime.timedelta(days = 5):
+			raise FileNotFoundError('Cached file too old')
+
+		with open(cls._core_file, 'r') as f:
+			assert 'title;acronym;rank;field' == next(f).strip()
+			confs = [l.strip().split(';') for l in f]
+
+		with Progress(operation = 'loading CORE list', maxpos = len(confs)) as prog:
+			return [Conference(*c) for c in prog.iterate(confs)]
+
+
+	@classmethod
+	def get_confs(cls):
+		""" Generator of all conferences listed on the core site, as dicts
+		"""
+		try:
+			return list(cls._load_confs())
+		except FileNotFoundError:
+			pass
+
+		confs = list(uniq(cls._fetch_confs()))
+		cls._save_confs(confs)
+
+		return confs
 
 
 def json_encode_dates(obj):
@@ -800,8 +850,9 @@ def update_confs(out):
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
+	core = CoreRanking.get_confs()
 	with Progress(operation = 'Fetching conferences') as prog:
-		for conf in prog.iterate(list(uniq(CoreRanking.fetch_confs()))):
+		for conf in prog.iterate(core):
 			last_year = cfp = None
 			for y in years:
 				override_dates = hardcoded.get((conf.acronym.upper(), y), None)
