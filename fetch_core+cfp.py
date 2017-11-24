@@ -584,6 +584,13 @@ class CallForPapers(ConfMetaData):
 		"""
 		f = 'cache/' + 'cfp_{}-{}_{}.html'.format(self.conf.acronym, self.year, self.conf.topic()).replace('/', '_') # topic('-')
 		self.parse_cfp(get_soup(self.url_cfp, f))
+		dates_found = self.dates.keys()
+
+		if {'conf_start', 'conf_end'} <= dates_found:
+			if self.dates['conf_start'].year != self.year or self.dates['conf_end'].year != self.year \
+					or self.dates['conf_end'] - self.dates['conf_start'] > datetime.timedelta(days = 20):
+				raise CFPCheckError('Dubious dates {} -- {} for {} {}'.format(self.dates['conf_start'], self.dates['conf_end'], self.conf.acronym, self.year))
+
 
 
 	@classmethod
