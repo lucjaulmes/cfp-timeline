@@ -26,6 +26,14 @@ except ImportError:
 		return None
 
 
+class CFPNotFoundError(Exception):
+	pass
+
+
+class CFPCheckError(Exception):
+	pass
+
+
 class Progress():
 	maxpos = 0.0
 	next_pos = 0
@@ -587,7 +595,10 @@ class CallForPapers(ConfMetaData):
 
 		options = (cls(conf, year, desc, url) for desc, url in cls.parse_search(conf, year, soup))
 
-		return min((o for o in options if max(o.rating()) < 1000), key = lambda o: sum(o.rating()))
+		try:
+			return min((o for o in options if max(o.rating()) < 1000), key = lambda o: sum(o.rating()))
+		except ValueError:
+			raise CFPNotFoundError('No link with rating < 1000 for {} {}'.format(conf.acronym, year))
 
 
 	@classmethod
@@ -596,12 +607,11 @@ class CallForPapers(ConfMetaData):
 		"""
 		try:
 			cfp = cls.find_link(conf, year)
-			if cfp:
-				cfp.fetch_cfp_data()
-				return cfp
+			cfp.fetch_cfp_data()
+			return cfp
 
-		except ConnectionError: print('Connection error when fetching search for {} {}'.format(conf.acronym, year))
-		except ValueError: pass
+		except ConnectionError:
+			raise CFPNotFoundError('Connection error when fetching CFP for {} {}'.format(conf.acronym, year))
 
 
 	@classmethod
@@ -840,38 +850,30 @@ def update_confs(out):
 	today = datetime.datetime.now().date()
 	years = [today.year, today.year + 1]
 
-	hardcoded = { # Manually correct some errors. TODO this is not scalable.
-		("SENSYS", 2017): ["03-04-2017", "10-04-2017", "17-07-2017", None, "05-11-2017", "08-11-2017"], # in WikiCFP month and day are swapped
-	}
-
-
 	print('{"columns":', file=out);
 	json.dump([{'title': c} for c in CallForPapers.columns()], out)
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
 	core = CoreRanking.get_confs()
-	with Progress(operation = 'Fetching conferences') as prog:
+	with Progress(operation = 'fetching calls for papers') as prog:
 		for conf in prog.iterate(core):
-			last_year = cfp = None
+			last_year = None
 			for y in years:
-				override_dates = hardcoded.get((conf.acronym.upper(), y), None)
-				last_year = cfp
-				if override_dates:
-					cfp = CallForPapers(conf, y)
-					cfp.dates = {n: datetime.datetime.strptime(v, '%d-%m-%Y').date() for v, n in zip(override_dates, CallForPapers._date_fields) if v}
-					cfp.orig  = {n: True for v, n in zip(override_dates, CallForPapers._date_fields) if v}
-
-				else:
+				cfp = None
+				try:
 					cfp = WikicfpCFP.get_cfp(conf, y)
 					# possibly try other CFP providers?
+				except CFPNotFoundError:
+					pass
+				except CFPCheckError as e:
+					prog.clean_print(str(e))
 
-					if last_year:
-						if not cfp: cfp = CallForPapers(conf, y, desc = last_year.desc, link = last_year.link, url_cfp = last_year.url_cfp)
-						cfp.extrapolate_missing_dates(last_year)
+				if last_year and not cfp:
+					cfp = CallForPapers(conf, y, desc = last_year.desc, link = last_year.link, url_cfp = last_year.url_cfp)
+					cfp.extrapolate_missing_dates(last_year)
 
-					if cfp and cfp.max_date() > today:
-						break
+				last_year = cfp
 
 			if cfp:
 				if not writing_first_conf: print(',', file=out)
