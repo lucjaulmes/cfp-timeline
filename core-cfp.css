@@ -268,43 +268,33 @@ img.cfpurl {
 
 /* Loading bouncing ball from https://loading.io/spinner/ball/-bouncing-circle-loading-icon */
 
-@keyframes lds-ball {
-	0%,
-	100% {
-		animation-timing-function: cubic-bezier(0.45, 0, 0.9, 0.55);
-	}
+@keyframes gear {
 	0% {
-		-webkit-transform: translate(0, 0);
-		transform: translate(0, 0);
+		-webkit-transform: rotate(0deg);
+		transform: rotate(0deg);
 	}
 	50% {
-		-webkit-transform: translate(0, 108px);
-		transform: translate(0, 108px);
-		animation-timing-function: cubic-bezier(0, 0.45, 0.55, 0.9);
+		-webkit-transform: rotate(180deg);
+		transform: rotate(180deg);
 	}
 	100% {
-		-webkit-transform: translate(0, 0);
-		transform: translate(0, 0);
+		-webkit-transform: rotate(360deg);
+		transform: rotate(360deg);
 	}
 }
 
-@-webkit-keyframes lds-ball {
-	0%,
-	100% {
-		animation-timing-function: cubic-bezier(0.45, 0, 0.9, 0.55);
-	}
+@-webkit-keyframes gear {
 	0% {
-		-webkit-transform: translate(0, 0);
-		transform: translate(0, 0);
+		-webkit-transform: rotate(0deg);
+		transform: rotate(0deg);
 	}
 	50% {
-		-webkit-transform: translate(0, 108px);
-		transform: translate(0, 108px);
-		animation-timing-function: cubic-bezier(0, 0.45, 0.55, 0.9);
+		-webkit-transform: rotate(180deg);
+		transform: rotate(180deg);
 	}
 	100% {
-		-webkit-transform: translate(0, 0);
-		transform: translate(0, 0);
+		-webkit-transform: rotate(360deg);
+		transform: rotate(360deg);
 	}
 }
 
@@ -321,14 +311,72 @@ img.cfpurl {
 	background-color: #eee;
 }
 
-#loading #ball {
+#gear > div {
+	-webkit-transform-origin: 100px 100px;
+	transform-origin: 100px 100px;
+	-webkit-animation: gear 5s infinite linear;
+	animation: gear 5s infinite linear;
+	position: relative;
+}
+
+#gear div.teeth {
 	position: absolute;
-	width: 40px;
-	height: 40px;
+	width: 24px;
+	height: 192px;
+	background: #000;
+	left: 100px;
+	top: 100px;
+	-webkit-transform: translate(-50%, -50%);
+	transform: translate(-50%, -50%);
+}
+
+#gear div.teeth:nth-child(1) {
+	width: 152px;
+	height: 152px;
 	border-radius: 50%;
-	background: #e90c59;
-	left: calc(50% - 20px);
-	top: 40px;
-	-webkit-animation: lds-ball 1s linear infinite;
-	animation: lds-ball 1s linear infinite;
+}
+
+#gear div.teeth:nth-child(3) {
+	-webkit-transform: translate(-50%, -50%) rotate(30deg);
+	transform: translate(-50%, -50%) rotate(30deg);
+}
+
+#gear div.teeth:nth-child(4) {
+	-webkit-transform: translate(-50%, -50%) rotate(60deg);
+	transform: translate(-50%, -50%) rotate(60deg);
+}
+
+#gear div.teeth:nth-child(5) {
+	-webkit-transform: translate(-50%, -50%) rotate(90deg);
+	transform: translate(-50%, -50%) rotate(90deg);
+}
+
+#gear div.teeth:nth-child(6) {
+	-webkit-transform: translate(-50%, -50%) rotate(120deg);
+	transform: translate(-50%, -50%) rotate(120deg);
+}
+
+#gear div.teeth:nth-child(7) {
+	-webkit-transform: translate(-50%, -50%) rotate(150deg);
+	transform: translate(-50%, -50%) rotate(150deg);
+}
+
+#gear div#gear_center {
+	position: absolute;
+	left: 100px;
+	top: 100px;
+	-webkit-transform: translate(-50%, -50%);
+	transform: translate(-50%, -50%);
+	width: 88px;
+	height: 88px;
+	background: #eee;
+	border-radius: 50%;
+}
+
+#gear {
+	margin: 0 auto;
+	width: 106px !important;
+	height: 106px !important;
+	-webkit-transform: translate(-53px, -53px) scale(0.53) translate(53px, 53px);
+	transform: translate(-53px, -53px) scale(0.53) translate(53px, 53px);
 }
