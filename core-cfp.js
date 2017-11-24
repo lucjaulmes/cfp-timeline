@@ -7,9 +7,10 @@ var timeline_scale = 50 / Date.UTC(1970, 1, 1)
 var sethash = '';
 
 var ranks = ['D', 'C', 'B', 'A', 'A*'];
-var confIdx = 0, titleIdx = 1, rankIdx = 2, fieldIdx = 3, origOffset = 6, linkIdx = 16, cfpIdx = 17;
+var confIdx = 0, titleIdx = 1, rankIdx = 2, fieldIdx = 3, linkIdx = 16, cfpIdx = 17;
 var abstIdx = 4, subIdx = 5, notifIdx = 6, camIdx = 7, startIdx = 8, endIdx = 9;
-var datesIdx = [4, 5, 6, 7, 8, 9], origIdx = [10, 11, 12, 13, 14, 15];
+var yearIdx = 4, yearOffset = 14, origOffset = 6;
+var datesIdx = [], origIdx = [], urlIdx = [], n_years = 1;
 
 function ranksort(a, b)
 {
@@ -133,119 +134,123 @@ function addToTimeline(n, data)
 	var s = timeline_scale,
 		last = timeline_zero,
 		tooltip, filler, block;
-	var acronym = data[confIdx];
-	var p = $('<p></p>').append($('<span class="acronyms"></span>').append(renderAcronym(acronym, 'display', data)));
+	var p = $('<p></p>').append($('<span class="acronyms"></span>').append(renderAcronym(data[confIdx], 'display', data)));
 	var marker = $('<sup>†</sup>').css('width', '.5em').css('margin-right', '-.5em');
 	var punctualMarker = marker.clone().css('width', '.5em').css('margin-left', '.5em').css('margin-right', '-1em');
 
-	var abst = parse_date(data[abstIdx]);
-	var submit = parse_date(data[subIdx]);
-	var notif = parse_date(data[notifIdx]);
-
-	if (!abst) abst = submit;
-	else if (!submit) submit = abst;
-
-	if (submit && notif && submit >= last && notif >= submit)
+	var year = (new Date()).getFullYear();
+	for (var y = 0; y < n_years; y++)
 	{
-		if (submit > abst)
+		var acronym = data[confIdx] + ' ' + (year + y), offset = y * yearOffset, orig = offset + origOffset;
+		var abst = parse_date(data[abstIdx + offset]);
+		var submit = parse_date(data[subIdx + offset]);
+		var notif = parse_date(data[notifIdx + offset]);
+
+		if (!abst) abst = submit;
+		else if (!submit) submit = abst;
+
+		if (submit && notif && submit >= last && notif >= submit)
 		{
-			tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' registration ' + data[abstIdx]);
-			filler = $('<span class="filler"></span>').css('width', (abst - last) * s);
-			block = $('<span class="abstract"></span>').css('width', (submit - abst) * s);
+			if (submit > abst)
+			{
+				tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' registration ' + data[abstIdx + offset]);
+				filler = $('<span class="filler"></span>').css('width', (abst - last) * s);
+				block = $('<span class="abstract"></span>').css('width', (submit - abst) * s);
+
+				p.append(filler).append(block.append(tooltip));
+
+				if (data[abstIdx + orig] === false)
+				{
+					block.append(marker.clone());
+					tooltip.prepend('Estimated ');
+				}
+
+				tooltipPosition((abst + submit) / 2, tooltip);
+				last = submit;
+			}
+
+			tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' submission ' + data[subIdx + offset] + ',<br />')
+			filler = $('<span class="filler"></span>').css('width', (submit - last) * s);
+			block = $('<span class="review"></span>').css('width', (notif - submit) * s);
+
+			if (data[subIdx + orig] === false)
+			{
+				tooltip.prepend('Estimated ');
+				block.append(marker.clone());
+			}
+			p.append(filler).append(block.append(tooltip));
+
+			if (data[notifIdx + orig] === false)
+			{
+				tooltip.append('estimated ');
+				p.append(marker.clone());
+			}
+
+			tooltipPosition((submit + notif) / 2, tooltip);
+			tooltip.append('notification ' + data[notifIdx + offset]);
+			last = notif;
+
+		}
+		else if (submit && submit >= last)
+		{
+			tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' submission ' + data[subIdx + offset]);
+			filler = $('<span class="filler"></span>').css('width', (submit - last) * s);
+			block = $('<span class="submit"><sup>◆</sup></span>');
 
 			p.append(filler).append(block.append(tooltip));
 
-			if (data[abstIdx + origOffset] === false)
+			if (data[subIdx + orig] === false)
 			{
-				block.append(marker.clone());
 				tooltip.prepend('Estimated ');
+				p.append(punctualMarker.clone());
 			}
 
-			tooltipPosition((abst + submit) / 2, tooltip);
+			tooltipPosition(submit, tooltip);
 			last = submit;
 		}
 
-		tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' submission ' + data[subIdx] + ',<br />')
-		filler = $('<span class="filler"></span>').css('width', (submit - last) * s);
-		block = $('<span class="review"></span>').css('width', (notif - submit) * s);
-
-		if (data[subIdx + origOffset] === false)
+		var camera = parse_date(data[camIdx + offset]);
+		if (camera && camera >= last)
 		{
-			tooltip.prepend('Estimated ');
-			block.append(marker.clone());
-		}
-		p.append(filler).append(block.append(tooltip));
+			tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' final version ' + data[camIdx + offset]);
+			filler = $('<span class="filler"></span>').css('width', (camera - last) * s);
+			block = $('<span class="camera"><sup>∎</sup></span>');
 
-		if (data[notifIdx + origOffset] === false)
-		{
-			tooltip.append('estimated ');
-			p.append(marker.clone());
-		}
+			p.append(filler).append(block.append(tooltip));
 
-		tooltipPosition((submit + notif) / 2, tooltip);
-		tooltip.append('notification ' + data[notifIdx]);
-		last = notif;
+			if (data[camIdx + orig] === false)
+			{
+				tooltip.prepend('Estimated ');
+				block.append(punctualMarker.clone());
+			}
 
-	}
-	else if (submit && submit >= last)
-	{
-		tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' submission ' + data[subIdx]);
-		filler = $('<span class="filler"></span>').css('width', (submit - last) * s);
-		block = $('<span class="submit"><sup>◆</sup></span>');
-
-		p.append(filler).append(block.append(tooltip));
-
-		if (data[subIdx + origOffset] === false)
-		{
-			tooltip.prepend('Estimated ');
-			p.append(punctualMarker.clone());
+			tooltipPosition(camera, tooltip);
+			last = camera;
 		}
 
-		tooltipPosition(submit, tooltip);
-		last = submit;
-	}
-
-	var camera = parse_date(data[camIdx]);
-	if (camera && camera >= last)
-	{
-		tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' final version ' + data[camIdx]);
-		filler = $('<span class="filler"></span>').css('width', (camera - last) * s);
-		block = $('<span class="camera"><sup>∎</sup></span>');
-
-		p.append(filler).append(block.append(tooltip));
-
-		if (data[camIdx + origOffset] === false)
+		var start = parse_date(data[startIdx + offset]);
+		var end = parse_date(data[endIdx + offset]);
+		if (start && end && start >= last && end >= start)
 		{
-			tooltip.prepend('Estimated ');
-			block.append(punctualMarker.clone());
+			tooltip = $('<span></span>').addClass('tooltip');
+			filler = $('<span class="filler"></span>').css('width', (start - last) * s);
+			block = $('<span class="conf"></span>').css('width', (end - start) * s);
+
+			p.append(filler).append(block.append(tooltip));
+
+			if (data[startIdx + orig] === false || data[endIdx + orig] == false)
+			{
+				tooltip.append(acronym + ' estimated from ' + data[startIdx + offset] + ' to ' + data[endIdx + offset]);
+				p.append(marker.clone());
+			}
+			else
+			{
+				tooltip.append(acronym + ' from ' + data[startIdx + offset] + ' to ' + data[endIdx + offset]);
+			}
+
+			tooltipPosition((start + end) / 2, tooltip);
+			last = end;
 		}
-
-		tooltipPosition(camera, tooltip);
-		last = camera;
-	}
-
-	var start = parse_date(data[startIdx]);
-	var end = parse_date(data[endIdx]);
-	if (start && end && start >= last && end >= start)
-	{
-		tooltip = $('<span></span>').addClass('tooltip');
-		filler = $('<span class="filler"></span>').css('width', (start - last) * s);
-		block = $('<span class="conf"></span>').css('width', (end - start) * s);
-
-		p.append(filler).append(block.append(tooltip));
-
-		if (data[startIdx + origOffset] === false || data[endIdx + origOffset] == false)
-		{
-			tooltip.append(acronym + ' estimated from ' + data[startIdx] + ' to ' + data[endIdx]);
-			p.append(marker.clone());
-		}
-		else
-		{
-			tooltip.append(acronym + ' from ' + data[startIdx] + ' to ' + data[endIdx]);
-		}
-
-		tooltipPosition((start + end) / 2, tooltip);
-		last = end;
 	}
 
 	// ignore conferences for which we don't have a single date
@@ -311,11 +316,20 @@ function renderAcronym(data, type, row)
 	{
 		var a = data,
 			i = '';
-		if (row[cfpIdx] && row[cfpIdx] != '(missing)')
-			i = $('<img />').attr('src', 'wikicfplogo.png').attr('alt', 'Wiki CFP logo').addClass('cfpurl')
-			.wrap('<a></a>').parent().attr('href', row[cfpIdx]).attr('title', data + ' CFP on WikiCFP');
-		if (row[linkIdx] && row[linkIdx] != '(missing)')
-			a = $('<a></a>').attr('href', row[linkIdx]).append(data);
+		for (y = n_years - 1; y >= 0; y--)
+			if (row[cfpIdx + y * yearOffset] && row[cfpIdx + y * yearOffset] != '(missing)')
+			{
+				i = $('<img />').attr('src', 'wikicfplogo.png').attr('alt', 'Wiki CFP logo').addClass('cfpurl')
+				.wrap('<a></a>').parent().attr('href', row[cfpIdx + y * yearOffset]).attr('title', data + ' CFP on WikiCFP');
+				break;
+			}
+
+		for (y = n_years - 1; y >= 0; y--)
+			if (row[linkIdx + y * yearOffset] && row[linkIdx + y * yearOffset] != '(missing)')
+			{
+				a = $('<a></a>').attr('href', row[linkIdx + y * yearOffset]).append(data);
+				break;
+			}
 
 		return $('<p></p>').append(a).append('&nbsp;').append(i).html();
 	}
@@ -336,6 +350,21 @@ function notNull(val, idx)
 
 function populatePage(json)
 {
+	n_years = (json['columns'].length - yearIdx) / yearOffset
+
+	for (var y = 0; y < n_years; y++)
+	{
+		for (var d of [abstIdx, subIdx, notifIdx, camIdx, startIdx, endIdx])
+		{
+			datesIdx.push(d + y * yearOffset);
+			origIdx.push(d + origOffset + y * yearOffset);
+		}
+
+		for (var u of [linkIdx, cfpIdx])
+			urlIdx.push(u + y * yearOffset)
+	}
+
+
 	datatable = $('#confs').DataTable(
 	{
 		data: json['data'],
@@ -343,7 +372,7 @@ function populatePage(json)
 		columnDefs: [
 			// links, searchable but not displayed
 			{
-				"targets": [linkIdx, cfpIdx],
+				"targets": urlIdx,
 				"visible": false,
 				"searchable": true
 			},
@@ -366,10 +395,10 @@ function populatePage(json)
 		],
 		pageLength: 50,
 		order: [
-			[  subIdx, "asc"],
-			[ abstIdx, "asc"],
-			[startIdx, "asc"],
-			[  endIdx, "asc"]
+			[  subIdx + (n_years - 1) * yearOffset, "asc"],
+			[ abstIdx + (n_years - 1) * yearOffset, "asc"],
+			[startIdx + (n_years - 1) * yearOffset, "asc"],
+			[  endIdx + (n_years - 1) * yearOffset, "asc"]
 		]
 	});
 

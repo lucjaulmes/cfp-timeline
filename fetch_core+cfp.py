@@ -870,36 +870,44 @@ def update_confs(out):
 	years = [today.year, today.year + 1]
 
 	print('{"columns":', file=out);
-	json.dump([{'title': c} for c in Conference.columns() + CallForPapers.columns()], out)
+	json.dump([{'title': c} for c in sum(([col + ' ' + str(y) for col in CallForPapers.columns()] for y in years), Conference.columns())], out)
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
 	core = CoreRanking.get_confs()
 	with Progress(operation = 'fetching calls for papers') as prog:
 		for conf in prog.iterate(core):
+			values = conf.values()
+			cfps_found = 0
 			last_year = None
 			for y in years:
-				cfp = None
 				try:
 					cfp = WikicfpCFP.get_cfp(conf, y)
+					cfps_found += 1
 					# possibly try other CFP providers?
 				except CFPNotFoundError:
-					pass
+					cfp = None
 				except CFPCheckError as e:
+					cfp = None
 					prog.clean_print(str(e))
 
-				if last_year and not cfp:
-					cfp = CallForPapers(conf, y, desc = last_year.desc, link = last_year.link, url_cfp = last_year.url_cfp)
-					cfp.extrapolate_missing_dates(last_year)
+				if not cfp:
+					if last_year:
+						cfp = CallForPapers(conf, y, desc = last_year.desc, link = last_year.link, url_cfp = last_year.url_cfp)
+					else:
+						cfp = CallForPapers(conf, y)
 
+				if last_year:
+					cfp.extrapolate_missing_dates(last_year)
+				values += cfp.values()
 				last_year = cfp
 
-			if cfp:
+			if cfps_found:
 				if not writing_first_conf: print(',', file=out)
 				else: writing_first_conf = False
 
 				# filter out empty values for non-date columns
-				json.dump(conf.values() + cfp.values(), out, default = json_encode_dates)
+				json.dump(values, out, default = json_encode_dates)
 
 	scrape_date = datetime.datetime.fromtimestamp(min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html')))
 	print(scrape_date.strftime('\n], "date":"%Y-%m-%d"}'), file=out)
