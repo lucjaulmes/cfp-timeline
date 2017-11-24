@@ -499,6 +499,19 @@ class Conference(ConfMetaData):
 		except ValueError: return len(self._ranks) # non-ranked, e.g. 'Australasian'
 
 
+	@classmethod
+	def columns(cls):
+		""" Return column titles for cfp data.
+		"""
+		return ['Acronym', 'Title', 'CORE 2017 Rank', 'Field']
+
+
+	def values(self):
+		""" What we'll show
+		"""
+		return [self.acronym, self.title, self.rank, self.field]
+
+
 	def __eq__(self, other):
 		return isinstance(other, self.__class__) and (self.rank, self.acronym, self.title, other.field) == (other.rank, other.acronym, other.title, other.field)
 
@@ -625,14 +638,13 @@ class CallForPapers(ConfMetaData):
 	def columns(cls):
 		""" Return column titles for cfp data.
 		"""
-		return ['Acronym', 'Title', 'CORE 2017 Rank'] + cls._date_names + ['Field', 'Link'] + ['orig_' + d for d in cls._date_fields] + ['CFP url']
+		return cls._date_names + ['orig_' + d for d in cls._date_fields] + ['Link', 'CFP url']
 
 
 	def values(self):
 		""" Return values of cfp data, in column order.
 		"""
-		return [self.conf.acronym, self.conf.title, self.conf.rank] + [self.dates.get(f, None) for f in self._date_fields] + \
-										[self.conf.field, self.link] + [self.orig.get(f, None) for f in self._date_fields] + [self.url_cfp]
+		return [self.dates.get(f, None) for f in self._date_fields] + [self.orig.get(f, None) for f in self._date_fields] + [self.link, self.url_cfp]
 
 
 	def max_date(self):
@@ -818,7 +830,7 @@ class CoreRanking(object):
 		""" Load conferences from a file where we have the values cached cleanly.
 		"""
 		f_age = datetime.datetime.fromtimestamp(os.stat(cls._core_file).st_mtime)
-		if datetime.datetime.today() - f_age > datetime.timedelta(days = 5):
+		if datetime.datetime.today() - f_age > datetime.timedelta(days = -1):
 			raise FileNotFoundError('Cached file too old')
 
 		with open(cls._core_file, 'r') as f:
@@ -858,7 +870,7 @@ def update_confs(out):
 	years = [today.year, today.year + 1]
 
 	print('{"columns":', file=out);
-	json.dump([{'title': c} for c in CallForPapers.columns()], out)
+	json.dump([{'title': c} for c in Conference.columns() + CallForPapers.columns()], out)
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
@@ -887,7 +899,7 @@ def update_confs(out):
 				else: writing_first_conf = False
 
 				# filter out empty values for non-date columns
-				json.dump(cfp.values(), out, default = json_encode_dates)
+				json.dump(conf.values() + cfp.values(), out, default = json_encode_dates)
 
 	scrape_date = datetime.datetime.fromtimestamp(min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html')))
 	print(scrape_date.strftime('\n], "date":"%Y-%m-%d"}'), file=out)

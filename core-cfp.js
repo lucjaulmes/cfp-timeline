@@ -7,9 +7,9 @@ var timeline_scale = 50 / Date.UTC(1970, 1, 1)
 var sethash = '';
 
 var ranks = ['D', 'C', 'B', 'A', 'A*'];
-var confIdx = 0, titleIdx = 1, rankIdx = 2, fieldIdx = 9, origOffset = 8, linkIdx = 10, cfpIdx = 17;
-var abstIdx = 3, subIdx = 4, notifIdx = 5, camIdx = 6, startIdx = 7, endIdx = 8;
-var datesIdx = [3, 4, 5, 6, 7, 8], origIdx = [11, 12, 13, 14, 15, 16];
+var confIdx = 0, titleIdx = 1, rankIdx = 2, fieldIdx = 3, origOffset = 6, linkIdx = 16, cfpIdx = 17;
+var abstIdx = 4, subIdx = 5, notifIdx = 6, camIdx = 7, startIdx = 8, endIdx = 9;
+var datesIdx = [4, 5, 6, 7, 8, 9], origIdx = [10, 11, 12, 13, 14, 15];
 
 function ranksort(a, b)
 {
