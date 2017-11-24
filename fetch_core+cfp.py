@@ -4,6 +4,7 @@ import re
 import sys
 import json
 import glob
+import shutil
 import os.path
 import inflection
 import requests
@@ -27,15 +28,24 @@ except ImportError:
 
 class Progress():
 	maxpos = 0.0
+	next_pos = 0
 	update_freq = 0
 	start = 0
 	template = "\rProgress{}: {{: 3.1f}} %\tElapsed: {{:2}}:{{:02}}\tETA: {{:2}}:{{:02}} "
 
 	def change_max(self, maxpos):
+		""" Change the number of items on hwihc me iterate.
+		"""
 		self.maxpos = float(maxpos)
 		self.update_freq = max(1, int(floor(maxpos / 1000)))
+		self.next_pos = 1
 
 	def _print_update(self, pos):
+		if pos < self.next_pos:
+			return
+
+		self.next_pos = pos + self.update_freq
+
 		if pos < self.maxpos:
 			ratio = pos / self.maxpos
 			elapsed = get_time() - self.start
@@ -45,19 +55,23 @@ class Progress():
 			stdout.flush()
 
 	def update_diff(self, pos):
-		if pos != 0 and pos % self.update_freq == 0:
-			self._print_update(pos)
+		""" Wrap a pos != maxpos test to print updates
+		"""
+		self._print_update(pos)
 		return pos != self.maxpos
 
 	def update_less(self, pos):
-		if pos != 0 and pos % self.update_freq == 0:
-			self._print_update(pos)
+		""" Wrap a pos < maxpos test to print updates
+		"""
+		self._print_update(pos)
 		return pos < self.maxpos
 
 	update = update_less
 
 
-	def iterate(self, iterable):
+	def iterate(self, iterable, *enum_args):
+		""" Wrap an iterable, yielding all its elements, to print updates
+		"""
 		if self.maxpos == 0.0:
 			try:
 				self.change_max(len(iterable))
@@ -66,13 +80,16 @@ class Progress():
 					+ "by providing its (expected) length to the constructor: Progress(maxpos = ...).\n").format(e.args[0]))
 
 
-		next_pos = self.update_freq
-		for pos, item in enumerate(iterable):
-			if pos == next_pos:
-				self._print_update(pos)
-				next_pos += self.update_freq
-
+		for pos, item in enumerate(iterable, *enum_args):
+			self._print_update(pos)
 			yield item
+
+
+	def clean_print(self, string, *print_args):
+		""" Want to cleanly print a line in between progress updates? No problem!
+		"""
+		print('\r{}\r'.format(' ' * shutil.get_terminal_size().columns) + string, *print_args)
+		self.next_pos = 1
 
 
 	def __init__(self, maxpos = 0.0, operation = ""):
@@ -81,6 +98,7 @@ class Progress():
 
 	def __enter__(self):
 		self.start = get_time()
+		self.next_pos = self.update_freq
 		stdout.write(self.template.split('\t')[0].format(0))
 		stdout.flush()
 		return self
