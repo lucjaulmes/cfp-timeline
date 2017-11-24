@@ -553,13 +553,26 @@ class CallForPapers(ConfMetaData):
 		self.url_cfp = url_cfp
 
 
-	def extrapolate_missing_dates(self, prev_year_cfp):
+	def extrapolate_missing_dates(self, prev_cfp):
 		# NB: it isn't always year = this.year, e.g. the submission can be the year before the conference dates
-		# TODO: smarter extrapolation using delays instead of dates?
-		for field in (field for field in prev_year_cfp.dates if field not in self.dates):
+		prev_dates = set(prev_cfp.dates.keys())
+		dates = set(self.dates.keys())
+
+		# direct extrapolations to year + 1
+		for field in (field for field in {'conf_start', 'submission'} & prev_dates - dates):
 			n = self._date_fields.index(field)
-			self.dates[field] = prev_year_cfp.dates[field].replace(year = prev_year_cfp.dates[field].year + 1)
+			self.dates[field] = prev_cfp.dates[field].replace(year = prev_cfp.dates[field].year + 1)
+
 			self.orig[field] = False
+			dates.add(field)
+
+		# extrapolate by keeping
+		extrapolate_from = {'conf_end': 'conf_start', 'camera_ready': 'conf_start', 'abstract': 'submission', 'notification': 'submission'}
+		for field in (field for field in extrapolate_from.keys() & prev_dates - dates if extrapolate_from[field] in dates & prev_dates):
+			self.dates[field] = self.dates[extrapolate_from[field]] + (prev_cfp.dates[field] - prev_cfp.dates[extrapolate_from[field]])
+
+			self.orig[field] = False
+			dates.add(field)
 
 
 	@classmethod
