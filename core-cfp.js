@@ -7,6 +7,9 @@ var timeline_scale = 50 / Date.UTC(1970, 1, 1)
 var sethash = '';
 
 var ranks = ['D', 'C', 'B', 'A', 'A*'];
+var confIdx = 0, titleIdx = 1, rankIdx = 2, fieldIdx = 9, origOffset = 8, linkIdx = 10, cfpIdx = 17;
+var abstIdx = 3, subIdx = 4, notifIdx = 5, camIdx = 6, startIdx = 7, endIdx = 8;
+var datesIdx = [3, 4, 5, 6, 7, 8], origIdx = [11, 12, 13, 14, 15, 16];
 
 function ranksort(a, b)
 {
@@ -130,13 +133,14 @@ function addToTimeline(n, data)
 	var s = timeline_scale,
 		last = timeline_zero,
 		tooltip, filler, block;
-	var p = $('<p></p>').append($('<span class="acronyms"></span>').append(renderAcronym(data[0], 'display', data)));
+	var acronym = data[confIdx];
+	var p = $('<p></p>').append($('<span class="acronyms"></span>').append(renderAcronym(acronym, 'display', data)));
 	var marker = $('<sup>†</sup>').css('width', '.5em').css('margin-right', '-.5em');
 	var punctualMarker = marker.clone().css('width', '.5em').css('margin-left', '.5em').css('margin-right', '-1em');
 
-	var abst = parse_date(data[3]);
-	var submit = parse_date(data[4]);
-	var notif = parse_date(data[5]);
+	var abst = parse_date(data[abstIdx]);
+	var submit = parse_date(data[subIdx]);
+	var notif = parse_date(data[notifIdx]);
 
 	if (!abst) abst = submit;
 	else if (!submit) submit = abst;
@@ -145,13 +149,13 @@ function addToTimeline(n, data)
 	{
 		if (submit > abst)
 		{
-			tooltip = $('<span></span>').addClass('tooltip').append(data[0] + ' registration ' + data[3]);
+			tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' registration ' + data[abstIdx]);
 			filler = $('<span class="filler"></span>').css('width', (abst - last) * s);
 			block = $('<span class="abstract"></span>').css('width', (submit - abst) * s);
 
 			p.append(filler).append(block.append(tooltip));
 
-			if (data[11] === false)
+			if (data[abstIdx + origOffset] === false)
 			{
 				block.append(marker.clone());
 				tooltip.prepend('Estimated ');
@@ -161,37 +165,37 @@ function addToTimeline(n, data)
 			last = submit;
 		}
 
-		tooltip = $('<span></span>').addClass('tooltip').append(data[0] + ' submission ' + data[4] + ',<br />')
+		tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' submission ' + data[subIdx] + ',<br />')
 		filler = $('<span class="filler"></span>').css('width', (submit - last) * s);
 		block = $('<span class="review"></span>').css('width', (notif - submit) * s);
 
-		if (data[12] === false)
+		if (data[subIdx + origOffset] === false)
 		{
 			tooltip.prepend('Estimated ');
 			block.append(marker.clone());
 		}
 		p.append(filler).append(block.append(tooltip));
 
-		if (data[13] === false)
+		if (data[notifIdx + origOffset] === false)
 		{
 			tooltip.append('estimated ');
 			p.append(marker.clone());
 		}
 
 		tooltipPosition((submit + notif) / 2, tooltip);
-		tooltip.append('notification ' + data[5]);
+		tooltip.append('notification ' + data[notifIdx]);
 		last = notif;
 
 	}
 	else if (submit && submit >= last)
 	{
-		tooltip = $('<span></span>').addClass('tooltip').append(data[0] + ' submission ' + data[4]);
+		tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' submission ' + data[subIdx]);
 		filler = $('<span class="filler"></span>').css('width', (submit - last) * s);
 		block = $('<span class="submit"><sup>◆</sup></span>');
 
 		p.append(filler).append(block.append(tooltip));
 
-		if (data[12] === false)
+		if (data[subIdx + origOffset] === false)
 		{
 			tooltip.prepend('Estimated ');
 			p.append(punctualMarker.clone());
@@ -201,16 +205,16 @@ function addToTimeline(n, data)
 		last = submit;
 	}
 
-	var camera = parse_date(data[6]);
+	var camera = parse_date(data[camIdx]);
 	if (camera && camera >= last)
 	{
-		tooltip = $('<span></span>').addClass('tooltip').append(data[0] + ' final version ' + data[6]);
+		tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' final version ' + data[camIdx]);
 		filler = $('<span class="filler"></span>').css('width', (camera - last) * s);
 		block = $('<span class="camera"><sup>∎</sup></span>');
 
 		p.append(filler).append(block.append(tooltip));
 
-		if (data[14] === false)
+		if (data[camIdx + origOffset] === false)
 		{
 			tooltip.prepend('Estimated ');
 			block.append(punctualMarker.clone());
@@ -220,8 +224,8 @@ function addToTimeline(n, data)
 		last = camera;
 	}
 
-	var start = parse_date(data[7]);
-	var end = parse_date(data[8]);
+	var start = parse_date(data[startIdx]);
+	var end = parse_date(data[endIdx]);
 	if (start && end && start >= last && end >= start)
 	{
 		tooltip = $('<span></span>').addClass('tooltip');
@@ -230,14 +234,14 @@ function addToTimeline(n, data)
 
 		p.append(filler).append(block.append(tooltip));
 
-		if (data[15] === false || data[16] == false)
+		if (data[startIdx + origOffset] === false || data[endIdx + origOffset] == false)
 		{
-			tooltip.append(data[0] + ' estimated from ' + data[7] + ' to ' + data[8]);
+			tooltip.append(acronym + ' estimated from ' + data[startIdx] + ' to ' + data[endIdx]);
 			p.append(marker.clone());
 		}
 		else
 		{
-			tooltip.append(data[0] + ' from ' + data[7] + ' to ' + data[8]);
+			tooltip.append(acronym + ' from ' + data[startIdx] + ' to ' + data[endIdx]);
 		}
 
 		tooltipPosition((start + end) / 2, tooltip);
@@ -307,11 +311,11 @@ function renderAcronym(data, type, row)
 	{
 		var a = data,
 			i = '';
-		if (row[17] && row[17] != '(missing)')
+		if (row[cfpIdx] && row[cfpIdx] != '(missing)')
 			i = $('<img />').attr('src', 'wikicfplogo.png').attr('alt', 'Wiki CFP logo').addClass('cfpurl')
-			.wrap('<a></a>').parent().attr('href', row[17]).attr('title', data + ' CFP on WikiCFP');
-		if (row[10] && row[10] != '(missing)')
-			a = $('<a></a>').attr('href', row[10]).append(data);
+			.wrap('<a></a>').parent().attr('href', row[cfpIdx]).attr('title', data + ' CFP on WikiCFP');
+		if (row[linkIdx] && row[linkIdx] != '(missing)')
+			a = $('<a></a>').attr('href', row[linkIdx]).append(data);
 
 		return $('<p></p>').append(a).append('&nbsp;').append(i).html();
 	}
@@ -321,7 +325,7 @@ function renderAcronym(data, type, row)
 
 function markExtrapolated(td, data, rowdata, row, col)
 {
-	if (data && rowdata[col + 8] === false)
+	if (data && rowdata[col + origOffset] === false)
 		$(td).addClass('extrapolated');
 }
 
@@ -339,33 +343,33 @@ function populatePage(json)
 		columnDefs: [
 			// links, searchable but not displayed
 			{
-				"targets": [10, 17],
+				"targets": [linkIdx, cfpIdx],
 				"visible": false,
 				"searchable": true
 			},
 			// acronyms, displayed wrapped in links if present
 			{
-				"targets": [0],
+				"targets": [confIdx],
 				"render": renderAcronym
 			},
 			// dates, display whether extrapolated
 			{
-				"targets": [3, 4, 5, 6, 7, 8],
+				"targets": datesIdx,
 				"createdCell": markExtrapolated
 			},
 			// booleans on extrapolated dates, hiddent
 			{
-				"targets": [11, 12, 13, 14, 15, 16],
+				"targets": origIdx,
 				"visible": false,
 				"searchable": false
 			}
 		],
 		pageLength: 50,
 		order: [
-			[4, "asc"],
-			[3, "asc"],
-			[7, "asc"],
-			[8, "asc"]
+			[  subIdx, "asc"],
+			[ abstIdx, "asc"],
+			[startIdx, "asc"],
+			[  endIdx, "asc"]
 		]
 	});
 
@@ -383,9 +387,9 @@ function populatePage(json)
 
 	var initFilters = parseFragment();
 
-	makeFilter(datatable.column(0), "conf", initFilters);
-	makeFilter(datatable.column(2), "core", initFilters, ranksort);
-	makeFilter(datatable.column(9), "field", initFilters);
+	makeFilter(datatable.column(confIdx), "conf", initFilters);
+	makeFilter(datatable.column(rankIdx), "core", initFilters, ranksort);
+	makeFilter(datatable.column(fieldIdx), "field", initFilters);
 
 	updateFragment();
 
@@ -393,7 +397,7 @@ function populatePage(json)
 	datatable.draw().on('search.dt', filterUpdated);
 
 	var maxdate = timeline_zero;
-	for (var col = 3; col <= 8; col++)
+	for (var col of datesIdx)
 	{
 		var colmax = datatable.column(col).data().filter(notNull).sort().reverse()[0];
 		// lexical sort works thanks to format, just parse once
