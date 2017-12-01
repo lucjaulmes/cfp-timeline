@@ -613,9 +613,50 @@ class CallForPapers(ConfMetaData):
 		dates_found = self.dates.keys()
 
 		if {'conf_start', 'conf_end'} <= dates_found:
-			if self.dates['conf_start'].year != self.year or self.dates['conf_end'].year != self.year \
-					or self.dates['conf_end'] - self.dates['conf_start'] > datetime.timedelta(days = 20):
-				raise CFPCheckError('Dubious dates {} -- {} for {} {}'.format(self.dates['conf_start'], self.dates['conf_end'], self.conf.acronym, self.year))
+			err = []
+			s, e = (self.dates['conf_start'], self.dates['conf_end'])
+
+			if s.year != self.year or e.year != self.year: # no conference over new year's eve, right?
+				err.append('not in correct year')
+				s, e = (s.replace(year = self.year), e.replace(year = self.year))
+
+			if e < s:
+				err.append('end before start')
+				try: # try flipping day and month
+					flip = (s.replace(day = s.month, month = s.day), e.replace(day = e.month, month = e.day))
+				except ValueError:
+					flip = (0, 0)
+
+				if flip[1] > flip[0] and flip[1] - flip[0] < datetime.timedelta(days = 10):
+					s, e = flip
+				else:
+					# if that's no good, just swap start and end
+					s, e = (e, s)
+
+			if e - s > datetime.timedelta(days = 20):
+				err.append('too far apart')
+				try: # try flipping day and month
+					flip = (s.replace(day = s.month, month = s.day), e.replace(day = e.month, month = e.day))
+				except ValueError:
+					flip = (0, 0)
+
+				if flip[1] > flip[0] and flip[1] - flip[0] < datetime.timedelta(days = 10):
+					s, e = flip
+				else:
+					# cancel suggestion if at this stage it still is no good
+					s, e = (self.dates['conf_start'], self.dates['conf_end'])
+
+			if err:
+				orig = '{} -- {}'.format(self.dates['conf_start'], self.dates['conf_end'])
+				diag = 'Conferences dates {} are {} for {} {}'.format(orig, ' and '.join(err), self.conf.acronym, self.year)
+
+				if (s, e) != (self.dates['conf_start'], self.dates['conf_end']):
+					Progress().clean_print('{}: using {} -- {} instead'.format(diag, s, e))
+					# Use corrected dates, but take care to mark as guesses
+					self.dates['conf_start'], self.dates['conf_end'] = (s, e)
+					self.orig['conf_start'], self.orig['conf_end'] = (False, False)
+				else:
+					raise CFPCheckError(diag)
 
 
 
