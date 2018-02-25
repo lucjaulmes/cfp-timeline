@@ -889,9 +889,7 @@ class CoreRanking(object):
 
 		forcodes = cls.get_forcodes()
 
-		with open(cls._core_file, 'w') as csv, Progress(operation = 'fetching CORE list', maxpos = n_results) as prog:
-			print('title;acronym;rank;field', file=csv)
-
+		with Progress(operation = 'fetching CORE list', maxpos = n_results) as prog:
 			for p in range(pages):
 				f = 'cache/ranked_{}.html'.format(per_page * p + 1)
 				soup = get_soup(cls._url_corerank.format(p), f)
@@ -913,10 +911,10 @@ class CoreRanking(object):
 
 	@classmethod
 	def _save_confs(cls, conflist):
-		""" Save conferences to a file where we have the values cached cleanly.
+		""" Save conferences to a file where to cache them.
 		"""
 		with open(cls._core_file, 'w') as csv:
-			print('title;acronym;rank;field', file=csv)
+			print('acronym;title;rank;field', file=csv)
 			for conf in conflist:
 				print(';'.join((conf.acronym, conf.title, conf.rank, conf.field)), file=csv)
 
@@ -927,15 +925,16 @@ class CoreRanking(object):
 		""" Load conferences from a file where we have the values cached cleanly.
 		"""
 		f_age = datetime.datetime.fromtimestamp(os.stat(cls._core_file).st_mtime)
-		if datetime.datetime.today() - f_age > datetime.timedelta(days = -1):
+		if datetime.datetime.today() - f_age > datetime.timedelta(days = 1):
 			raise FileNotFoundError('Cached file too old')
 
 		with open(cls._core_file, 'r') as f:
-			assert 'title;acronym;rank;field' == next(f).strip()
+			assert 'acronym;title;rank;field' == next(f).strip()
 			confs = [l.strip().split(';') for l in f]
 
 		with Progress(operation = 'loading CORE list', maxpos = len(confs)) as prog:
-			return [Conference(*c) for c in prog.iterate(confs)]
+			return [Conference(cls.strip_trailing_paren(tit), acr, rnk, fld) for acr, tit, rnk, fld in prog.iterate(confs)]
+
 
 
 	@classmethod
