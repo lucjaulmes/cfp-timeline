@@ -906,7 +906,12 @@ class CoreRanking(object):
 
 				for row in prog.iterate(rows, p * per_page):
 					val = [r.text.strip() for r in row.findAll('td')]
-					yield Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
+					conf = Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
+					if val[apos] == 'SC' and conf.topic_keywords == ['supercomputing']:
+						# stupid SC has 2 completely different descriptions. Add the long one if we just got 'supercomputing'
+						val[tpos] += ': The International Conference for High Performance Computing, Networking, Storage, and Analysis'
+						conf = Conference(val[tpos], val[apos], val[rpos], forcodes.get(val[fpos], None))
+					yield conf
 
 
 	@classmethod
