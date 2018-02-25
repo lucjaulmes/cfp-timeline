@@ -12,7 +12,7 @@ import datetime
 from requests.exceptions import ConnectionError, MissingSchema
 from functools import total_ordering
 from collections import defaultdict
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs, urlencode
 from bs4 import BeautifulSoup
 
 from time import time as get_time
@@ -762,8 +762,10 @@ class CallForPapers(ConfMetaData):
 
 class WikicfpCFP(CallForPapers):
 	_base_url = 'http://www.wikicfp.com'
-	_url_cfpsearch = _base_url + '/cfp/servlet/tool.search'
-	_url_cfpseries = _base_url + '/cfp/series?t=c&i={initial}'
+	_url_cfpsearch = urljoin(_base_url, '/cfp/servlet/tool.search')
+	_url_cfpseries = urljoin(_base_url, '/cfp/series?t=c&i={initial}')
+	_url_cfpevent  = urljoin(_base_url, '/cfp/servlet/event.showcfp') #?eventid={cfpid}
+	_url_cfpevent_query = {'copyownerid': '90704'} # override some parameters
 
 
 	@staticmethod
@@ -776,8 +778,8 @@ class WikicfpCFP(CallForPapers):
 		""" Given the BeautifulSoup of a CFP series list page, generate all (acronym, description, url) tuples for links that
 		point to conference series.
 		"""
-		links = soup.findAll('a', {'href': lambda l:l.startswith('/cfp/program')})
-		return (tuple(l.parent.text.strip().split(' - ', 1)) + (cls._base_url + ['href']) for l in links)
+		links = soup.findAll('a', {'href': lambda l: l.startswith('/cfp/program')})
+		return (tuple(l.parent.text.strip().split(' - ', 1)) + urljoin(cls._base_url, l['href']) for l in links)
 
 
 	@classmethod
@@ -795,7 +797,11 @@ class WikicfpCFP(CallForPapers):
 
 			# returns 2 td tags, one contains the link, the other the description
 			conf_name = [td.text for td in tr.findAll('td') if td not in conf_link.parents]
-			yield (conf_name[0], cls._base_url + conf_link['href'])
+			scheme, netloc, path, query, fragment = urlsplit(urljoin(cls._url_cfpevent, conf_link['href']))
+			# update the query with cls._url_cfpevent_query
+			query = urlencode({**parse_qs(query), **cls._url_cfpevent_query}, doseq = True)
+
+			yield (conf_name[0], urlunsplit((scheme, netloc, path, query, fragment)))
 
 
 	def parse_cfp(self, soup):
