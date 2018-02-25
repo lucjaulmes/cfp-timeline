@@ -897,7 +897,7 @@ class CoreRanking(object):
 				table = soup.find('table')
 				rows = iter(table.findAll('tr'))
 
-				headers = [r.text.strip().lower() for r in next(rows).findAll('th')]
+				headers = [' '.join(r.text.split()).lower() for r in next(rows).findAll('th')]
 
 				tpos = headers.index('title')
 				apos = headers.index('acronym')
@@ -905,7 +905,7 @@ class CoreRanking(object):
 				fpos = headers.index('primary for')
 
 				for row in prog.iterate(rows, p * per_page):
-					val = [r.text.strip() for r in row.findAll('td')]
+					val = [' '.join(r.text.split()) for r in row.findAll('td')]
 					conf = Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
 					if val[apos] == 'SC' and conf.topic_keywords == ['supercomputing']:
 						# stupid SC has 2 completely different descriptions. Add the long one if we just got 'supercomputing'
