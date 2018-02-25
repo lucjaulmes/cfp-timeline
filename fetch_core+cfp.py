@@ -879,12 +879,12 @@ class CoreRanking(object):
 	def _fetch_confs(cls):
 		""" Generator of all conferences listed on the core site, as dicts
 		"""
-		#NB hardcoded number of results per pages on the core site.
-		per_page = 50
-
 		# fetch page 0 outside loop to get page/result counts, will be in cache for loop access
-		soup = get_soup(cls._url_corerank.format(0), 'cache/ranked_{}-{}.html'.format(1, per_page))
-		n_results = int(soup.find(text = lambda t: 'Showing results 1 - {} of '.format(per_page) in t).strip().split()[-1])
+		soup = get_soup(cls._url_corerank.format(0), 'cache/ranked_{}.html'.format(1))
+
+		result_count_re = re.compile('Showing results 1 - ([0-9]+) of ([0-9]+)')
+		result_count = soup.find(text = result_count_re)
+		per_page, n_results = map(int, result_count_re.search(result_count).groups())
 		pages = (n_results + per_page - 1) // per_page
 
 		forcodes = cls.get_forcodes()
@@ -893,7 +893,7 @@ class CoreRanking(object):
 			print('title;acronym;rank;field', file=csv)
 
 			for p in range(pages):
-				f = 'cache/ranked_{}-{}.html'.format(per_page * p + 1, per_page * (p + 1))
+				f = 'cache/ranked_{}.html'.format(per_page * p + 1)
 				soup = get_soup(cls._url_corerank.format(p), f)
 
 				table = soup.find('table')
