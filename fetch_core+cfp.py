@@ -779,7 +779,7 @@ class WikicfpCFP(CallForPapers):
 		""" Given the BeautifulSoup of a CFP series list page, generate all (acronym, description, url) tuples for links that
 		point to conference series.
 		"""
-		links = soup.findAll('a', {'href': lambda l: l.startswith('/cfp/program')})
+		links = soup.find_all('a', {'href': lambda l: l.startswith('/cfp/program')})
 		return (tuple(l.parent.text.strip().split(' - ', 1)) + urljoin(cls._base_url, l['href']) for l in links)
 
 
@@ -789,7 +789,7 @@ class WikicfpCFP(CallForPapers):
 		to correspond to the conference and year requested.
 		"""
 		search = '{} {}'.format(conf.acronym, year).lower()
-		for conf_link in soup.findAll('a', href = True, text = lambda t: t and t.lower() == search):
+		for conf_link in soup.find_all('a', href = True, text = lambda t: t and t.lower() == search):
 			for tr in conf_link.parents:
 				if tr.name == 'tr':
 					break
@@ -797,7 +797,7 @@ class WikicfpCFP(CallForPapers):
 				raise ValueError('Cound not find parent row!')
 
 			# returns 2 td tags, one contains the link, the other the description
-			conf_name = [td.text for td in tr.findAll('td') if td not in conf_link.parents]
+			conf_name = [td.text for td in tr.find_all('td') if td not in conf_link.parents]
 			scheme, netloc, path, query, fragment = urlsplit(urljoin(cls._url_cfpevent, conf_link['href']))
 			# update the query with cls._url_cfpevent_query
 			query = urlencode({**parse_qs(query), **cls._url_cfpevent_query}, doseq = True)
@@ -820,12 +820,12 @@ class WikicfpCFP(CallForPapers):
 		"""
 
 		metadata = {}
-		for xt in soup.findAll(lambda tag: any(self._find_xmlns_attrs(attr, tag) for attr in tag.attrs)):
+		for xt in soup.find_all(lambda tag: any(self._find_xmlns_attrs(attr, tag) for attr in tag.attrs)):
 			xmlns_attr = next(attr for attr in xt.attrs if self._find_xmlns_attrs(attr, xt))
 			xmlns_pfx = xmlns_attr[len('xmlns:'):] + ':'
 
 			xt_data = {xt['property'][len(xmlns_pfx):]: xt['content'] if xt.has_attr('content') else xt.text for xt \
-						in xt.findAll(property = lambda val: type(val) is str and val.startswith(xmlns_pfx))}
+						in xt.find_all(property = lambda val: type(val) is str and val.startswith(xmlns_pfx))}
 
 			if 'purl.org/dc/' in xt[xmlns_attr]:
 				metadata.update(xt_data)
@@ -909,9 +909,9 @@ class CoreRanking(object):
 				soup = get_soup(cls._url_corerank.format(p), f)
 
 				table = soup.find('table')
-				rows = iter(table.findAll('tr'))
+				rows = iter(table.find_all('tr'))
 
-				headers = [' '.join(r.text.split()).lower() for r in next(rows).findAll('th')]
+				headers = [' '.join(r.text.split()).lower() for r in next(rows).find_all('th')]
 
 				tpos = headers.index('title')
 				apos = headers.index('acronym')
@@ -919,7 +919,7 @@ class CoreRanking(object):
 				fpos = headers.index('primary for')
 
 				for row in prog.iterate(rows, p * per_page):
-					val = [' '.join(r.text.split()) for r in row.findAll('td')]
+					val = [' '.join(r.text.split()) for r in row.find_all('td')]
 					conf = Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
 					if val[apos] == 'SC' and conf.topic_keywords == ['supercomputing']:
 						# stupid SC has 2 completely different descriptions. Add the long one if we just got 'supercomputing'
