@@ -699,17 +699,29 @@ class CallForPapers(ConfMetaData):
 
 	@classmethod
 	def find_link(cls, conf, year):
-		""" Find the link to the conference page in the search page's soup
+		""" Find the link to the conference page in the search page
+
+		Have parse_search extract links from the page's soup, then compute a rating for each and keep the best (lowest).
+		Use the amount of missing ("TBD") fields as a tie breaker.
 		"""
 		search_f = 'cache/' + 'search_cfp_{}-{}.html'.format(conf.acronym, year).replace('/', '_')
 		soup = get_soup(cls._url_cfpsearch, search_f, params = {'q': conf.acronym, 'y': year})
 
-		options = (cls(conf, year, desc, url) for desc, url in cls.parse_search(conf, year, soup))
+		# Rating of 1000 disqualifies.
+		best_candidate = None
+		best_score = (1000, 1000)
 
-		try:
-			return min((o for o in options if max(o.rating()) < 1000), key = lambda o: sum(o.rating()))
-		except ValueError:
+		for desc, url, missing in cls.parse_search(conf, year, soup):
+			candidate = cls(conf, year, desc, url)
+			rating = candidate.rating()
+			if max(rating) < 1000 and best_score > (sum(rating), missing):
+				best_candidate = candidate
+				best_score = (sum(rating), missing)
+
+		if not best_candidate:
 			raise CFPNotFoundError('No link with rating < 1000 for {} {}'.format(conf.acronym, year))
+		else:
+			return best_candidate
 
 
 	@classmethod
@@ -790,19 +802,30 @@ class WikicfpCFP(CallForPapers):
 		"""
 		search = '{} {}'.format(conf.acronym, year).lower()
 		for conf_link in soup.find_all('a', href = True, text = lambda t: t and t.lower() == search):
+			# find links name "acronym year" and got to first parent <tr>
 			for tr in conf_link.parents:
 				if tr.name == 'tr':
 					break
 			else:
 				raise ValueError('Cound not find parent row!')
 
-			# returns 2 td tags, one contains the link, the other the description
+			# first row has 2 td tags, one contains the link, the other the description. Get the one not parent of the link.
 			conf_name = [td.text for td in tr.find_all('td') if td not in conf_link.parents]
 			scheme, netloc, path, query, fragment = urlsplit(urljoin(cls._url_cfpevent, conf_link['href']))
 			# update the query with cls._url_cfpevent_query
 			query = urlencode({**parse_qs(query), **cls._url_cfpevent_query}, doseq = True)
 
-			yield (conf_name[0], urlunsplit((scheme, netloc, path, query, fragment)))
+			# next row has the dates and location, count how many of those are not defined yet
+			while tr:
+				tr = tr.next_sibling
+				if tr.name == 'tr':
+					break
+			else:
+				raise ValueError('Cound not find dates row!')
+
+			missing_info = [td.text for td in tr.find_all('td')].count('TBD')
+
+			yield (conf_name[0], urlunsplit((scheme, netloc, path, query, fragment)), missing_info)
 
 
 	@classmethod
