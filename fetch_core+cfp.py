@@ -535,7 +535,7 @@ class CallForPapers(ConfMetaData):
 	_url_cfpseries = None
 
 	_date_fields = ['abstract', 'submission', 'notification', 'camera_ready', 'conf_start', 'conf_end']
-	_date_names = ['Abstract Registration Due', 'Submission Deadline', 'Notification Due', 'Final Version Due', 'Start', 'End']
+	_date_names = ['Abstract Registration Due', 'Submission Deadline', 'Notification Due', 'Final Version Due', 'startDate', 'endDate']
 
 	__slots__ = ('conf', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link')
 
@@ -770,7 +770,8 @@ class WikicfpCFP(CallForPapers):
 
 	@staticmethod
 	def parse_date(d):
-		return datetime.datetime.strptime(d, '%b %d, %Y').date()
+		# some ISO 8601 or RFC 3339 format
+		return datetime.datetime.strptime(d, '%Y-%m-%dT%H:%M:%S').date()
 
 
 	@classmethod
@@ -804,40 +805,53 @@ class WikicfpCFP(CallForPapers):
 			yield (conf_name[0], urlunsplit((scheme, netloc, path, query, fragment)))
 
 
+	@classmethod
+	def _find_xmlns_attrs(cls, attr, tag):
+		return attr.startswith('xmlns:') and ('rdf.data-vocabulary.org' in tag[attr] or 'purl.org/dc/' in tag[attr])
+
+
 	def parse_cfp(self, soup):
 		""" Given the BeautifulSoup of the CFP page, update self.dates and self.link
+
+		WikiCFP has all info nicely porcelain-ish formatted in some RDF and Dublin Core xmlns tags.
+		Extract {key: val} data from one of:
+		<tag property="${xmlns_prefix}${key}" content="${val}"></tag>
+		<tag property="${xmlns_prefix}${key}">${val}</tag>
 		"""
-		# Find the the table containing the interesting data about the conference
-		# There's always a "When" and a "Where" in the info table, even though they might be N/A
-		for info_table in soup.find('th', text = 'Where').parents:
-			if info_table.name == 'table':
-				break
-		else:
-			raise ValueError('Cound not find parent table!')
 
-		# Populate data with {left cell: right cell} for every line in the table
-		it = ((tr.find('th').text, tr.find('td').text.strip()) for tr in info_table.findAll('tr'))
-		data = {th: td for th, td in it if td not in {'N/A', 'TBD'}}
+		metadata = {}
+		for xt in soup.findAll(lambda tag: any(self._find_xmlns_attrs(attr, tag) for attr in tag.attrs)):
+			xmlns_attr = next(attr for attr in xt.attrs if self._find_xmlns_attrs(attr, xt))
+			xmlns_pfx = xmlns_attr[len('xmlns:'):] + ':'
 
-		if 'When' in data:
-			data['Start'], data['End'] = data.pop('When').split(' - ')
+			xt_data = {xt['property'][len(xmlns_pfx):]: xt['content'] if xt.has_attr('content') else xt.text for xt \
+						in xt.findAll(property = lambda val: type(val) is str and val.startswith(xmlns_pfx))}
 
-		for f, name in zip(self._date_fields, ['Abstract Registration Due', 'Submission Deadline', 'Notification Due', 'Final Version Due', 'Start', 'End']):
+			if 'purl.org/dc/' in xt[xmlns_attr]:
+				metadata.update(xt_data)
+
+			elif xt_data.keys() == {'summary', 'startDate'}:
+				# this is a pair of tags that contain just a date, use summary value as key
+				metadata[xt_data['summary']] = self.parse_date(xt_data['startDate'])
+
+			elif xt_data.get('eventType', None) == 'Conference':
+				# Remove any clashes with DC's values, which are cleaner
+				metadata.update({key:self.parse_date(val) if key.endswith('Date') else val \
+								for key, val in xt_data.items() if key not in metadata})
+
+			else:
+				print('Error: unexpected RDF or DC data: {}'.format(xt_data))
+
+		for f, name in zip(self._date_fields, self._date_names):
 			try:
-				self.dates[f] = data[name] if isinstance(data[name], datetime.date) else self.parse_date(data[name])
+				self.dates[f] = metadata[name]
 				self.orig[f] = True
 			except KeyError:
 				pass # Missing date in data
 
-		# find all links next to a "Link: " text, and return both their text and href values
-		l = [t.parent.find('a', href = True) for t in soup.findAll(text = lambda t: 'Link: ' in t)]
-		links = {link.text for link in l if link} | {link['href'] for link in l if link}
-
-		if links:
-			self.link = links.pop()
-
-		if links:
-			raise ValueError("ERROR Multiple distinct link values: " + ', '.join(links | {self.link}))
+		# source is the URL, it's sometimes empty
+		if 'source' in metadata and metadata['source']:
+			self.link = metadata['source']
 
 
 class CoreRanking(object):
