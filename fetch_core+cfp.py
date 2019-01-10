@@ -812,8 +812,8 @@ class WikicfpCFP(CallForPapers):
 			# first row has 2 td tags, one contains the link, the other the description. Get the one not parent of the link.
 			conf_name = [td.text for td in tr.find_all('td') if td not in conf_link.parents]
 			scheme, netloc, path, query, fragment = urlsplit(urljoin(cls._url_cfpevent, conf_link['href']))
-			# update the query with cls._url_cfpevent_query
-			query = urlencode({**parse_qs(query), **cls._url_cfpevent_query}, doseq = True)
+			# update the query with cls._url_cfpevent_query. Sort the parameters to minimize changes across versions.
+			query = urlencode(sorted({**parse_qs(query), **cls._url_cfpevent_query}.items()), doseq = True)
 
 			# next row has the dates and location, count how many of those are not defined yet
 			while tr:
@@ -1005,10 +1005,11 @@ def update_confs(out):
 	""" List all conferences from CORE, fetch their CfPs and print the output data as json to out.
 	"""
 	today = datetime.datetime.now().date()
-	years = [today.year, today.year + 1]
+	# use years from 6 months ago until next year
+	years = range((today - datetime.timedelta(days = 366 / 2)).year, (today + datetime.timedelta(days = 365)).year + 1)
 
 	print('{"columns":', file=out);
-	json.dump([{'title': c} for c in sum(([col + ' ' + str(y) for col in CallForPapers.columns()] for y in years), Conference.columns())], out)
+	json.dump([{'title': c} for c in sum(([col + ' ' + str(y) for col in CallForPapers.columns()] for y in years if y >= today.year), Conference.columns())], out)
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
@@ -1037,7 +1038,8 @@ def update_confs(out):
 
 				if last_year:
 					cfp.extrapolate_missing_dates(last_year)
-				values += cfp.values()
+				if y >= today.year:
+					values += cfp.values()
 				last_year = cfp
 
 			if cfps_found:
