@@ -503,7 +503,7 @@ class Conference(ConfMetaData):
 	def columns(cls):
 		""" Return column titles for cfp data.
 		"""
-		return ['Acronym', 'Title', 'CORE 2017 Rank', 'Field']
+		return ['Acronym', 'Title', 'CORE 2018 Rank', 'Field']
 
 
 	def values(self):
@@ -880,7 +880,7 @@ class WikicfpCFP(CallForPapers):
 class CoreRanking(object):
 	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.
 	"""
-	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2017&sort=arank&page={}'
+	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2018&sort=arank&page={}'
 	_core_file = 'core.csv'
 
 	_historical = re.compile(r'\b(previous(ly)?|was|(from|pre) [0-9]{4}|merge[dr])\b', re.IGNORECASE)
