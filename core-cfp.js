@@ -1,16 +1,21 @@
-var datatable, today = new Date();
-var timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6, 1),
-	timeline_max = Date.UTC(today.getFullYear(), today.getMonth() + 18, 1);
+const ranks = ['D', 'C', 'B', 'A', 'A*'];
+const confIdx = 0, titleIdx = 1, rankIdx = 2, fieldIdx = 3, linkIdx = 16, cfpIdx = 17;
+const abstIdx = 4, subIdx = 5, notifIdx = 6, camIdx = 7, startIdx = 8, endIdx = 9;
+const yearIdx = 4, yearOffset = 14, origOffset = 6;
+const today = new Date(), year = today.getFullYear();
+
+const timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6, 1);
 // px per month
-var timeline_scale = 50 / Date.UTC(1970, 1, 1)
+const timeline_scale = 50 / Date.UTC(1970, 1, 1)
+
+// some global variables
+var datatable, n_years = 1;
+var timeline_max = Date.UTC(today.getFullYear(), today.getMonth() + 18, 1);
+var timeline_dom_cache = {};
+
 // the value we push into the hash
 var sethash = '';
 
-var ranks = ['D', 'C', 'B', 'A', 'A*'];
-var confIdx = 0, titleIdx = 1, rankIdx = 2, fieldIdx = 3, linkIdx = 16, cfpIdx = 17;
-var abstIdx = 4, subIdx = 5, notifIdx = 6, camIdx = 7, startIdx = 8, endIdx = 9;
-var yearIdx = 4, yearOffset = 14, origOffset = 6;
-var datesIdx = [], origIdx = [], urlIdx = [], n_years = 1;
 
 function ranksort(a, b)
 {
@@ -120,165 +125,131 @@ function parse_date(str)
 	return Math.max(timeline_zero, Date.UTC(tok[0], tok[1] - 1, tok[2]));
 }
 
-function tooltipPosition(date, obj)
+var marker = $('<sup class="est">†</sup>');
+
+function makeTimelineDuration(cls, from, until, tooltip_text, from_orig, until_orig)
 {
-	var t = 200 * (date - timeline_zero) / (timeline_max - timeline_zero) - 100;
-	if (t < 0)
-		obj.css('left', (-t) + '%');
-	else
-		obj.css('right', t + '%');
+	var span = $('<span></span>')
+		.addClass(cls)
+		.css('width', (until - from) * timeline_scale)
+		.css('left', (from - timeline_zero) * timeline_scale);
+
+	$('<span class="tooltip">' + tooltip_text + '</span>')
+		.css((from + until) < (timeline_zero + timeline_max) ? 'left' : 'right', '0')
+		.appendTo(span);
+
+	if (from_orig === false) marker.clone().css('left', '0').appendTo(span);
+	if (until_orig === false) marker.clone().css('left', '100%').appendTo(span);
+
+	return span;
 }
 
-function addToTimeline(n, data)
-{
-	var s = timeline_scale,
-		last = timeline_zero,
-		tooltip, filler, block;
-	var p = $('<p></p>').append($('<span class="acronyms"></span>').append(renderAcronym(data[confIdx], 'display', data)));
-	var marker = $('<sup>†</sup>').css('width', '.5em').css('margin-right', '-.5em');
-	var punctualMarker = marker.clone().css('width', '.5em').css('margin-left', '.5em').css('margin-right', '-1em');
 
-	var year = (new Date()).getFullYear();
+function makeTimelinePunctual(cls, date, content, tooltip_text, date_orig)
+{
+	var span = $('<span></span>')
+		.addClass(cls)
+		.css('width', '.5em')
+		.html(content)
+		.css('left', 'calc(' + (date - timeline_zero) * timeline_scale + 'px - .25em)');
+
+	$('<span class="tooltip">' + tooltip_text + '</span>')
+		.css(date < (timeline_zero + timeline_max) / 2 ? 'left' : 'right', '0')
+		.appendTo(span);
+
+	if (date_orig === false) marker.clone().css('right', '.25em').appendTo(span);
+
+	return span;
+}
+
+
+async function makeTimelineItem(data)
+{
+	var p = $('<p><span class="acronyms">'+renderAcronym(data[confIdx], 'display', data)+'</span><span class="timeblocks"></span></p>');
+	var blocks = p.find('.timeblocks'), tooltip;
+
 	for (var y = 0; y < n_years; y++)
 	{
-		var acronym = data[confIdx] + ' ' + (year + y), offset = y * yearOffset, orig = offset + origOffset;
-		var abst = parse_date(data[abstIdx + offset]);
-		var submit = parse_date(data[subIdx + offset]);
-		var notif = parse_date(data[notifIdx + offset]);
+		// get the data for this year, with friendl names
+		var acronym = data[confIdx] + ' ' + (year + y);
+		var [abst, sub, notif, cam, start, end] = data.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1).map(parse_date);
+		var [abstText, subText, notifText, camText, startText, endText] = data.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1);
+		var [abstOrig, subOrig, notifOrig, camOrig, startOrig, endOrig] = data.slice(abstIdx + y * yearOffset + origOffset, endIdx + y * yearOffset + origOffset + 1);
 
-		if (!abst) abst = submit;
-		else if (!submit) submit = abst;
+		if (!abst) abst = sub;
+		else if (!sub) sub = abst;
 
-		if (submit && notif && submit >= last && notif >= submit)
+		if (sub && notif && notif >= sub)
 		{
-			if (submit > abst)
+			if (sub > abst)
 			{
-				tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' registration ' + data[abstIdx + offset]);
-				filler = $('<span class="filler"></span>').css('width', (abst - last) * s);
-				block = $('<span class="abstract"></span>').css('width', (submit - abst) * s);
-
-				p.append(filler).append(block.append(tooltip));
-
-				if (data[abstIdx + orig] === false)
-				{
-					block.append(marker.clone());
-					tooltip.prepend('Estimated ');
-				}
-
-				tooltipPosition((abst + submit) / 2, tooltip);
-				last = submit;
+				tooltip = (abstOrig === false ? 'Estimated' : '') + acronym + ' registration ' + abstText;
+				makeTimelineDuration('abstract', abst, sub, tooltip, abstOrig).appendTo(blocks)
 			}
 
-			tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' submission ' + data[subIdx + offset] + ',<br />')
-			filler = $('<span class="filler"></span>').css('width', (submit - last) * s);
-			block = $('<span class="review"></span>').css('width', (notif - submit) * s);
+			tooltip = (subOrig === false ? 'Estimated ' : '') +  acronym + ' submission ' + subText +
+				',<br />' + (notifOrig === false ? 'estimated ' : '') + 'notification ' + notifText
 
-			if (data[subIdx + orig] === false)
-			{
-				tooltip.prepend('Estimated ');
-				block.append(marker.clone());
-			}
-			p.append(filler).append(block.append(tooltip));
-
-			if (data[notifIdx + orig] === false)
-			{
-				tooltip.append('estimated ');
-				p.append(marker.clone());
-			}
-
-			tooltipPosition((submit + notif) / 2, tooltip);
-			tooltip.append('notification ' + data[notifIdx + offset]);
-			last = notif;
-
+			makeTimelineDuration('review', sub, notif, tooltip, subOrig, notifOrig).appendTo(blocks);
 		}
-		else if (submit && submit >= last)
+		else if (sub)
 		{
-			tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' submission ' + data[subIdx + offset]);
-			filler = $('<span class="filler"></span>').css('width', (submit - last) * s);
-			block = $('<span class="submit"><sup>◆</sup></span>');
-
-			p.append(filler).append(block.append(tooltip));
-
-			if (data[subIdx + orig] === false)
-			{
-				tooltip.prepend('Estimated ');
-				p.append(punctualMarker.clone());
-			}
-
-			tooltipPosition(submit, tooltip);
-			last = submit;
+			tooltip = (subOrig === false ? 'Estimated ' : '') + acronym + ' submission ' + subText;
+			makeTimelinePunctual('sub', sub, '<sup>◆</sup>', tooltip, subOrig).appendTo(blocks);
 		}
 
-		var camera = parse_date(data[camIdx + offset]);
-		if (camera && camera >= last)
+		if (cam)
 		{
-			tooltip = $('<span></span>').addClass('tooltip').append(acronym + ' final version ' + data[camIdx + offset]);
-			filler = $('<span class="filler"></span>').css('width', (camera - last) * s);
-			block = $('<span class="camera"><sup>∎</sup></span>');
-
-			p.append(filler).append(block.append(tooltip));
-
-			if (data[camIdx + orig] === false)
-			{
-				tooltip.prepend('Estimated ');
-				block.append(punctualMarker.clone());
-			}
-
-			tooltipPosition(camera, tooltip);
-			last = camera;
+			tooltip = (camOrig === false ? 'Estimated ' : '' ) + acronym + ' final version ' + camText;
+			makeTimelinePunctual('cam', cam, '<sup>∎</sup>', tooltip, camOrig).appendTo(blocks);
 		}
 
-		var start = parse_date(data[startIdx + offset]);
-		var end = parse_date(data[endIdx + offset]);
-		if (start && end && start >= last && end >= start)
+		if (start && end && end >= start)
 		{
-			tooltip = $('<span></span>').addClass('tooltip');
-			filler = $('<span class="filler"></span>').css('width', (start - last) * s);
-			block = $('<span class="conf"></span>').css('width', (end - start) * s);
-
-			p.append(filler).append(block.append(tooltip));
-
-			if (data[startIdx + orig] === false || data[endIdx + orig] == false)
-			{
-				tooltip.append(acronym + ' estimated from ' + data[startIdx + offset] + ' to ' + data[endIdx + offset]);
-				p.append(marker.clone());
-			}
-			else
-			{
-				tooltip.append(acronym + ' from ' + data[startIdx + offset] + ' to ' + data[endIdx + offset]);
-			}
-
-			tooltipPosition((start + end) / 2, tooltip);
-			last = end;
+			tooltip = acronym + (startOrig === false || endOrig === false ? ' estimated from ' : ' from ')
+						+ startText + ' to ' + endText;
+			makeTimelineDuration('conf', start, end, tooltip, undefined, endOrig).appendTo(blocks);
 		}
+	}
+
+	return p;
+}
+
+
+async function addToTimeline(n, data)
+{
+	var p = timeline_dom_cache[data[confIdx]];
+	if (!p)
+	{
+		p = await makeTimelineItem(data);
+		timeline_dom_cache[data[confIdx]] = p;
 	}
 
 	// ignore conferences for which we don't have a single date
-	if (last > timeline_zero)
-	{
-		$('<span class="filler"></span>').css('width', (timeline_max - last) * s).appendTo(p);
+	if (p.find('.timeblocks span').length > 0)
 		$('#timeline').append(p);
-	}
 }
 
-function filterUpdated(search)
+async function filterUpdated(search)
 {
+	$('#timeline').empty();
+	$('#loading').show();
 	var filteredData = datatable.rows({ filter: 'applied' }).data();
-	$('#timeline').empty()
-	$.each(filteredData, addToTimeline)
+	$.each(filteredData, addToTimeline);
+	$('#loading').hide();
 }
 
 function makeFilter(column, name, initFilters, sortfunction)
 {
 	var values = column.data().unique().sort(sortfunction);
 
-	var select = $('<select multiple></select>').attr("name", name).attr('size', Math.min(10, values.length));
-	$("#filters").append($('<p></p>').append(column.header().innerHTML).append(select).append(
+	var select = $('<select multiple></select>').attr('name', name).attr('size', values.length);
+	var p = $('<p></p>').append(column.header().innerHTML).append(select).append(
 		$('<button>clear</button>').click(function ()
 		{
 			select.val([]).change()
 		})
-	));
+	);
 
 	var selected = initFilters[name] ? initFilters[name] : [];
 	values.each(function (t)
@@ -292,12 +263,14 @@ function makeFilter(column, name, initFilters, sortfunction)
 			regex = '';
 		if (val.length)
 			regex = '^(' + val.join('|') + ')$';
-		column.search(regex, true, false).draw();
-		updateFragment();
+		column.search(regex, true, false);
+		new Promise(done => {column.draw(); done();}).then(() => updateFragment());
 	});
 
 	if (selected.length)
 		select.change();
+
+	return p;
 }
 
 function updateFilters()
@@ -350,6 +323,7 @@ function notNull(val, idx)
 
 function populatePage(json)
 {
+	var datesIdx = [], origIdx = [], urlIdx = [];
 	n_years = (json['columns'].length - yearIdx) / yearOffset
 
 	for (var y = 0; y < n_years; y++)
@@ -370,30 +344,32 @@ function populatePage(json)
 		data: json['data'],
 		columns: json['columns'],
 		columnDefs: [
-			// links, searchable but not displayed
-			{
-				"targets": urlIdx,
-				"visible": false,
-				"searchable": true
-			},
-			// acronyms, displayed wrapped in links if present
+			// acronyms: displayed wrapped in links if present, searchable
 			{
 				"targets": [confIdx],
-				"render": renderAcronym
+				"render": renderAcronym,
+				"searchable": true
 			},
-			// dates, display whether extrapolated
+			// full-text titleo, rank, and field: also searchable, no special display
+			{
+				"targets": [titleIdx, fieldIdx, rankIdx],
+				"searchable": true
+			},
+			// dates: display whether extrapolated, not searchable
 			{
 				"targets": datesIdx,
-				"createdCell": markExtrapolated
+				"createdCell": markExtrapolated,
+				"searchable": false
 			},
-			// booleans on extrapolated dates, hiddent
+			// links, booleans on extrapolated dates: hidden, not searchable
 			{
-				"targets": origIdx,
+				"targets": origIdx.concat(urlIdx),
 				"visible": false,
 				"searchable": false
 			}
 		],
 		pageLength: 50,
+		scrollY: "calc(100% - 10px)",
 		order: [
 			[  subIdx + (n_years - 1) * yearOffset, "asc"],
 			[ abstIdx + (n_years - 1) * yearOffset, "asc"],
@@ -404,21 +380,13 @@ function populatePage(json)
 
 	$('#head').append(' The last scraping took place on ' + json['date'] + '.')
 
-	show = $('<button>&gt;</button>').wrap('<label id="show_filters">Filters</label>');
-	filter = $('<div id="filters"></div>');
-	$('#confs_filter').append(filter).prepend(show.parent());
-
-	show.click(function ()
-	{
-		filter.slideToggle();
-		show.toggleClass('rotated');
-	});
+	filter = $('<div id="filters"></div>').insertBefore('#confs_wrapper');
 
 	var initFilters = parseFragment();
 
-	makeFilter(datatable.column(confIdx), "conf", initFilters);
-	makeFilter(datatable.column(rankIdx), "core", initFilters, ranksort);
-	makeFilter(datatable.column(fieldIdx), "field", initFilters);
+	$('#filters').append(makeFilter(datatable.column(confIdx), "conf", initFilters));
+	$('#filters').append(makeFilter(datatable.column(rankIdx), "core", initFilters, ranksort));
+	$('#filters').append(makeFilter(datatable.column(fieldIdx), "field", initFilters));
 
 	updateFragment();
 

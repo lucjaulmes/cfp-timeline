@@ -2,10 +2,18 @@ h1 {
 	text-align: center;
 }
 
+body {
+	margin: 0;
+}
+
+body > *:not(#timeline_scrollbox) {
+	margin: 0 5px;
+}
+
 #warning {
 	width: 50%;
 	text-align: center;
-	margin: 1em auto;
+	margin: 1em auto !important;
 	border-radius: .5em;
 	padding: .5em;
 	color: red;
@@ -17,10 +25,20 @@ h1 {
 	content: "⚠ "
 }
 
+#legend {
+	overflow: auto;
+}
+
 #legend dt {
 	margin: 0 .1em 0 .5em;
 	float: left;
 	clear: left;
+}
+
+#legend dt span {
+	display: inline-block;
+	width: 1.5em;
+	height: 1.5em;
 }
 
 #legend dd {
@@ -35,7 +53,7 @@ h1 {
 		display: flex;
 		flex-wrap: nowrap;
 		align-content: stretch;
-		width: 100%;
+		width: calc(100% - 10px);
 	}
 
 	#legend dd {
@@ -54,6 +72,33 @@ h1 {
 	}
 }
 
+#filters {
+	background: #eee;
+	margin: 0 auto;
+	padding: 16px 2px;
+	border: thin solid;
+	border-radius: 10px;
+	display: flex;
+	flex-flow:row nowrap;
+	justify-content: center;
+	align-items: baseline;
+}
+
+#filters p {
+	margin: 0;
+	padding: 0 .5em;
+	vertical-align: top;
+	text-align: center;
+}
+
+#filters p > * {
+	width: 100%;
+}
+
+#filters select[name=conf] {
+	height: 48ex;
+}
+
 #confs_wrapper {
 	padding-top: 2em;
 	clear: both;
@@ -61,37 +106,10 @@ h1 {
 	margin: 0 auto;
 }
 
-#filters {
-	position: absolute;
-	right: 0;
-	display: none;
-	background: #eee;
-	border: thin solid;
-	border-radius: 10px;
-	z-index: 9999999;
+#confs {
+	overflow-y:auto;
 }
 
-#filters p {
-	padding: .5em;
-	display: inline-block;
-	vertical-align: top;
-	text-align: center;
-}
-
-#filters p * {
-	width: 100%;
-}
-
-#show_filters button {
-	margin: 0 2em 0 .5em;
-	font-weight: bolder;
-	text-align: center;
-}
-
-#show_filters button.rotated {
-	transform: rotate(90deg) translate(5px, 5px);
-	transition-duration: 400ms;
-}
 
 img.cfpurl {
 	height: 1em;
@@ -104,9 +122,17 @@ img.cfpurl {
 	overflow: hidden;
 	height: 30em;
 	resize: both;
-	width: 80%;
+	width: calc(100% - 17px); /* leave room for the scroll bar */
 	margin: 0 auto;
 }
+
+@media only screen and (min-width: 1080px) {
+	#timeline_scrollbox {
+		width: 80%;
+		min-width: calc(1080px - 17px); /* leave room for the scroll bar */
+	}
+}
+
 
 #timeline_body {
 	position: relative;
@@ -154,26 +180,11 @@ img.cfpurl {
 	line-height: 1.5em;
 }
 
-#legend dt span {
-	display: inline-block;
-	width: 1.5em;
-	height: 1.5em;
-}
-
 #years>span,
 #months>span,
 #timeline p>span {
 	display: inline-block;
 	position: relative;
-}
-
-#timeline p>span {
-	height: 1.2em;
-	margin: .15em 0;
-}
-
-#years>span,
-#months>span {
 	text-align: center;
 	height: 1.5em;
 }
@@ -184,6 +195,18 @@ img.cfpurl {
 	width: 8em;
 	padding-right: 0.5em;
 	text-align: right;
+}
+
+#timeline .timeblocks > span {
+	display: inline-block;
+	position: absolute;
+	top: 0;
+	height: 1.2em;
+	margin: .15em 0;
+}
+
+#timeline .timeblocks span > sup.est {
+	position: absolute;
 }
 
 #years span:not(.acronyms),
@@ -204,7 +227,7 @@ img.cfpurl {
 
 /* tooltip and aura (aka shadow) */
 
-#timeline p>span .tooltip {
+#timeline .timeblocks span .tooltip {
 	visibility: hidden;
 	background-color: black;
 	color: #fff;
@@ -220,11 +243,11 @@ img.cfpurl {
 	margin: 0 auto;
 }
 
-#timeline p>span:hover .tooltip {
+#timeline .timeblocks span:hover .tooltip {
 	visibility: visible;
 }
 
-#timeline p>span:not(.acronyms):not(.filler):hover {
+#timeline .timeblocks span:hover {
 	box-shadow: 0px 0px 12px 10px #fff;
 	border-radius: 5px;
 	cursor: default;
@@ -256,9 +279,7 @@ img.cfpurl {
 #timeline span.submit,
 #timeline span.camera,
 #legend span.camera {
-	width: 1em;
 	text-align: center;
-	margin: 0 -.5em;
 }
 
 .extrapolated {
