@@ -9,7 +9,7 @@ const timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6, 1);
 const timeline_scale = 50 / Date.UTC(1970, 1, 1)
 
 // some global variables
-var datatable, n_years = 1;
+var datatable, timeline = document.getElementById('timeline'), n_years = 1;
 var timeline_max = Date.UTC(today.getFullYear(), today.getMonth() + 18, 1);
 var timeline_dom_cache = {};
 
@@ -125,21 +125,33 @@ function parse_date(str)
 	return Math.max(timeline_zero, Date.UTC(tok[0], tok[1] - 1, tok[2]));
 }
 
-var marker = $('<sup class="est">†</sup>');
+/* Two template elements that we can clone() */
+var marker = document.createElement('sup');
+marker.className = 'est';
+marker.textContent = '†';
+
+var line = document.createElement('p');
+line.appendChild(document.createElement('span')).className = 'acronyms';
+line.appendChild(document.createElement('span')).className = 'timeblocks';
 
 function makeTimelineDuration(cls, from, until, tooltip_text, from_orig, until_orig)
 {
-	var span = $('<span></span>')
-		.addClass(cls)
-		.css('width', (until - from) * timeline_scale)
-		.css('left', (from - timeline_zero) * timeline_scale);
+	var span = document.createElement('span');
+	span.className = cls;
+	span.style.width = (until - from) * timeline_scale + 'px';
+	span.style.left = (from - timeline_zero) * timeline_scale + 'px';
 
-	$('<span class="tooltip">' + tooltip_text + '</span>')
-		.css((from + until) < (timeline_zero + timeline_max) ? 'left' : 'right', '0')
-		.appendTo(span);
+	var tooltip = span.appendChild(document.createElement('span'));
+	tooltip.className = 'tooltip';
+	tooltip.innerHTML = tooltip_text; /* to put html tags in tooltip_text */
 
-	if (from_orig === false) marker.clone().css('left', '0').appendTo(span);
-	if (until_orig === false) marker.clone().css('left', '100%').appendTo(span);
+	if ((from + until) < (timeline_zero + timeline_max))
+		tooltip.style.left = '0';
+	else
+		tooltip.style.right = '0';
+
+	if (from_orig === false) span.appendChild(marker.cloneNode(true)).style.left = '0';
+	if (until_orig === false) span.appendChild(marker.cloneNode(true)).style.left = '100%';
 
 	return span;
 }
@@ -147,17 +159,22 @@ function makeTimelineDuration(cls, from, until, tooltip_text, from_orig, until_o
 
 function makeTimelinePunctual(cls, date, content, tooltip_text, date_orig)
 {
-	var span = $('<span></span>')
-		.addClass(cls)
-		.css('width', '.5em')
-		.html(content)
-		.css('left', 'calc(' + (date - timeline_zero) * timeline_scale + 'px - .25em)');
+	var span = document.createElement('span');
+	span.className = cls;
+	span.style.width = '.5em';
+	span.innerHTML = content;
+	span.style.left = 'calc(' + (date - timeline_zero) * timeline_scale + 'px - .25em)';
 
-	$('<span class="tooltip">' + tooltip_text + '</span>')
-		.css(date < (timeline_zero + timeline_max) / 2 ? 'left' : 'right', '0')
-		.appendTo(span);
+	var tooltip = span.appendChild(document.createElement('span'));
+	tooltip.className = 'tooltip';
+	tooltip.innerHTML = tooltip_text; /* to put html tags in tooltip_text */
 
-	if (date_orig === false) marker.clone().css('right', '.25em').appendTo(span);
+	if (date < (timeline_zero + timeline_max) / 2)
+		tooltip.style.left = '0';
+	else
+		tooltip.style.right = '0';
+
+	if (date_orig === false) span.appendChild(marker.cloneNode(true)).style.left = '.75em';
 
 	return span;
 }
@@ -165,13 +182,14 @@ function makeTimelinePunctual(cls, date, content, tooltip_text, date_orig)
 
 async function makeTimelineItem(data)
 {
-	var p = $('<p><span class="acronyms">'+renderAcronym(data[confIdx], 'display', data)+'</span><span class="timeblocks"></span></p>');
-	var blocks = p.find('.timeblocks'), tooltip;
+	var p = line.cloneNode(true);
+	p.firstChild.innerHTML = renderAcronym(data[confIdx], 'display', data);
 
+	var blocks = p.lastChild;
 	for (var y = 0; y < n_years; y++)
 	{
 		// get the data for this year, with friendl names
-		var acronym = data[confIdx] + ' ' + (year + y);
+		var acronym = data[confIdx] + ' ' + (year + y), tooltip;
 		var [abst, sub, notif, cam, start, end] = data.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1).map(parse_date);
 		var [abstText, subText, notifText, camText, startText, endText] = data.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1);
 		var [abstOrig, subOrig, notifOrig, camOrig, startOrig, endOrig] = data.slice(abstIdx + y * yearOffset + origOffset, endIdx + y * yearOffset + origOffset + 1);
@@ -184,31 +202,31 @@ async function makeTimelineItem(data)
 			if (sub > abst)
 			{
 				tooltip = (abstOrig === false ? 'Estimated' : '') + acronym + ' registration ' + abstText;
-				makeTimelineDuration('abstract', abst, sub, tooltip, abstOrig).appendTo(blocks)
+				blocks.appendChild(makeTimelineDuration('abstract', abst, sub, tooltip, abstOrig));
 			}
 
 			tooltip = (subOrig === false ? 'Estimated ' : '') +  acronym + ' submission ' + subText +
 				',<br />' + (notifOrig === false ? 'estimated ' : '') + 'notification ' + notifText
 
-			makeTimelineDuration('review', sub, notif, tooltip, subOrig, notifOrig).appendTo(blocks);
+			blocks.appendChild(makeTimelineDuration('review', sub, notif, tooltip, subOrig, notifOrig));
 		}
 		else if (sub)
 		{
 			tooltip = (subOrig === false ? 'Estimated ' : '') + acronym + ' submission ' + subText;
-			makeTimelinePunctual('sub', sub, '<sup>◆</sup>', tooltip, subOrig).appendTo(blocks);
+			blocks.appendChild(makeTimelinePunctual('sub', sub, '<sup>◆</sup>', tooltip, subOrig));
 		}
 
 		if (cam)
 		{
 			tooltip = (camOrig === false ? 'Estimated ' : '' ) + acronym + ' final version ' + camText;
-			makeTimelinePunctual('cam', cam, '<sup>∎</sup>', tooltip, camOrig).appendTo(blocks);
+			blocks.appendChild(makeTimelinePunctual('cam', cam, '<sup>∎</sup>', tooltip, camOrig));
 		}
 
 		if (start && end && end >= start)
 		{
 			tooltip = acronym + (startOrig === false || endOrig === false ? ' estimated from ' : ' from ')
 						+ startText + ' to ' + endText;
-			makeTimelineDuration('conf', start, end, tooltip, undefined, endOrig).appendTo(blocks);
+			blocks.appendChild(makeTimelineDuration('conf', start, end, tooltip, undefined, endOrig));
 		}
 	}
 
@@ -226,13 +244,15 @@ async function addToTimeline(n, data)
 	}
 
 	// ignore conferences for which we don't have a single date
-	if (p.find('.timeblocks span').length > 0)
-		$('#timeline').append(p);
+	if (p.lastChild.hasChildNodes())
+		timeline.appendChild(p);
 }
 
 async function filterUpdated(search)
 {
-	$('#timeline').empty();
+	while (timeline.hasChildNodes())
+		timeline.firstChild.remove();
+
 	$('#loading').show();
 	var filteredData = datatable.rows({ filter: 'applied' }).data();
 	$.each(filteredData, addToTimeline);
