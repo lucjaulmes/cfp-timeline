@@ -5,13 +5,15 @@ const yearIdx = 4, yearOffset = 14, origOffset = 6;
 const today = new Date(), year = today.getFullYear();
 
 const timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6, 1);
-// px per month
-const timeline_scale = 50 / Date.UTC(1970, 1, 1)
 
 // some global variables
-var datatable, timeline = document.getElementById('timeline'), n_years = 1;
 var timeline_max = Date.UTC(today.getFullYear(), today.getMonth() + 18, 1);
+// % per month: 50px / duration of 1 month
+var timeline_scale = 100 / (timeline_max - timeline_zero)
+
+var datatable, timeline = document.getElementById('timeline'), n_years = 1;
 var timeline_dom_cache = {};
+var filters = document.getElementById('filters');
 
 // the value we push into the hash
 var sethash = '';
@@ -52,7 +54,7 @@ function parseFragment()
 
 function updateFragment()
 {
-	var params = $("#filters select").serializeArray().map(function (item)
+	var params = $(filters).find('select').serializeArray().map(function (item)
 	{
 		return item['name'] + '=' + item['value']
 	});
@@ -83,35 +85,36 @@ function makeTimelineLegend()
 
 	box.empty()
 
-	var pm = $('<p id="months"></p>').prependTo(box),
+	var pm = $('<p id="months"><span class="acronyms">&nbsp;</span><span class="timeblocks"></span></p>').prependTo(box).find('.timeblocks'),
 		last = timeline_zero,
 		month_name = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
 		m;
 
-	$('<span class="acronyms">&nbsp;</span>').appendTo(pm);
 	for (m = today.getMonth() - 6; last < endDate; m++)
 	{
-		var next = Date.UTC(today.getFullYear(), m + 1, 1),
+		var date = Date.UTC(today.getFullYear(), m, 1),
+			next = Date.UTC(today.getFullYear(), m + 1, 1),
 			month = new Date(last).getMonth();
 
 		$('<span></span>').append(month_name[month])
-			.addClass((month == 11 ? 'december' : ''))
-			.css('width', (next - last) * timeline_scale - (month == 11 ? 2 : 1)).appendTo(pm);
+			.addClass(m == today.getMonth() - 6 || month == 0 ? 'first' : '')
+			.css('width', (next - date) * timeline_scale + '%')
+			.css('left', (date - timeline_zero) * timeline_scale + '%').appendTo(pm);
 
 		last = next;
 	}
 
-	var py = $('<p id="years"></p>').prependTo(box);
-	$('<span class="acronyms">&nbsp;</span>').appendTo(py);
+	var py = $('<p id="years"><span class="acronyms">&nbsp;</span><span class="timeblocks"></span></p>').prependTo(box).find('.timeblocks');
 
 	for (var y = startDate.getFullYear(); y <= endDate.getFullYear(); y++)
 	{
 		var from = Math.max(timeline_zero, Date.UTC(y, 0, 1));
 		var to = Math.min(last, Date.UTC(y + 1, 0, 1));
-		$('<span></span>').append(y).css('width', (to - from) * timeline_scale - 2).appendTo(py);
+		$('<span></span>').append(y).css('width', (to - from) * timeline_scale + '%').appendTo(py)
+					.css('left', (from - timeline_zero) * timeline_scale + '%').appendTo(py);
 	}
 
-	$('#timeline_body').on('scroll', function (obj)
+	$('#timeline').on('scroll', function (obj)
 	{
 		$('#timeline_header').scrollLeft(obj.currentTarget.scrollLeft);
 	});
@@ -138,8 +141,8 @@ function makeTimelineDuration(cls, from, until, tooltip_text, from_orig, until_o
 {
 	var span = document.createElement('span');
 	span.className = cls;
-	span.style.width = (until - from) * timeline_scale + 'px';
-	span.style.left = (from - timeline_zero) * timeline_scale + 'px';
+	span.style.width = (until - from) * timeline_scale + '%';
+	span.style.left = (from - timeline_zero) * timeline_scale + '%';
 
 	var tooltip = span.appendChild(document.createElement('span'));
 	tooltip.className = 'tooltip';
@@ -290,7 +293,7 @@ function makeFilter(column, name, initFilters, sortfunction)
 	if (selected.length)
 		select.change();
 
-	return p;
+	return p[0];
 }
 
 function updateFilters()
@@ -400,13 +403,11 @@ function populatePage(json)
 
 	$('#head').append(' The last scraping took place on ' + json['date'] + '.')
 
-	filter = $('<div id="filters"></div>').insertBefore('#confs_wrapper');
-
 	var initFilters = parseFragment();
 
-	$('#filters').append(makeFilter(datatable.column(confIdx), "conf", initFilters));
-	$('#filters').append(makeFilter(datatable.column(rankIdx), "core", initFilters, ranksort));
-	$('#filters').append(makeFilter(datatable.column(fieldIdx), "field", initFilters));
+	filters.appendChild(makeFilter(datatable.column(confIdx), "conf", initFilters));
+	filters.appendChild(makeFilter(datatable.column(rankIdx), "core", initFilters, ranksort));
+	filters.appendChild(makeFilter(datatable.column(fieldIdx), "field", initFilters));
 
 	updateFragment();
 
@@ -428,7 +429,7 @@ function populatePage(json)
 	endDate.setMonth(endDate.getMonth() + 1);
 	endDate.setDate(0);
 	timeline_max = endDate.getTime();
-	$('#timeline').width('calc(8.5em + ' + (timeline_max - timeline_zero) * timeline_scale + 'px)');
+	//$('#timeline').width('calc(8.5em + ' + (timeline_max - timeline_zero) * timeline_scale + 'px)');
 
 	makeTimelineLegend();
 	// add data to Timeline, but only filtered

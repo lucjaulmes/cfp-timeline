@@ -6,7 +6,7 @@ body {
 	margin: 0;
 }
 
-body > *:not(#timeline_scrollbox) {
+body > *:not(#timeline_container) {
 	margin: 0 5px;
 }
 
@@ -74,15 +74,27 @@ body > *:not(#timeline_scrollbox) {
 }
 
 #filters {
-	background: #eee;
-	margin: 0 auto;
+	margin: 5em auto 0;
 	padding: 16px 2px;
 	border: thin solid;
 	border-radius: 10px;
 	display: flex;
 	flex-flow:row nowrap;
-	justify-content: center;
+	justify-content: space-around;
 	align-items: baseline;
+}
+
+#filterbox {
+	position: relative;
+}
+
+#filterbox h5 {
+	position: absolute;
+	top: -.5em;
+	left: 15px;
+	background: #fff;
+	padding: 0 3px;
+	margin: 0;
 }
 
 #filters p {
@@ -118,87 +130,92 @@ img.cfpurl {
 
 /* hard part: the timeline */
 
-#timeline_scrollbox {
+#timeline_container {
 	position: relative;
 	overflow: hidden;
 	height: 30em;
 	resize: both;
 	width: calc(100% - 17px); /* leave room for the scroll bar */
 	margin: 0 auto;
+	white-space: nowrap;
+	line-height: 1.5em;
 }
 
 @media only screen and (min-width: 1080px) {
-	#timeline_scrollbox {
+	#timeline_container {
 		width: 80%;
 		min-width: calc(1080px - 17px); /* leave room for the scroll bar */
 	}
 }
 
 
-#timeline_body {
-	position: relative;
-	overflow: auto;
-	height: calc(100% - 3em);
-	margin: 3em 0 0;
+#timeline_header {
+	position: absolute;
+	overflow: hidden;
+	height: 100%;
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	z-index: 1;
 }
 
 #timeline {
 	position: relative;
-	white-space: nowrap;
-	padding-bottom: 3em;
+	overflow: auto;
+	height: calc(100% - 3em);
+	width: 100%;
+	margin: 3em 0 0;
+	padding: 0;
 	z-index: 2;
 }
 
-#timeline_header {
-	position: absolute;
-	height: 100%;
-	width: 100%;
-	overflow: hidden;
-}
-
-#years,
-#months {
-	margin: 0;
-	padding: 0;
-	white-space: nowrap;
-	line-height: 1.5em;
-	width: 200%;
-}
-
-#years {
-	height: 1.5em;
-}
-
-#months {
-	height: 100%;
-	vertical-align: top;
-}
-
+#timeline_header p,
 #timeline p {
 	margin: 0;
 	padding: 0;
-	height: 1.5em;
-	line-height: 1.5em;
 }
 
-#years>span,
-#months>span,
-#timeline p>span {
+#timeline_header p span,
+#timeline p span {
 	display: inline-block;
-	position: relative;
 	text-align: center;
+}
+
+#years,
+#timeline p {
+	height: 1.5em;
+	position: relative;
+}
+
+#timeline_header p span,
+#timeline p span:not(.tooltip) {
 	height: 1.5em;
 }
 
-#years>span.acronyms,
-#months>span.acronyms,
-#timeline p>span.acronyms {
+#months {
+	height: calc(100% - 1.5em);
+	vertical-align: top;
+	top: 0;
+	position: relative;
+}
+
+#months .timeblocks,
+#months .timeblocks span {
+	height: 100%;
+}
+
+span.acronyms {
 	width: 8em;
 	padding-right: 0.5em;
 	text-align: right;
 }
 
-#timeline .timeblocks > span {
+.timeblocks {
+	width: 1179.03px;
+	position: relative;
+}
+
+.timeblocks > span {
 	display: inline-block;
 	position: absolute;
 	top: 0;
@@ -210,21 +227,17 @@ img.cfpurl {
 	position: absolute;
 }
 
-#years span:not(.acronyms),
-#months span.december,
-#months span:not(.acronyms):last-child {
+#years .timeblocks span,
+#months .timeblocks span {
 	background-color: #eee;
 	border-left: black thin solid;
 	border-right: black thin solid;
 }
 
-#months span:not(.acronyms) {
-	background-color: #eee;
-	border-left: black 1px solid;
-	height: 100%;
-	z-index: -1;
+#years .timeblocks span,
+#months .timeblocks span.first {
+	border-left: black 2px solid;
 }
-
 
 /* tooltip and aura (aka shadow) */
 
@@ -327,9 +340,12 @@ img.cfpurl {
 
 #loading {
 	margin: 0 auto;
-	width: 200px;
+	position: absolute;
+	bottom: 50%;
+	left: calc(50% - 100px);
 	-webkit-transform: translate(-100px, -100px) scale(1) translate(100px, 100px);
 	transform: translate(-100px, -100px) scale(1) translate(100px, 100px);
+	z-index: 3;
 }
 
 #loading p {
