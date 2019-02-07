@@ -9,7 +9,7 @@ const timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6, 1);
 // some global variables
 var timeline_max = Date.UTC(today.getFullYear(), today.getMonth() + 18, 1);
 // % per month: 50px / duration of 1 month
-var timeline_scale = 100 / (timeline_max - timeline_zero)
+var timeline_scale = 100 / (timeline_max - timeline_zero);
 
 var datatable, timeline = document.getElementById('timeline'), n_years = 1;
 var timeline_dom_cache = {};
@@ -110,7 +110,7 @@ function makeTimelineLegend()
 	{
 		var from = Math.max(timeline_zero, Date.UTC(y, 0, 1));
 		var to = Math.min(last, Date.UTC(y + 1, 0, 1));
-		$('<span></span>').append(y).css('width', (to - from) * timeline_scale + '%').appendTo(py)
+		$('<span></span>').append(y).css('width', 'calc(' + (to - from) * timeline_scale + '% - 1px)').appendTo(py)
 					.css('left', (from - timeline_zero) * timeline_scale + '%').appendTo(py);
 	}
 
@@ -166,7 +166,7 @@ function makeTimelinePunctual(cls, date, content, tooltip_text, date_orig)
 	span.className = cls;
 	span.style.width = '.5em';
 	span.innerHTML = content;
-	span.style.left = 'calc(' + (date - timeline_zero) * timeline_scale + 'px - .25em)';
+	span.style.left = 'calc(' + (date - timeline_zero) * timeline_scale + '% - .25em)';
 
 	var tooltip = span.appendChild(document.createElement('span'));
 	tooltip.className = 'tooltip';
@@ -429,6 +429,7 @@ function populatePage(json)
 	endDate.setMonth(endDate.getMonth() + 1);
 	endDate.setDate(0);
 	timeline_max = endDate.getTime();
+	timeline_scale = 100 / (timeline_max - timeline_zero);
 	//$('#timeline').width('calc(8.5em + ' + (timeline_max - timeline_zero) * timeline_scale + 'px)');
 
 	makeTimelineLegend();
