@@ -27,6 +27,7 @@ body > *:not(#timeline_scrollbox) {
 
 #legend {
 	overflow: auto;
+	padding: 10px 0;
 }
 
 #legend dt {
