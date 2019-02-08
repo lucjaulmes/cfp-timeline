@@ -55,7 +55,16 @@
 		<dd>Dates unavailable, extrapolated from last years'<wbr></dd>
 	</dl>
 
-	<div id="filters"></div>
+	<form action="javascript:void(0);">
+		<fieldset id="search">
+			<legend>Search</legend>
+			<p>
+				<input type="text" name="words">
+				<select name="scope"><option value="-1">All</option></select>
+			</p>
+		</fieldset>
+		<fieldset id="filters"><legend>Filters</legend></fieldset>
+	</form>
 
 	<table id="confs"></table>
 

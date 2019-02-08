@@ -73,9 +73,9 @@ body > *:not(#timeline_container) {
 	}
 }
 
-#filters {
-	margin: 5em auto 0;
-	padding: 16px 2px;
+#filters, #search {
+	margin: 1em auto 0;
+	padding: 0px 2px 10px;
 	border: thin solid;
 	border-radius: 10px;
 	display: flex;
@@ -84,19 +84,7 @@ body > *:not(#timeline_container) {
 	align-items: baseline;
 }
 
-#filterbox {
-	position: relative;
-}
-
-#filterbox h5 {
-	position: absolute;
-	top: -.5em;
-	left: 15px;
-	background: #fff;
-	padding: 0 3px;
-	margin: 0;
-}
-
+#search p,
 #filters p {
 	margin: 0;
 	padding: 0 .5em;
@@ -104,12 +92,29 @@ body > *:not(#timeline_container) {
 	text-align: center;
 }
 
+#search p {
+	display: flex;
+	width: 100%;
+}
+
+#search p input {
+	flex-grow: 1;
+	margin: 0 10px 0 0;
+}
+
+#search dt {
+	float: none;
+	flex-grow: 0;
+	flex-shrink: 0;
+	flex-basis: 0;
+}
+
 #filters p > * {
 	width: 100%;
 }
 
 #filters select[name=conf] {
-	height: 48ex;
+	max-height: 45ex;
 }
 
 #confs_wrapper {
@@ -246,6 +251,10 @@ span.acronyms {
 #months .timeblocks span {
 	background-color: #eee;
 	border-left: black thin solid;
+}
+
+#years .timeblocks span:last-child,
+#months .timeblocks span:last-child {
 	border-right: black thin solid;
 }
 
