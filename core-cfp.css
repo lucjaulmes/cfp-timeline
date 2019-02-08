@@ -117,6 +117,10 @@ body > *:not(#timeline_container) {
 	max-height: 45ex;
 }
 
+#filters p.filter_title {
+	display: none;
+}
+
 #confs_wrapper {
 	padding-top: 2em;
 	clear: both;

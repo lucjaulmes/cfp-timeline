@@ -351,6 +351,7 @@ function makeFilter(colIdx, name, sortfunction)
 	opt.value = colIdx;
 
 	var p = document.createElement('p');
+	p.className += 'filter_' + name
 	opt.textContent = p.textContent = column.header().textContent;
 
 	var select = p.appendChild(document.createElement('select'));
@@ -497,6 +498,7 @@ function populatePage(json)
 	filters.appendChild(makeFilter(confIdx, "conf"));
 	filters.appendChild(makeFilter(rankIdx, "core", ranksort));
 	filters.appendChild(makeFilter(fieldIdx, "field"));
+	filters.appendChild(makeFilter(titleIdx, "title"));
 
 	form.querySelector('select[name="scope"]').onchange = updateSearchScope
 	form.querySelector('input[name="words"]').onkeypress = updateSearch
