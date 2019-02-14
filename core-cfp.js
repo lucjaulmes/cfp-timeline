@@ -13,17 +13,45 @@ var timeline_max = Date.UTC(today.getFullYear(), today.getMonth() + 18, 0);
 // % per month: 50px / duration of 1 month
 var timeline_scale = 100 / (timeline_max - timeline_zero);
 
-var datatable, timeline = document.getElementById('timeline'), n_years = 1;
-var timeline_dom_cache = {};
+var timeline = document.getElementById('timeline'), n_years = 1;
+var timeline_conf_lookup = {};
 var form = document.querySelector('form');
+var data = [], filters = {}, columns = [];
 
 // the value we push into the hash
 var sethash = '';
 
+// Escape data to pass as regexp
+RegExp.escape = s => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+
+
+/* Template elements that we can clone() */
+var marker = document.createElement('sup');
+marker.className = 'est';
+marker.textContent = '†';
+
+var line = document.createElement('p');
+line.appendChild(document.createElement('span')).className = 'acronyms';
+line.appendChild(document.createElement('span')).className = 'timeblocks';
+line.style.display = 'none';
+
+var wikicfp = document.createElement('img');
+wikicfp.src = 'wikicfplogo.png';
+wikicfp.alt = 'Wiki CFP logo';
+wikicfp.className += 'cfpurl';
+wikicfp = document.createElement('a').appendChild(wikicfp).parentNode;
+
 
 function ranksort(a, b)
 {
-	return ranks.indexOf(b) - ranks.indexOf(a);
+	var ra = ranks.indexOf(a), rb = ranks.indexOf(b);
+	// compare using positions
+	if (ra >= 0 && rb >= 0) return rb - ra;
+	// compare as strings
+	else if(ra < 0 && rb < 0) return a > b;
+	// return 1 for the element not negative
+	else
+		return ra < 0 ? 1 : -1;
 }
 
 function parseFragment()
@@ -138,15 +166,6 @@ function parse_date(str)
 	return Math.max(timeline_zero, Date.UTC(tok[0], tok[1] - 1, tok[2]));
 }
 
-/* Two template elements that we can clone() */
-var marker = document.createElement('sup');
-marker.className = 'est';
-marker.textContent = '†';
-
-var line = document.createElement('p');
-line.appendChild(document.createElement('span')).className = 'acronyms';
-line.appendChild(document.createElement('span')).className = 'timeblocks';
-
 function makeTimelineDuration(cls, from, until, tooltip_text, from_orig, until_orig)
 {
 	var span = document.createElement('span');
@@ -193,19 +212,19 @@ function makeTimelinePunctual(cls, date, content, tooltip_text, date_orig)
 }
 
 
-async function makeTimelineItem(data)
+function makeTimelineItem(row)
 {
 	var p = line.cloneNode(true);
-	p.firstChild.innerHTML = renderAcronym(data[confIdx], 'display', data);
+	renderAcronym(p.firstChild, row);
 
 	var blocks = p.lastChild;
 	for (var y = 0; y < n_years; y++)
 	{
-		// get the data for this year, with friendl names
-		var acronym = data[confIdx] + ' ' + (year + y), tooltip;
-		var [abst, sub, notif, cam, start, end] = data.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1).map(parse_date);
-		var [abstText, subText, notifText, camText, startText, endText] = data.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1);
-		var [abstOrig, subOrig, notifOrig, camOrig, startOrig, endOrig] = data.slice(abstIdx + y * yearOffset + origOffset, endIdx + y * yearOffset + origOffset + 1);
+		// get the row for this year, with friendl names
+		var acronym = row[confIdx] + ' ' + (year + y), tooltip;
+		var [abst, sub, notif, cam, start, end] = row.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1).map(parse_date);
+		var [abstText, subText, notifText, camText, startText, endText] = row.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1);
+		var [abstOrig, subOrig, notifOrig, camOrig, startOrig, endOrig] = row.slice(abstIdx + y * yearOffset + origOffset, endIdx + y * yearOffset + origOffset + 1);
 
 		if (!abst) abst = sub;
 		else if (!sub) sub = abst;
@@ -243,23 +262,9 @@ async function makeTimelineItem(data)
 		}
 	}
 
-	return p;
+	return timeline.appendChild(p);
 }
 
-
-async function addToTimeline(n, data)
-{
-	var p = timeline_dom_cache[data[confIdx]];
-	if (!p)
-	{
-		p = await makeTimelineItem(data);
-		timeline_dom_cache[data[confIdx]] = p;
-	}
-
-	// ignore conferences for which we don't have a single date
-	if (p.lastChild.hasChildNodes())
-		timeline.appendChild(p);
-}
 
 function searchWords()
 {
@@ -267,41 +272,30 @@ function searchWords()
 	return search.split(/[ ;:,.]/).filter(val => val);
 }
 
-function setColumnSearch(select, column)
+function setColumnSearch(select, col_id)
 {
-	var val = Array.from(select.selectedOptions).map(opt => $.fn.dataTable.util.escapeRegex(opt.value));
+	var val = Array.from(select.selectedOptions).map(opt => RegExp.escape(opt.value));
 	var regex = val.length ? ('^(' + val.join('|') + ')$') : '';
 
-	if (form.querySelector('select[name="scope"]').value == select.getAttribute('column_id'))
+	if (form.querySelector('select[name="scope"]').value == col_id)
 	{
 		var search = searchWords();
 		if (val.length && search.length)
 			regex += '|';
-		regex += search.map(val => $.fn.dataTable.util.escapeRegex(val)).join('|');
+		regex += search.map(val => RegExp.escape(val)).join('|');
 	}
 
-	column.search(regex, true, false);
-}
-
-function setGlobalSearch(col)
-{
-	if (col < 0)
-		datatable.search(searchWords().map(val => $.fn.dataTable.util.escapeRegex(val)).join('|'), true, false)
-	else
-		datatable.search('');
+	if (regex) filters[col_id] = new RegExp(regex);
+	else delete filters[col_id];
 }
 
 // this is the select
 function updateFilter()
 {
-	var column = datatable.column(this.getAttribute('column_id'));
-	setColumnSearch(this, column);
+	var column_id = this.getAttribute('column_id');
+	setColumnSearch(this, column_id);
 
-	new Promise(done =>
-	{
-		column.draw();
-		done();
-	}).then(updateFragment);
+	filterUpdated().then(updateFragment);
 }
 
 function updateSearch()
@@ -310,13 +304,9 @@ function updateSearch()
 
 	setGlobalSearch(col);
 	if (col >= 0)
-		setColumnSearch(form.querySelector('select[column_id="' + col + '"]'), datatable.column(col));
+		setColumnSearch(form.querySelector('select[column_id="' + col + '"]'), col);
 
-	new Promise(done =>
-	{
-		datatable.draw();
-		done();
-	}).then(updateFragment);
+	filterUpdated().then(updateFragment);
 }
 
 // this is select.name="scope"
@@ -328,41 +318,37 @@ function updateSearchScope()
 	Array.from(this.options).map(opt => parseInt(opt.value)).forEach(val =>
 	{
 		if (val >= 0)
-			setColumnSearch(form.querySelector('select[column_id="' + val + '"]'), datatable.column(col));
+			setColumnSearch(form.querySelector('select[column_id="' + val + '"]'), col);
 	});
 
-	new Promise(done =>
-	{
-		datatable.draw();
-		done();
-	}).then(updateFragment);
+	filterUpdated().then(updateFragment);
 }
 
 async function filterUpdated(search)
 {
-	while (timeline.hasChildNodes())
-		timeline.firstChild.remove();
+	Array.from(timeline.children).filter(conf => conf.style.display !== 'none').forEach(conf => conf.style.display = 'none');
 
 	var loading = document.getElementById('loading');
 	loading.style.display = 'block';
 
-	var filteredData = datatable.rows({ filter: 'applied' }).data();
-	$.each(filteredData, addToTimeline);
+	data.filter(row => Object.keys(filters).every(col => filters[col].test(row[col]))).forEach(row =>
+	{
+		timeline_conf_lookup[row[confIdx]].style.display = 'block';
+	});
 
 	loading.style.display = 'none';
 }
 
 function makeFilter(colIdx, name, sortfunction)
 {
-	var column = datatable.column(colIdx);
-	var values = column.data().unique().sort(sortfunction);
+	var values = data.map(row => row[colIdx]).sort(sortfunction).filter((val, idx, arr) => idx === 0 || val !== arr[idx - 1]);
 
 	var opt = form.querySelector('select[name="scope"]').appendChild(document.createElement('option'));
 	opt.value = colIdx;
 
 	var p = document.createElement('p');
 	p.className += 'filter_' + name
-	opt.textContent = p.textContent = column.header().textContent;
+	opt.textContent = p.textContent = columns[colIdx].title;
 
 	var select = p.appendChild(document.createElement('select'));
 	select.multiple = true;
@@ -373,7 +359,7 @@ function makeFilter(colIdx, name, sortfunction)
 	var clear = p.appendChild(document.createElement('button'));
 	clear.textContent = 'clear';
 
-	values.each(function (t)
+	values.forEach(t =>
 	{
 		var option = select.appendChild(document.createElement('option'));
 		option.textContent = t;
@@ -384,7 +370,7 @@ function makeFilter(colIdx, name, sortfunction)
 	clear.onclick = () =>
 	{
 		select.selectedIndex = -1;
-		column.search('');
+		delete filters[colIdx];
 		updateFilter.call(select);
 	};
 
@@ -407,31 +393,31 @@ function filterFromFragment()
 	selects.filter(sel => sel.name !== 'scope').forEach(sel => sel.onchange());
 }
 
-function renderAcronym(data, type, row)
+function renderAcronym(p, row)
 {
-	if (type === 'display')
-	{
-		var a = data,
-			i = '';
-		for (y = n_years - 1; y >= 0; y--)
-			if (row[cfpIdx + y * yearOffset] && row[cfpIdx + y * yearOffset] != '(missing)')
-			{
-				i = $('<img />').attr('src', 'wikicfplogo.png').attr('alt', 'Wiki CFP logo').addClass('cfpurl')
-				.wrap('<a></a>').parent().attr('href', row[cfpIdx + y * yearOffset]).attr('title', data + ' CFP on WikiCFP');
-				break;
-			}
+	var conf = document.createTextNode(row[confIdx]);
 
-		for (y = n_years - 1; y >= 0; y--)
-			if (row[linkIdx + y * yearOffset] && row[linkIdx + y * yearOffset] != '(missing)')
-			{
-				a = $('<a></a>').attr('href', row[linkIdx + y * yearOffset]).append(data);
-				break;
-			}
+	for (var y = n_years - 1; y >= 0; y--)
+		if (row[linkIdx + y * yearOffset] && row[linkIdx + y * yearOffset] != '(missing)')
+		{
+			conf = document.createElement('a').appendChild(conf).parentNode;
+			conf.href = row[linkIdx + y * yearOffset]
+			break;
+		}
 
-		return $('<p></p>').append(a).append('&nbsp;').append(i).html();
-	}
-	else
-		return data
+	p.appendChild(conf);
+	p.innerHTML += '&nbsp;'
+
+	for (y = n_years - 1; y >= 0; y--)
+		if (row[cfpIdx + y * yearOffset] && row[cfpIdx + y * yearOffset] != '(missing)')
+		{
+			cfp = p.appendChild(wikicfp.cloneNode(true));
+			cfp.href = row[cfpIdx + y * yearOffset];
+			cfp.title = row[confIdx] + ' CFP on WikiCFP';
+			break;
+		}
+
+	return p;
 }
 
 function markExtrapolated(td, data, rowdata, row, col)
@@ -447,6 +433,9 @@ function notNull(val, idx)
 
 function populatePage(json)
 {
+	data = json['data'];
+	columns = json['columns'];
+
 	var datesIdx = [], origIdx = [], urlIdx = [];
 	n_years = (json['columns'].length - yearIdx) / yearOffset
 
@@ -462,45 +451,33 @@ function populatePage(json)
 			urlIdx.push(u + y * yearOffset)
 	}
 
+	// Use lexicographic sort with cast to numbers for dates, i.e. parseInt(YYYYMMDD). NB: some dates are null.
+	var mindate = new Date(timeline_zero);
+	mindate = (mindate.getUTCFullYear() * 100 + (mindate.getUTCMonth() + 1)) * 100 + mindate.getUTCDate();
 
-	datatable = $('#confs').DataTable(
-	{
-		data: json['data'],
-		columns: json['columns'],
-		columnDefs: [
-			// acronyms: displayed wrapped in links if present, searchable
-			{
-				"targets": [confIdx],
-				"render": renderAcronym,
-				"searchable": true
-			},
-			// full-text titleo, rank, and field: also searchable, no special display
-			{
-				"targets": [titleIdx, fieldIdx, rankIdx],
-				"searchable": true
-			},
-			// dates: display whether extrapolated, not searchable
-			{
-				"targets": datesIdx,
-				"createdCell": markExtrapolated,
-				"searchable": false
-			},
-			// links, booleans on extrapolated dates: hidden, not searchable
-			{
-				"targets": origIdx.concat(urlIdx),
-				"visible": false,
-				"searchable": false
-			}
-		],
-		pageLength: 50,
-		scrollY: "calc(100% - 10px)",
-		order: [
-			[  subIdx + (n_years - 1) * yearOffset, "asc"],
-			[ abstIdx + (n_years - 1) * yearOffset, "asc"],
-			[startIdx + (n_years - 1) * yearOffset, "asc"],
-			[  endIdx + (n_years - 1) * yearOffset, "asc"]
-		]
-	});
+	var maxdate = data.reduce((curmax, row) =>
+		Math.max.apply(null, datesIdx.map(col => (row[col] || '0').replace(/-/g, '')).concat([curmax]))
+	, mindate);
+
+	// get last day of month
+	timeline_max = Date.UTC(Math.floor(maxdate / 10000), Math.floor(maxdate / 100) % 100, 0);
+	timeline_scale = 100 / (timeline_max - timeline_zero);
+
+	makeTimelineLegend();
+
+	// sort the data per date
+	const sortIdx = [
+		  subIdx + (n_years - 1) * yearOffset,
+		 abstIdx + (n_years - 1) * yearOffset,
+		startIdx + (n_years - 1) * yearOffset,
+		  endIdx + (n_years - 1) * yearOffset
+	]
+
+	// get sort-column subtractions, return first non-zero, or zero
+	data.sort((rowA, rowB) => sortIdx.map(col => (rowA[col] || '').replace(/-/g, '') - (rowB[col] || '').replace(/-/g, ''))
+									.find(diff => diff !== 0) || 0);
+
+	data.forEach((row, idx) => timeline_conf_lookup[row[confIdx]] = makeTimelineItem(row));
 
 	document.getElementById('head').textContent += ' The last scraping took place on ' + json['date'] + '.';
 
@@ -517,41 +494,9 @@ function populatePage(json)
 	filterFromFragment();
 
 	window.addEventListener('hashchange', filterFromFragment);
-	datatable.draw().on('search.dt', filterUpdated);
 
-	var maxdate = timeline_zero;
-	for (var col of datesIdx)
-	{
-		var colmax = datatable.column(col).data().filter(notNull).sort().reverse()[0];
-		// lexical sort works thanks to format, just parse once
-		maxdate = Math.max(maxdate, parse_date(colmax));
-	}
-
-	// get last day of month
-	var endDate = new Date(maxdate);
-	timeline_max = Date.UTC(endDate.getFullYear(), endDate.getMonth() + 1, 0);
-	timeline_scale = 100 / (timeline_max - timeline_zero);
-
-	makeTimelineLegend();
 	// add data to Timeline, but only filtered
 	filterUpdated();
 
 	document.getElementById('loading').style.display = 'none';
 }
-
-$(document).ready(function ()
-{
-	makeTimelineLegend()
-
-	/* $.getJSON + override mime type */
-	$.ajax(
-	{
-		url: "cfp.json",
-		dataType: "json",
-		beforeSend: function (xhr)
-		{
-			xhr.overrideMimeType('application/json; charset="UTF-8"');
-		},
-		success: populatePage
-	});
-});

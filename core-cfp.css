@@ -38,8 +38,11 @@ body > *:not(#timeline_container) {
 
 #legend dt span {
 	display: inline-block;
-	width: 1.5em;
 	height: 1.5em;
+}
+
+#legend dt span.duration {
+	width: 1.5em;
 }
 
 #legend dd {
@@ -235,7 +238,7 @@ img.cfpurl {
 	height: 100%;
 }
 
-#now .today {
+.today {
 	width: 0;
 	border: #D0D thin solid;
 }
