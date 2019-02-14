@@ -58,18 +58,14 @@
 
 	<form action="javascript:void(0);">
 		<fieldset id="search">
-			<legend>Search</legend>
-			<p>
-				<input type="text" name="words">
-				<select name="scope"><option value="-1">All</option></select>
-			</p>
+			<legend>Search conferences (add to filter)</legend>
+			<p><input type="text" name="search"></p>
+			<ul id="suggestions"></ul>
 		</fieldset>
 		<fieldset id="filters"><legend>Filters</legend></fieldset>
 	</form>
 
-	<table id="confs"></table>
-
-
+	<!--<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.4.2/fuse.min.js"></script>-->
 	<script type="text/javascript" src="core-cfp.js"></script>
 	<script>
 	(function() {
