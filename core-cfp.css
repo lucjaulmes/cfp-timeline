@@ -223,9 +223,21 @@ img.cfpurl {
 	top: 0;
 }
 
+#now {
+    top: calc(-100% + 3em);
+    height: calc(100% - 3em);
+}
+
+#now .timeblocks,
+#now .timeblocks span,
 #months .timeblocks,
 #months .timeblocks span {
 	height: 100%;
+}
+
+#now .today {
+	width: 0;
+	border: #D0D thin solid;
 }
 
 span.acronyms {

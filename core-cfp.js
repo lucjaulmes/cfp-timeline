@@ -116,8 +116,18 @@ function makeTimelineLegend()
 		year.style.left = (from - timeline_zero) * timeline_scale + '%';
 	}
 
+	var now = document.createElement('p');
+	now.id = 'now';
+	now.appendChild(document.createElement('span')).className += 'acronyms';
+	now.appendChild(document.createElement('span')).className += 'timeblocks';
+
+	var day = now.lastChild.appendChild(document.createElement('span'));
+	day.className += 'today';
+	day.style.left = ((today.valueOf() - timeline_zero) * timeline_scale) + '%';
+
 	box.appendChild(years);
 	box.appendChild(months);
+	box.appendChild(now);
 }
 
 function parse_date(str)
