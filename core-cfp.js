@@ -286,7 +286,12 @@ function makeSuggestionItem(row)
 	item.children[3].textContent = row[titleIdx];
 
 	var opt = Array.from(form.querySelector('select[name="conf"]').options).find(opt => opt.value === row[confIdx]);
-	item.onclick = () => { opt.selected = true; opt.parentNode.onchange(); }
+	item.onclick = () =>
+	{
+		opt.selected = true;
+		opt.parentNode.onchange();
+		form.querySelector('input[name="search"]').value = '';
+	}
 
 	return suggestions.appendChild(item);
 }
@@ -505,7 +510,7 @@ function populatePage(json)
 	filters.appendChild(makeFilter(rankIdx, "rank", ranksort));
 	filters.appendChild(makeFilter(fieldIdx, "field"));
 
-	var search = form.querySelector('input[name="search"]')
+	var search = form.querySelector('input[name="search"]');
 	search.onkeypress = updateSearch
 	search.onkeyup = updateSearch
 	search.onfocus = updateSearch
