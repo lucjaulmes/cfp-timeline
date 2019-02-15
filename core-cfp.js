@@ -362,7 +362,7 @@ function makeFilter(colIdx, name, sortfunction)
 
 	var p = document.createElement('p');
 	p.className += 'filter_' + name
-	p.textContent = columns[colIdx].title;
+	p.textContent = columns[colIdx];
 
 	var select = p.appendChild(document.createElement('select'));
 	select.multiple = true;

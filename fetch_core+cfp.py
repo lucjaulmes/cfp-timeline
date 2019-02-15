@@ -1009,7 +1009,7 @@ def update_confs(out):
 	years = range((today - datetime.timedelta(days = 366 / 2)).year, (today + datetime.timedelta(days = 365)).year + 1)
 
 	print('{"columns":', file=out);
-	json.dump([{'title': c} for c in sum(([col + ' ' + str(y) for col in CallForPapers.columns()] for y in years if y >= today.year), Conference.columns())], out)
+	json.dump(sum(([col + ' ' + str(y) for col in CallForPapers.columns()] for y in years if y >= today.year), Conference.columns()), out)
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
