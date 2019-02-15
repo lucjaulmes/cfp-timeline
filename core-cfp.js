@@ -14,21 +14,12 @@ var timeline_max = Date.UTC(today.getFullYear(), today.getMonth() + 18, 0);
 var timeline_scale = 100 / (timeline_max - timeline_zero);
 
 var timeline = document.getElementById('timeline'), n_years = 1;
-var suggestions = document.querySelector('#search ul');
+var suggestions = document.querySelector('#suggestions');
 var timeline_conf_lookup = {};
 var form = document.querySelector('form');
-var data = [], filters = {}, columns = [];
+var data = [], filters = {};
 
-/*var fuse, fuse_options = {
-	shouldSort: true,
-	threshold: 0.6,
-	location: 0,
-	distance: 100,
-	maxPatternLength: 32,
-	minMatchCharLength: 1,
-	keys: [confIdx, titleIdx]
-};*/
-
+var filtered_confs; // #search p.filter_conf
 
 // the value we push into the hash
 var sethash = '';
@@ -288,38 +279,53 @@ function makeTimelineItem(row)
 function makeSuggestionItem(row)
 {
 	var item = suggestion.cloneNode(true);
-	// There should be only 1 opt in opts[]
-	var opts = Array.from(form.querySelector('select[name="conf"]').options).filter(opt => opt.value == row[confIdx]);
-	item.onclick = () =>
-	{
-		opts.forEach(opt => opt.selected = true);
-		opts[0].parentNode.onchange();
-	}
 
 	item.children[0].textContent = row[confIdx];
 	item.children[1].textContent = row[rankIdx];
 	item.children[2].textContent = row[fieldIdx];
 	item.children[3].textContent = row[titleIdx];
 
+	var opt = Array.from(form.querySelector('select[name="conf"]').options).find(opt => opt.value === row[confIdx]);
+	item.onclick = () => { opt.selected = true; opt.parentNode.onchange(); }
+
 	return suggestions.appendChild(item);
+}
+
+
+function makeSelectedItem(row)
+{
+	var item = document.createElement('span');
+	item.textContent = row[confIdx];
+	item.title = row[titleIdx];
+
+	var opt = Array.from(form.querySelector('select[name="conf"]').options).find(opt => opt.value === row[confIdx]);
+	item.onclick = () => { opt.selected = false; opt.parentNode.onchange(); }
+
+	// insert at N-2
+	filtered_confs.insertBefore(item, filtered_confs.lastChild.previousSibling);
+}
+
+
+function hideSuggestions()
+{
+	Array.from(suggestions.children).filter(conf => conf.style.display !== 'none')
+									.forEach(conf => conf.style.display = 'none');
 }
 
 
 function updateSearch()
 {
-	//var result = fuse.search(form.querySelector('input[name="search"]').value);
 	var search = this.value.split(/[ ;:,.]/).filter(val => val && val.length >= 2).map(val => new RegExp(RegExp.escape(val), 'iu'))
 
-	Array.from(suggestions.children).filter(conf => conf.style.display !== 'none').forEach(conf => conf.style.display = 'none');
-
-	if (!search.length) return;
+	hideSuggestions();
 
 	// -> all(words) -> any(columns)
-	data.filter(row => search.every(r => r.test(row[confIdx]) || r.test(row[titleIdx]))).forEach(row =>
-	{
-		var idx = timeline_conf_lookup[row[confIdx]];
-		suggestions.children[idx].style.display = 'block';
-	});
+	if (search.length)
+		data.filter(row => search.every(r => r.test(row[confIdx]) || r.test(row[titleIdx]))).forEach(row =>
+		{
+			var idx = timeline_conf_lookup[row[confIdx]];
+			suggestions.children[idx].style.display = 'block';
+		});
 }
 
 function setColumnFilter(select, col_id)
@@ -343,17 +349,15 @@ function updateFilter()
 async function filterUpdated(search)
 {
 	Array.from(timeline.children).filter(conf => conf.style.display !== 'none').forEach(conf => conf.style.display = 'none');
-
-	var loading = document.getElementById('loading');
-	loading.style.display = 'block';
+	Array.from(filtered_confs.children).slice(0, timeline.children.length)
+		.filter(conf => conf.style.display !== 'none').forEach(conf => conf.style.display = 'none');
 
 	data.filter(row => Object.keys(filters).every(col => filters[col].test(row[col]))).forEach(row =>
 	{
 		var idx = timeline_conf_lookup[row[confIdx]];
 		timeline.children[idx].style.display = 'block';
+		if (filters[confIdx] !== undefined) filtered_confs.children[idx].style.display = 'inline-block';
 	});
-
-	loading.style.display = 'none';
 }
 
 function makeFilter(colIdx, name, sortfunction)
@@ -362,7 +366,6 @@ function makeFilter(colIdx, name, sortfunction)
 
 	var p = document.createElement('p');
 	p.className += 'filter_' + name
-	p.textContent = columns[colIdx];
 
 	var select = p.appendChild(document.createElement('select'));
 	select.multiple = true;
@@ -404,7 +407,7 @@ function filterFromFragment()
 		Array.from(sel.options).forEach(opt => { opt.selected = values.indexOf(opt.value) >= 0 });
 	});
 
-	selects.filter(sel => sel.name !== 'scope').forEach(sel => sel.onchange());
+	selects.forEach(sel => sel.onchange());
 }
 
 function renderAcronym(p, row)
@@ -451,8 +454,6 @@ function notNull(val, idx)
 function populatePage(json)
 {
 	data = json['data'];
-	columns = json['columns'];
-	//fuse = new Fuse(data, fuse_options);
 
 	var datesIdx = [], origIdx = [], urlIdx = [];
 	n_years = (json['columns'].length - yearIdx) / yearOffset
@@ -495,22 +496,28 @@ function populatePage(json)
 	data.sort((rowA, rowB) => sortIdx.map(col => (rowA[col] || '').replace(/-/g, '') - (rowB[col] || '').replace(/-/g, ''))
 									.find(diff => diff !== 0) || 0);
 
+	document.getElementById('head').textContent += ' The last scraping took place on ' + json['date'] + '.';
+
+	document.getElementById('search').appendChild(makeFilter(confIdx, "conf"));
+	filtered_confs = form.querySelector('p.filter_conf');
+
+	var filters = document.getElementById('filters');
+	filters.appendChild(makeFilter(rankIdx, "rank", ranksort));
+	filters.appendChild(makeFilter(fieldIdx, "field"));
+
+	var search = form.querySelector('input[name="search"]')
+	search.onkeypress = updateSearch
+	search.onkeyup = updateSearch
+	search.onfocus = updateSearch
+	search.onblur = () => setTimeout(hideSuggestions, 100)
+
 	data.forEach((row, idx) =>
 	{
 		timeline_conf_lookup[row[confIdx]] = idx;
 		makeTimelineItem(row);
+		makeSuggestionItem(row);
+		makeSelectedItem(row);
 	});
-
-	document.getElementById('head').textContent += ' The last scraping took place on ' + json['date'] + '.';
-
-	var filters = document.getElementById('filters');
-	filters.appendChild(makeFilter(confIdx, "conf"));
-	filters.appendChild(makeFilter(rankIdx, "core", ranksort));
-	filters.appendChild(makeFilter(fieldIdx, "field"));
-	filters.appendChild(makeFilter(titleIdx, "title"));
-
-	form.querySelector('input[name="search"]').onkeypress = updateSearch
-	form.querySelector('input[name="search"]').onkeyup = updateSearch
 
 	// Initial fragment
 	filterFromFragment();
@@ -519,8 +526,6 @@ function populatePage(json)
 
 	// add data to Timeline, but only filtered
 	filterUpdated();
-
-	data.forEach(row => makeSuggestionItem(row));
 
 	document.getElementById('loading').style.display = 'none';
 }

@@ -1,7 +1,8 @@
 - [x] Sync filters with URL fragment
 - [ ] Fix acronym collisions
 - [x] Fix timeline scroll
-- [ ] Search: add a delay for smoothness (and min chars: 2?)
-- [ ] Alternate search (instead of free text?) add propositions to filter: e.g. typing -> propose -> click adds filter (see tags on SO).
-- [ ] Display: toggle visibility instead of adding/removing from DOM
+- [ ] Search: add a delay for smoothness
+- [x] Search: add min chars: 2 (per word)
+- [x] Alternate search (instead of free text?) add propositions to filter: e.g. typing -> propose -> click adds filter
+- [x] Display: toggle visibility instead of adding/removing from DOM
 - [x] Add "today" to graph

@@ -81,35 +81,72 @@ body > *:not(#timeline_container) {
 	padding: 0px 2px 10px;
 	border: thin solid;
 	border-radius: 10px;
+}
+
+#filters {
 	display: flex;
 	flex-flow:row nowrap;
 	justify-content: space-around;
 	align-items: baseline;
 }
 
-#search p,
 #filters p {
-	margin: 0;
-	padding: 0 .5em;
 	vertical-align: top;
 	text-align: center;
 }
 
-#search p {
-	display: flex;
+#search p,
+#suggestions {
+	margin: 0;
+	padding: 0 0 0 .5em;
+	width: calc(100% - 2em);
+}
+
+#search p input,
+#suggestions li {
+	margin: 0;
 	width: 100%;
 }
 
-#search p input {
-	flex-grow: 1;
-	margin: 0 10px 0 0;
+#search {
+	position: relative;
 }
 
-#search dt {
-	float: none;
-	flex-grow: 0;
-	flex-shrink: 0;
-	flex-basis: 0;
+#suggestions {
+	position: absolute;
+}
+
+#suggestions li {
+	padding: 10px;
+	cursor: pointer;
+	border: black thin solid;
+	border-top: none;
+	background: #EEE;
+}
+
+#suggestions li span {
+	display: inline-block;
+	padding: 5px;
+}
+
+#suggestions li span.conf {
+	background: lightblue;
+	color: darkblue;
+	font-weight: bold;
+}
+
+#suggestions li span.rank::before { content: " (Core ranking: " }
+#suggestions li span.rank::after { content: ", " }
+#suggestions li span.field::before { content: "field: " }
+#suggestions li span.field::after { content: ")" }
+
+#suggestions li span.rank,
+#suggestions li span.field {
+	color: grey;
+}
+
+#suggestions li span.title {
+	display:block;
 }
 
 #filters p > * {
@@ -120,8 +157,34 @@ body > *:not(#timeline_container) {
 	max-height: 45ex;
 }
 
-#filters p.filter_title {
+#search p.filter_conf select {
 	display: none;
+}
+
+#filters p.filter_rank::before {
+	content: "CORE Ranking";
+}
+#filters p.filter_field::before {
+	content: "Field";
+}
+
+#search p.filter_conf span::after {
+	content: " ×";
+	color: grey;
+}
+
+#search p.filter_conf span {
+	margin: 3px;
+	padding: 5px;
+	display: inline-block;
+	white-space: nowrap;
+	cursor: pointer;
+	border: black thin solid;
+	border-radius: 3px;
+}
+
+#search p.filter_conf button {
+	margin: 3px;
 }
 
 #confs_wrapper {
