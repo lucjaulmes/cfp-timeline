@@ -906,7 +906,7 @@ class CoreRanking(object):
 		try:
 			paren = string.index(' (')
 			if string[-1] == ')' and cls._historical.search(string[paren + 2:-1]):
-				return string[:paren - 2]
+				return string[:paren]
 		except ValueError:
 			pass
 		return string
@@ -943,12 +943,14 @@ class CoreRanking(object):
 
 				for row in prog.iterate(rows, p * per_page):
 					val = [' '.join(r.text.split()) for r in row.find_all('td')]
-					conf = Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
-					if val[apos] == 'SC' and conf.topic_keywords == ['supercomputing']:
-						# stupid SC has 2 completely different descriptions. Add the long one if we just got 'supercomputing'
+					# Some manual corrections applied to the CORE database:
+					# - Stupid SC has 2 completely different descriptions. Add the long one if we just got 'supercomputing'
+					# - ISC changed their acronym to "ISC HPC"
+					if val[apos] == 'SC' and 'supercomputing' in val[tpos].lower().split():
 						val[tpos] += ': The International Conference for High Performance Computing, Networking, Storage, and Analysis'
-						conf = Conference(val[tpos], val[apos], val[rpos], forcodes.get(val[fpos], None))
-					yield conf
+					if val[apos] == 'ISC' and cls.strip_trailing_paren(val[tpos]) == 'ISC High Performance':
+						val[apos] += ' HPC'
+					yield Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
 
 
 	@classmethod
@@ -976,6 +978,7 @@ class CoreRanking(object):
 
 		with Progress(operation = 'loading CORE list', maxpos = len(confs)) as prog:
 			return [Conference(cls.strip_trailing_paren(tit), acr, rnk, fld) for acr, tit, rnk, fld in prog.iterate(confs)]
+						# if cls.strip_trailing_paren(tit) == 'ISC High Performance']
 
 
 
