@@ -657,7 +657,7 @@ class CallForPapers(ConfMetaData):
 					s, e = (self.dates['conf_start'], self.dates['conf_end'])
 
 			if err:
-				diag = 'Conferences dates {} are {} for {} {}'.format(orig, ' and '.join(err), self.conf.acronym, self.year)
+				diag = '{} {}: Conferences dates {} are '.format(self.conf.acronym, self.year, orig) + ' and '.join(err)
 
 				if len(err) == fix:
 					Progress().clean_print('{}: using {} -- {} instead'.format(diag, s, e))
@@ -685,7 +685,9 @@ class CallForPapers(ConfMetaData):
 					pass
 
 			if err:
-				diag = 'Conferences submission dates issues: {}, for {} {} ({} -- {})'.format(' and '.join(err), self.conf.acronym, self.year, self.dates['conf_start'], self.dates['conf_end'])
+				diag = '{} {} ({} -- {}): Conferences submission dates issues: '.format(self.conf.acronym, self.year,
+																						self.dates['conf_start'], self.dates['conf_end'])
+				diag += ' and '.join(err)
 
 				if len(err) == fix:
 					Progress().clean_print('{}: using {} instead'.format(diag, {k: str(self.dates[k]) for k in pre_dates}))
@@ -1017,7 +1019,7 @@ def update_confs(out):
 	writing_first_conf = True
 
 	core = CoreRanking.get_confs()
-	with Progress(operation = 'fetching calls for papers') as prog:
+	with open('parsing_errors.txt', 'w') as errlog, Progress(operation = 'fetching calls for papers') as prog:
 		for conf in prog.iterate(core):
 			values = conf.values()
 			cfps_found = 0
@@ -1032,6 +1034,7 @@ def update_confs(out):
 				except CFPCheckError as e:
 					cfp = None
 					prog.clean_print(str(e))
+					print(e, file=errlog)
 
 				if not cfp:
 					if last_year:

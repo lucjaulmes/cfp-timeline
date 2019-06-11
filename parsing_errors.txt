@@ -1,0 +1,5 @@
+MOBICOM 2019 (2019-09-01 -- 2019-09-01): Conferences submission dates issues: submission (2018-08-07) too long before conference
+ACCV 2020: Conferences dates 2020-11-30 -- 2021-01-04 are not in correct year and end before start and too far apart
+SEAA 2018: Conferences dates 2018-08-20 -- 2018-10-01 are too far apart
+IOLTS 2018 (2018-06-02 -- 2018-06-04): Conferences submission dates issues: notification (2013-03-30) too long before conference
+MVA 2019 (2019-05-27 -- 2019-05-31): Conferences submission dates issues: submission (2018-02-07) too long before conference
