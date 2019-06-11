@@ -168,7 +168,7 @@ function makeTimelineLegend()
 	box.appendChild(now);
 }
 
-function parse_date(str)
+function parseDate(str)
 {
 	if (!str) return null;
 
@@ -232,7 +232,7 @@ function makeTimelineItem(row)
 	{
 		// get the row for this year, with friendl names
 		var acronym = row[confIdx] + ' ' + (year + y), tooltip;
-		var [abst, sub, notif, cam, start, end] = row.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1).map(parse_date);
+		var [abst, sub, notif, cam, start, end] = row.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1).map(parseDate);
 		var [abstText, subText, notifText, camText, startText, endText] = row.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1);
 		var [abstOrig, subOrig, notifOrig, camOrig, startOrig, endOrig] = row.slice(abstIdx + y * yearOffset + origOffset, endIdx + y * yearOffset + origOffset + 1);
 
