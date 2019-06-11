@@ -529,3 +529,72 @@ span.acronyms {
 	-webkit-transform: translate(-53px, -53px) scale(0.53) translate(53px, 53px);
 	transform: translate(-53px, -53px) scale(0.53) translate(53px, 53px);
 }
+
+
+/* Error log */
+
+.error_log_container {
+	position: fixed;
+	top: 0;
+	right: 0;
+	text-align: right;
+	box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+	padding: 6px 10px;
+	z-index: 3;
+	background-color: #eee;
+}
+
+#error_log {
+	font-size: small;
+	width: inherit;
+	text-align: left;
+}
+
+#error_log .corrected {
+	background-color: lightblue;
+}
+
+#error_log .ignored {
+	background-color: #ff9994;
+}
+
+label[for=collapse_errors] {
+	position: relative;
+	margin-left: 15px;
+	font-size: small;
+}
+
+label[for=collapse_errors]:before {
+	content: "";
+	position: absolute;
+	top: 2px;
+	left: -15px;
+	display : inline-block;
+	border-top : 5px solid transparent;
+	border-left : 5px solid black;
+	border-bottom : 5px solid transparent;
+	transition: rotate 0.25s 0.75s;
+}
+
+
+/* Error log’s toggle mechanism */
+
+#collapse_errors {
+	display: none;
+}
+
+#collapse_errors:not(:checked) ~ #error_log {
+	display: none;
+}
+
+#collapse_errors:checked ~ #error_log {
+	display: block;
+}
+
+#collapse_errors:not(:checked) ~ label[for=collapse_errors]:before {
+	transform: rotate(0);
+}
+
+#collapse_errors:checked ~ label[for=collapse_errors]:before {
+	transform: rotate(90deg);
+}

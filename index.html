@@ -11,7 +11,15 @@
 <body>
 	<h1>Computer Science conferences timeline</h1>
 	<p id="head">This page references conferences listed on <a href="http://portal.core.edu.au/conf-ranks/">the CORE conference portal</a>, cross-referenced with their calls for papers from <a href="http://www.wikicfp.com/cfp/">WikiCFP</a> for dates, and presents them on a timeline. Missing dates are extrapolated from the previous years' cfp.</p>
-	<p>If you encouter missing or erroneous data, you can create or update the corresponding WikiCFP page, and the changes will be brought in at the next scraping. You can report to me conferences matched with the wrong call for papers (while the right one exists on WikiCFP).</p>
+	<p>If you encounter missing or erroneous data, you can create or update the corresponding WikiCFP page, and the changes will be brought in at the next scraping. You can report to me conferences matched with the wrong call for papers (while the right one exists on WikiCFP).</p>
+
+	<div class="error_log_container">
+		<input id="collapse_errors" name="collapse_errors" type="checkbox">
+		<label for="collapse_errors">error(s) in cfps</label>
+		<table id="error_log">
+			<tr><th>Conference</th><th>Parsing error</th></tr>
+		</table>
+	</div>
 	<p id="warning">This information is provided without any guarantee of validity of any kind.</p>
 
 	<style type="text/css">
@@ -70,11 +78,8 @@
 	(function() {
 		makeTimelineLegend()
 
-		req = new XMLHttpRequest();
-		req.overrideMimeType('application/json; charset="UTF-8"');
-		req.addEventListener('load', evt => populatePage(JSON.parse(evt.target.responseText)));
-		req.open('get', 'cfp.json');
-		req.send();
+		fetchData('cfp.json', responseText => populatePage(JSON.parse(responseText)));
+		fetchData('parsing_errors.txt', responseText => parsingErrors(responseText));
 	})();
 	</script>
 

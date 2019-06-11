@@ -534,3 +534,33 @@ function populatePage(json)
 
 	document.getElementById('loading').style.display = 'none';
 }
+
+function parsingErrors(content)
+{
+	var table = document.getElementById('error_log');
+	for (let error of content.split('\n'))
+	{
+		if (!error.trim().length) continue;
+
+		var [conf, errmsg, url, fixed] = error.replace(/ -- /g, ' − ').split(';');
+		var err = document.createElement('tr');
+		var link = err.appendChild(document.createElement('td')).appendChild(document.createElement('a'));
+		link.textContent = conf;
+		link.href = url;
+		err.appendChild(document.createElement('td')).textContent = errmsg;
+
+		table.appendChild(err).className = fixed;
+	}
+
+	var label = document.querySelector('label[for=collapse_errors]');
+	label.textContent = (table.children.length - 1) + ' ' + label.textContent;
+}
+
+function fetchData(page, result_handler)
+{
+	req = new XMLHttpRequest();
+	req.overrideMimeType('application/json; charset="UTF-8"');
+	req.addEventListener('load', evt => result_handler(evt.target.responseText));
+	req.open('get', page);
+	req.send();
+}

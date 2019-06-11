@@ -616,12 +616,11 @@ class CallForPapers(ConfMetaData):
 		"""
 		f = 'cache/' + 'cfp_{}-{}_{}.html'.format(self.conf.acronym, self.year, self.conf.topic()).replace('/', '_') # topic('-')
 		self.parse_cfp(get_soup(self.url_cfp, f))
+
+
+	def verify_conf_dates(self):
 		dates_found = self.dates.keys()
-		self.verify_conf_dates(dates_found)
-		self.verify_submission_dates()
 
-
-	def verify_conf_dates(self, dates_found):
 		if {'conf_start', 'conf_end'} <= dates_found:
 			err = []
 			fix = 0
@@ -666,10 +665,10 @@ class CallForPapers(ConfMetaData):
 				diag = '{} {}: Conferences dates {} are '.format(self.conf.acronym, self.year, orig) + ' and '.join(err)
 
 				if len(err) == fix:
-					Progress().clean_print('{}: using {} -- {} instead'.format(diag, s, e))
 					# Use corrected dates, but take care to mark as guesses
 					self.dates['conf_start'], self.dates['conf_end'] = (s, e)
 					self.orig['conf_start'], self.orig['conf_end'] = (False, False)
+					return diag + ': using {} -- {} instead'.format(s, e)
 				else:
 					raise CFPCheckError(diag)
 
@@ -691,16 +690,14 @@ class CallForPapers(ConfMetaData):
 					pass
 
 			if err:
-				diag = '{} {} ({} -- {}): Conferences submission dates issues: '.format(self.conf.acronym, self.year,
-																						self.dates['conf_start'], self.dates['conf_end'])
-				diag += ' and '.join(err)
+				diag = '{} {} ({} -- {}): Submission dates issues: '.format(self.conf.acronym, self.year,
+						self.dates['conf_start'], self.dates['conf_end']) + ' and '.join(err)
 
 				if len(err) == fix:
-					Progress().clean_print('{}: using {} instead'.format(diag, {k: str(self.dates[k]) for k in pre_dates}))
-					for k in pre_dates:
+					for k in pre_dates: # Use corrected dates, but take care to mark as guesses
 						self.dates[k] = pre_dates[k]
 						self.orig[k] = False
-					# Use corrected dates, but take care to mark as guesses
+					return diag + ': using {} instead'.format(', '.join('{}={}'.format(k, self.dates[k]) for k in pre_dates))
 				else:
 					raise CFPCheckError(diag)
 
@@ -1033,14 +1030,26 @@ def update_confs(out):
 			for y in years:
 				try:
 					cfp = WikicfpCFP.get_cfp(conf, y)
+
+					err = cfp.verify_conf_dates()
+					if err:
+						prog.clean_print(str(err))
+						print(err.replace(':', ';', 1) + ';' + cfp.url_cfp + ';corrected', file=errlog)
+
+					err = cfp.verify_submission_dates()
+					if err:
+						prog.clean_print(str(err))
+						print(err.replace(':', ';', 1) + ';' + cfp.url_cfp + ';corrected', file=errlog)
+
 					cfps_found += 1
 					# possibly try other CFP providers?
+
 				except CFPNotFoundError:
 					cfp = None
 				except CFPCheckError as e:
-					cfp = None
 					prog.clean_print(str(e))
-					print(e, file=errlog)
+					print(str(e).replace(':', ';', 1) + ': no satisfying correction heuristic;' + cfp.url_cfp + ';ignored', file=errlog)
+					cfp = None
 
 				if not cfp:
 					if last_year:
