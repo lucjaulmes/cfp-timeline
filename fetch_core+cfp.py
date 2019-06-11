@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+from __future__ import generator_stop
+
 import re
 import os
 import sys
@@ -123,8 +125,9 @@ def head(n, iterable):
 		iterable `iterable`: An iterable whose first elements we want to get
 	"""
 	_it = iter(iterable)
-	for _ in range(n):
-		yield next(_it)
+	for pos, item in enumerate(_it):
+		if pos == n: break
+		yield item
 
 
 def uniq(iterable, **sorted_kwargs):
@@ -136,10 +139,13 @@ def uniq(iterable, **sorted_kwargs):
 		sorted_kwargs (`dict`): the arguments to be passed to sorted(iterable, ...)
 	"""
 	_it = iter(sorted(iterable, **sorted_kwargs))
-	y = next(_it)
+	try:
+		y = next(_it)
+	except StopIteration:
+		return
+
 	yield y
-	while True:
-		x = next(_it)
+	for x in _it:
 		if x != y: yield x
 		y = x
 
@@ -183,7 +189,7 @@ class PeekIter(object):
 
 		try:
 			self._ahead.extend(next(self._it) for _ in range(n - len(self._ahead) + 1))
-		except StopIteration:
+		except RuntimeError:
 			pass
 
 		if n == 0:
