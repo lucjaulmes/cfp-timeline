@@ -806,7 +806,7 @@ class WikicfpCFP(CallForPapers):
 		to correspond to the conference and year requested.
 		"""
 		search = '{} {}'.format(conf.acronym, year).lower()
-		for conf_link in soup.find_all('a', href = True, text = lambda t: t and t.lower() == search):
+		for conf_link in soup.find_all('a', href = True, text = lambda t: t and t.lower().strip() == search):
 			# find links name "acronym year" and got to first parent <tr>
 			for tr in conf_link.parents:
 				if tr.name == 'tr':
