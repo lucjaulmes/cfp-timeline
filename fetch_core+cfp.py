@@ -674,16 +674,19 @@ class CallForPapers(ConfMetaData):
 
 
 	def verify_submission_dates(self):
-		pre_dates = {k:self.dates[k] for k in {'submission', 'abstract', 'notification'} & self.dates.keys()}
+		pre_dates = {'submission', 'abstract', 'notification'} & set(self.dates.keys())
 		if 'conf_start' in self.dates and pre_dates:
 			err = []
 			fix = 0
 
-			for k, d in pre_dates.items():
+			for k, d in [(k, self.dates[k]) for k in pre_dates]:
 				if d > self.dates['conf_start']:
 					err.append('{} ({}) after conference'.format(k, d))
 					if d.year == self.year:
-						self.dates[k] = pre_dates[k].replace(year = self.year - 1)
+						# Classic error: for conf at year Y put all dates at year Y even if it should be previous year.
+						# Use corrected dates, but take care to mark as guessed.
+						self.dates[k] = d.replace(year = d.year - 1)
+						self.orig[k] = False
 						fix += 1
 				elif self.dates['conf_start'] - d > datetime.timedelta(days = 365):
 					err.append('{} ({}) too long before conference'.format(k, d))
@@ -694,9 +697,6 @@ class CallForPapers(ConfMetaData):
 						self.dates['conf_start'], self.dates['conf_end']) + ' and '.join(err)
 
 				if len(err) == fix:
-					for k in pre_dates: # Use corrected dates, but take care to mark as guesses
-						self.dates[k] = pre_dates[k]
-						self.orig[k] = False
 					return diag + ': using {} instead'.format(', '.join('{}={}'.format(k, self.dates[k]) for k in pre_dates))
 				else:
 					raise CFPCheckError(diag)
