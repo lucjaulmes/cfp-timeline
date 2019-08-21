@@ -951,10 +951,13 @@ class CoreRanking(object):
 					# Some manual corrections applied to the CORE database:
 					# - Stupid SC has 2 completely different descriptions. Add the long one if we just got 'supercomputing'
 					# - ISC changed their acronym to "ISC HPC"
+					# - Euro-Par is named International instead of (duh) European
 					if val[apos] == 'SC' and 'supercomputing' in val[tpos].lower().split():
 						val[tpos] += ': The International Conference for High Performance Computing, Networking, Storage, and Analysis'
 					if val[apos] == 'ISC' and cls.strip_trailing_paren(val[tpos]) == 'ISC High Performance':
 						val[apos] += ' HPC'
+					if val[apos] == 'Euro-Par' and 'european' not in val[tpos].lower().split():
+						val[tpos] = 'European ' + val[tpos]
 					yield Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
 
 
