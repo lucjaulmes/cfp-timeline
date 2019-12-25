@@ -710,7 +710,7 @@ class CallForPapers(ConfMetaData):
 		Use the amount of missing ("TBD") fields as a tie breaker.
 		"""
 		search_f = 'cache/' + 'search_cfp_{}-{}.html'.format(conf.acronym, year).replace('/', '_')
-		soup = get_soup(cls._url_cfpsearch, search_f, params = {'q': conf.acronym, 'y': year})
+		soup = get_soup(cls._url_cfpsearch, search_f, params = {'q': conf.acronym, 'year': year})
 
 		# Rating of 1000 disqualifies.
 		best_candidate = None
