@@ -567,7 +567,12 @@ class CallForPapers(ConfMetaData):
 		# direct extrapolations to year + 1
 		for field in (field for field in {'conf_start', 'submission'} & prev_dates - dates):
 			n = self._date_fields.index(field)
-			self.dates[field] = prev_cfp.dates[field].replace(year = prev_cfp.dates[field].year + 1)
+			try:
+				self.dates[field] = prev_cfp.dates[field].replace(year = prev_cfp.dates[field].year + 1)
+			except ValueError:
+				print(prev_cfp.dates[field], prev_cfp.dates[field].month, prev_cfp.dates[field].day)
+				assert prev_cfp.dates[field].month == 2 and prev_cfp.dates[field].day == 29
+				self.dates[field] = prev_cfp.dates[field].replace(year = prev_cfp.dates[field].year + 1, day = 28)
 
 			self.orig[field] = False
 			dates.add(field)
