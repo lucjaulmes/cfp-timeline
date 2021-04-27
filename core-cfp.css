@@ -153,7 +153,7 @@ body > *:not(#timeline_container) {
 	width: 100%;
 }
 
-#filters select[name=conf] {
+#filters select {
 	max-height: 45ex;
 }
 

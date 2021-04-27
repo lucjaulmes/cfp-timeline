@@ -487,14 +487,15 @@ class ConfMetaData(object):
 
 @total_ordering
 class Conference(ConfMetaData):
-	__slots__ = ('acronym', 'title', 'rank', 'field')
+	__slots__ = ('acronym', 'title', 'rank', 'ranksys', 'field')
 	_ranks = ['A*', 'A', 'B', 'C', 'D', 'E']
 
-	def __init__(self, title, acronym, rank = None, field = None, **kwargs):
+	def __init__(self, title, acronym, rank=None, field=None, ranksys='CORE2020', **kwargs):
 		super(Conference, self).__init__(title, acronym, **kwargs)
 
 		self.title = title
 		self.acronym = acronym
+		self.ranksys = ranksys
 		self.rank = rank or '(missing)'
 		self.field = field or '(missing)'
 
@@ -510,21 +511,21 @@ class Conference(ConfMetaData):
 	def columns(cls):
 		""" Return column titles for cfp data.
 		"""
-		return ['Acronym', 'Title', 'CORE 2020 Rank', 'Field']
+		return ['Acronym', 'Title', 'Rank system', 'Rank', 'Field']
 
 
 	def values(self):
 		""" What we'll show
 		"""
-		return [self.acronym, self.title, self.rank, self.field]
+		return [self.acronym, self.title, self.ranksys, self.rank, self.field]
 
 
 	def __eq__(self, other):
-		return isinstance(other, self.__class__) and (self.rank, self.acronym, self.title, other.field) == (other.rank, other.acronym, other.title, other.field)
+		return isinstance(other, self.__class__) and (self.rank, self.acronym, self.title, self.ranksys, self.field) == (other.rank, other.acronym, other.title, other.ranksys, other.field)
 
 
 	def __lt__(self, other):
-		return (self.ranksort(), self.acronym, self.title, other.field) < (other.ranksort(), other.acronym, other.title, other.field)
+		return (self.ranksort(), self.acronym, self.title, self.ranksys, self.field) < (other.ranksort(), other.acronym, other.title, other.ranksys, other.field)
 
 
 	def __str__(self):
@@ -965,15 +966,19 @@ class CoreRanking(object):
 						val[apos] = 'Euro-Par'
 					yield Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
 
+		# Manually add missing conferences from previous year data. Copying ISCA’s FoR code for Micro
+		yield Conference('International Symposium on Microarchitecture', 'MICRO', 'A', forcodes.get('4601', None), 'CORE2018')
+		yield Conference('Design Automation Conference', 'DAC', 'A', forcodes.get('4606', None), 'CORE2018')
+
 
 	@classmethod
 	def _save_confs(cls, conflist):
 		""" Save conferences to a file where to cache them.
 		"""
 		with open(cls._core_file, 'w') as csv:
-			print('acronym;title;rank;field', file=csv)
+			print('acronym;title;ranksys;rank;field', file=csv)
 			for conf in conflist:
-				print(';'.join((conf.acronym, conf.title, conf.rank, conf.field)), file=csv)
+				print(';'.join((conf.acronym, conf.title, conf.ranksys, conf.rank, conf.field)), file=csv)
 
 
 
@@ -986,13 +991,11 @@ class CoreRanking(object):
 			raise FileNotFoundError('Cached file too old')
 
 		with open(cls._core_file, 'r') as f:
-			assert 'acronym;title;rank;field' == next(f).strip()
+			assert 'acronym;title;ranksys;rank;field' == next(f).strip()
 			confs = [l.strip().split(';') for l in f]
 
 		with Progress(operation = 'loading CORE list', maxpos = len(confs)) as prog:
-			return [Conference(cls.strip_trailing_paren(tit), acr, rnk, fld) for acr, tit, rnk, fld in prog.iterate(confs)]
-						# if cls.strip_trailing_paren(tit) == 'ISC High Performance']
-
+			return [Conference(cls.strip_trailing_paren(tit), acr, rnk, fld, sys) for acr, tit, sys, rnk, fld in prog.iterate(confs)]
 
 
 	@classmethod
