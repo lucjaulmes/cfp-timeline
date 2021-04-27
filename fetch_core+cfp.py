@@ -1051,7 +1051,7 @@ def update_cfp(out, debug=False):
 	# use years from 6 months ago until next year
 	years = range((today - datetime.timedelta(days = 366 / 2)).year, (today + datetime.timedelta(days = 365)).year + 1)
 
-	print('{"columns":', file=out);
+	print('{{"years": {}, "columns":'.format([y for y in years if y >= today.year]), file=out);
 	json.dump(sum(([col + ' ' + str(y) for col in CallForPapers.columns()] for y in years if y >= today.year), Conference.columns()), out)
 	print(',\n"data": [', file=out)
 	writing_first_conf = True

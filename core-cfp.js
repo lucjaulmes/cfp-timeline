@@ -1,7 +1,7 @@
 const ranks = ['D', 'C', 'B', 'A', 'A*'];
-const confIdx = 0, titleIdx = 1, rankIdx = 2, fieldIdx = 3, linkIdx = 16, cfpIdx = 17;
-const abstIdx = 4, subIdx = 5, notifIdx = 6, camIdx = 7, startIdx = 8, endIdx = 9;
-const yearIdx = 4, yearOffset = 14, origOffset = 6;
+let confIdx = 0, titleIdx = 1, rankIdx = 3, fieldIdx = 4, linkIdx = 17, cfpIdx = 18;
+let abstIdx = 5, subIdx = 6, notifIdx = 7, camIdx = 8, startIdx = 9, endIdx = 10;
+let yearIdx = 5, yearOffset = 14, origOffset = 6;
 const today = new Date(), year = today.getFullYear();
 
 const month_name = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -461,6 +461,24 @@ function populatePage(json)
 	data = json['data'];
 
 	var datesIdx = [], origIdx = [], urlIdx = [];
+	let year = json['years'][0];
+	confIdx    = json['columns'].indexOf('Acronym')
+	titleIdx   = json['columns'].indexOf('Title')
+	rankIdx    = json['columns'].indexOf('Rank')
+	fieldIdx   = json['columns'].indexOf('Field')
+	linkIdx    = json['columns'].indexOf(`Link ${year}`)
+	cfpIdx     = json['columns'].indexOf(`CFP url ${year}`)
+	abstIdx    = json['columns'].indexOf(`Abstract Registration Due ${year}`)
+	subIdx     = json['columns'].indexOf(`Submission Deadline ${year}`)
+	notifIdx   = json['columns'].indexOf(`Notification Due ${year}`)
+	camIdx     = json['columns'].indexOf(`Final Version Due ${year}`)
+	startIdx   = json['columns'].indexOf(`startDate ${year}`)
+	endIdx     = json['columns'].indexOf(`endDate ${year}`)
+
+	yearIdx    = json['columns'].indexOf(`Abstract Registration Due ${year}`)
+	yearOffset = json['columns'].indexOf(`Abstract Registration Due ${json['years'][1]}`) - yearIdx
+	origOffset = json['columns'].indexOf(`orig_abstract ${year}`) - yearIdx
+
 	n_years = (json['columns'].length - yearIdx) / yearOffset
 
 	for (var y = 0; y < n_years; y++)
