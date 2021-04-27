@@ -7,6 +7,7 @@ import os
 import sys
 import json
 import glob
+import click
 import shutil
 import inflection
 import requests
@@ -95,10 +96,10 @@ class Progress():
 			yield item
 
 
-	def clean_print(self, string, *print_args):
+	def clean_print(self, string, *print_args, **print_kwargs):
 		""" Want to cleanly print a line in between progress updates? No problem!
 		"""
-		print('\r{}\r'.format(' ' * shutil.get_terminal_size().columns) + string, *print_args)
+		print('\r{}\r'.format(' ' * shutil.get_terminal_size().columns) + string, *print_args, **print_kwargs)
 		self.next_pos = 1
 
 
@@ -509,7 +510,7 @@ class Conference(ConfMetaData):
 	def columns(cls):
 		""" Return column titles for cfp data.
 		"""
-		return ['Acronym', 'Title', 'CORE 2018 Rank', 'Field']
+		return ['Acronym', 'Title', 'CORE 2020 Rank', 'Field']
 
 
 	def values(self):
@@ -708,7 +709,7 @@ class CallForPapers(ConfMetaData):
 
 
 	@classmethod
-	def find_link(cls, conf, year):
+	def find_link(cls, conf, year, debug=False):
 		""" Find the link to the conference page in the search page
 
 		Have parse_search extract links from the page's soup, then compute a rating for each and keep the best (lowest).
@@ -724,6 +725,8 @@ class CallForPapers(ConfMetaData):
 		for desc, url, missing in cls.parse_search(conf, year, soup):
 			candidate = cls(conf, year, desc, url)
 			rating = candidate.rating()
+			if debug:
+				print(f'[{rating}] {candidate}')
 			if max(rating) < 1000 and best_score > (sum(rating), missing):
 				best_candidate = candidate
 				best_score = (sum(rating), missing)
@@ -735,11 +738,11 @@ class CallForPapers(ConfMetaData):
 
 
 	@classmethod
-	def get_cfp(cls, conf, year):
+	def get_cfp(cls, conf, year, debug=False):
 		""" Fetch the cfp from wiki-cfp for the given conference at the given year.
 		"""
 		try:
-			cfp = cls.find_link(conf, year)
+			cfp = cls.find_link(conf, year, debug=debug)
 			cfp.fetch_cfp_data()
 			return cfp
 
@@ -792,7 +795,7 @@ class WikicfpCFP(CallForPapers):
 
 	@staticmethod
 	def parse_date(d):
-		# some ISO 8601 or RFC 3339 format
+		# some ISO 8601 or RFC 3339 format
 		return datetime.datetime.strptime(d, '%Y-%m-%dT%H:%M:%S').date()
 
 
@@ -812,7 +815,7 @@ class WikicfpCFP(CallForPapers):
 		"""
 		search = '{} {}'.format(conf.acronym, year).lower()
 		for conf_link in soup.find_all('a', href = True, text = lambda t: t and t.lower().strip() == search):
-			# find links name "acronym year" and got to first parent <tr>
+			# find links name "acronym year" and got to first parent <tr>
 			for tr in conf_link.parents:
 				if tr.name == 'tr':
 					break
@@ -890,7 +893,7 @@ class WikicfpCFP(CallForPapers):
 class CoreRanking(object):
 	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.
 	"""
-	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2018&sort=arank&page={}'
+	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2020&sort=arank&page={}'
 	_core_file = 'core.csv'
 
 	_historical = re.compile(r'\b(previous(ly)?|was|(from|pre) [0-9]{4}|merge[dr])\b', re.IGNORECASE)
@@ -954,15 +957,12 @@ class CoreRanking(object):
 				for row in prog.iterate(rows, p * per_page):
 					val = [' '.join(r.text.split()) for r in row.find_all('td')]
 					# Some manual corrections applied to the CORE database:
-					# - Stupid SC has 2 completely different descriptions. Add the long one if we just got 'supercomputing'
 					# - ISC changed their acronym to "ISC HPC"
-					# - Euro-Par is named International instead of (duh) European
-					if val[apos] == 'SC' and 'supercomputing' in val[tpos].lower().split():
-						val[tpos] += ': The International Conference for High Performance Computing, Networking, Storage, and Analysis'
+					# - Searching cfps for Euro-Par finds EuroPar, but not the other way around
 					if val[apos] == 'ISC' and cls.strip_trailing_paren(val[tpos]) == 'ISC High Performance':
 						val[apos] += ' HPC'
-					if val[apos] == 'Euro-Par' and 'european' not in val[tpos].lower().split():
-						val[tpos] = 'European ' + val[tpos]
+					if val[apos] == 'EuroPar' and cls.strip_trailing_paren(val[tpos]) == 'International European Conference on Parallel and Distributed Computing':
+						val[apos] = 'Euro-Par'
 					yield Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
 
 
@@ -996,18 +996,23 @@ class CoreRanking(object):
 
 
 	@classmethod
+	def update_confs(cls):
+		""" Generator of all conferences listed on the core site, as dicts
+		"""
+		confs = list(uniq(cls._fetch_confs()))
+		cls._save_confs(confs)
+
+		return confs
+
+
+	@classmethod
 	def get_confs(cls):
 		""" Generator of all conferences listed on the core site, as dicts
 		"""
 		try:
 			return list(cls._load_confs())
 		except FileNotFoundError:
-			pass
-
-		confs = list(uniq(cls._fetch_confs()))
-		cls._save_confs(confs)
-
-		return confs
+			return cls.update_confs()
 
 
 def json_encode_dates(obj):
@@ -1017,8 +1022,27 @@ def json_encode_dates(obj):
 		raise TypeError('{} not encodable'.format(obj))
 
 
-def update_confs(out):
-	""" List all conferences from CORE, fetch their CfPs and print the output data as json to out.
+@click.group(invoke_without_command=True)
+@click.pass_context
+def update(ctx):
+	""" Update the Core-CFP data. If no command is provided, update_confs is run.
+	"""
+	if not ctx.invoked_subcommand:
+		# Default is update_confs
+		update_cfp()
+
+@update.command()
+def update_core():
+	""" Update the cached list of CORE conferences.
+	"""
+	CoreRanking.update_confs()
+
+
+@update.command()
+@click.option('--out', default='cfp.json', help='Output file for CFPs', type=click.File('w'))
+@click.option('--debug/--no-debug', default=False, help='Show debug output')
+def update_cfp(out, debug=False):
+	""" Using all conferences from CORE, fetch their CfPs and print the output data as json to out.
 	"""
 	today = datetime.datetime.now().date()
 	# use years from 6 months ago until next year
@@ -1036,8 +1060,10 @@ def update_confs(out):
 			cfps_found = 0
 			last_year = None
 			for y in years:
+				if debug:
+					prog.clean_print(f'Looking up CFP {conf} {y}')
 				try:
-					cfp = WikicfpCFP.get_cfp(conf, y)
+					cfp = WikicfpCFP.get_cfp(conf, y, debug=debug)
 
 					err = cfp.verify_conf_dates()
 					if err:
@@ -1052,12 +1078,20 @@ def update_confs(out):
 					cfps_found += 1
 					# possibly try other CFP providers?
 
-				except CFPNotFoundError:
+				except CFPNotFoundError as e:
+					if debug:
+						print(f'> {e}\n')
 					cfp = None
 				except CFPCheckError as e:
-					prog.clean_print(str(e))
+					if debug:
+						print(f'> {e}\n')
+					else:
+						prog.clean_print(str(e))
 					print(str(e).replace(':', ';', 1) + ': no satisfying correction heuristic;' + cfp.url_cfp + ';ignored', file=errlog)
 					cfp = None
+				else:
+					if debug:
+						print('> Found\n')
 
 				if not cfp:
 					if last_year:
@@ -1083,7 +1117,4 @@ def update_confs(out):
 
 
 if __name__ == '__main__':
-	with open('cfp.json', 'w') as out:
-		update_confs(out)
-
-
+	update()
