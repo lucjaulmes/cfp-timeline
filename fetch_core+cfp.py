@@ -225,7 +225,7 @@ def memoize(f):
 	return wrapper
 
 
-def get_soup(url, filename, **kwargs):
+def get_cached_soup(url, filename, **kwargs):
 	""" Simple caching mechanism. Fetch a page from url and save it in filename.
 
 	If filename exists, return its contents instead.
@@ -239,6 +239,19 @@ def get_soup(url, filename, **kwargs):
 			print(r.text, file=fh)
 		soup = BeautifulSoup(r.text, 'lxml')
 	return soup
+
+
+def get_uncached_soup(url, filename, **kwargs):
+	""" Simple caching mechanism. Fetch a page from url and save it in filename.
+
+	If filename exists, return its contents instead.
+	"""
+	r = requests.get(url, **kwargs)
+	return BeautifulSoup(r.text, 'lxml')
+
+
+def get_soup(url, filename, **kwargs):
+	raise NotImplementedError('Should point to  get_cached_soup or  get_uncached_soup')
 
 
 def normalize(string):
@@ -1036,12 +1049,16 @@ def json_encode_dates(obj):
 
 @click.group(invoke_without_command=True)
 @click.option('--quiet/--no-quiet', default=False, help='Silence output')
+@click.option('--cache/--no-cache', default=False, help='Cache files in ./cache')
 @click.pass_context
-def update(ctx, quiet):
+def update(ctx, quiet, cache):
 	""" Update the Core-CFP data. If no command is provided, update_confs is run.
 	"""
 	if quiet:
 		Progress.quiet()
+
+	global get_soup
+	get_soup = get_cached_soup if cache else get_uncached_soup
 
 	if not ctx.invoked_subcommand:
 		# Default is update_confs
