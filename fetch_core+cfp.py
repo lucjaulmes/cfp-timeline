@@ -1166,7 +1166,10 @@ def update_cfp(out, debug=False):
 				# filter out empty values for non-date columns
 				json.dump(values, out, default = json_encode_dates)
 
-	scrape_date = datetime.datetime.fromtimestamp(min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html')))
+	try:
+		scrape_date = datetime.datetime.fromtimestamp(min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html')))
+	except ValueError:
+		scrape_date = datetime.datetime.now()
 	print(scrape_date.strftime('\n], "date":"%Y-%m-%d"}'), file=out)
 
 
