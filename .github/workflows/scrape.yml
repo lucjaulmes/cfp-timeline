@@ -2,7 +2,8 @@ name: Update scraping
 
 on:
   schedule:
-    - cron: '0 4 * * *'
+    # 7am UTC = 9am CET, 3am EDT, 0am PDT − should be light hours globally for WikiCFP.
+    - cron: '0 7 * * *'
   workflow_dispatch:
 
 
@@ -21,6 +22,8 @@ jobs:
 
     - name: Do the scraping
       run: |
+        # Expected ~3200 requests, ~4h30 at the wikicfp-requested 5s interval, <1h with 1s interval
+        # Limit for github actions is 6h, so let’s got with 5s delay
         (( $RANDOM < 32768 / 30 )) && python3 ./fetch_core+cfp.py --quiet --no-cache --delay 5 update-core
         python3 ./fetch_core+cfp.py --quiet --no-cache --delay 5 update-cfp
 
