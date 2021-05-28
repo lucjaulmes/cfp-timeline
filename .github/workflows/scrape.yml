@@ -1,0 +1,36 @@
+name: Update scraping
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+
+jobs:
+  update:
+    name: Update scraping
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Install dependencies
+      run: |
+        python3 -m pip install -r ./requirements.txt
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "github-actions[bot]"
+
+    - name: Do the scraping
+      run: |
+        (( $RANDOM < 32768 / 30 )) && python3 ./fetch_core+cfp.py --quiet --no-cache --delay 5 update-core
+        python3 ./fetch_core+cfp.py --quiet --no-cache --delay 5 update-cfp
+
+    - name: Push to GitHub
+      run: |
+        git add core.csv cfp.json parsing_errors.txt
+        git commit -m "Update scraping $(date --rfc-3339=date)"
+
+        remote=$(git remote get-url --push origin)
+        git push https://${TOKEN}@${remote#https://}
+
+      env:
+        TOKEN: ${{ secrets.CORE_CFP_PUSHER }}
