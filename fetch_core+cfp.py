@@ -18,7 +18,7 @@ from collections import defaultdict
 from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs, urlencode
 from bs4 import BeautifulSoup
 
-from time import time as get_time
+from time import sleep, time as get_time
 from sys import stdout
 from math import floor
 
@@ -42,7 +42,7 @@ class Progress():
 	next_pos = 0
 	update_freq = 0
 	start = 0
-	template = "\rProgress{}: {{: 3.1f}} %\tElapsed: {{:2.0f}}:{{:02.0f}}\tETA: {{:2.0f}}:{{:02.0f}} "
+	template = "\rProgress{}: {{: 5.1f}} %\tElapsed: {{:2.0f}}:{{:02.0f}}\tETA: {{:2.0f}}:{{:02.0f}} "
 
 
 	def change_max(self, maxpos):
@@ -225,33 +225,52 @@ def memoize(f):
 	return wrapper
 
 
-def get_cached_soup(url, filename, **kwargs):
-	""" Simple caching mechanism. Fetch a page from url and save it in filename.
+class RequestWrapper:
+	last_req_times = {}
+	use_cache = True
+	delay = 0
 
-	If filename exists, return its contents instead.
-	"""
-	try:
-		with open(filename, 'r') as fh:
-			soup = BeautifulSoup(fh.read(), 'lxml')
-	except FileNotFoundError:
+	@classmethod
+	def set_delay(cls, delay):
+		cls.delay = delay
+
+	@classmethod
+	def set_use_cache(cls, use_cache):
+		cls.use_cache = use_cache
+
+	@classmethod
+	def wait(cls, url):
+		key = urlsplit(url).netloc
+		now = get_time()
+
+		wait = cls.last_req_times.get(urlsplit(url).netloc, 0) + cls.delay - now
+		cls.last_req_times[urlsplit(url).netloc] = now + max(0, wait)
+
+		if wait >= 0:
+			sleep(wait)
+
+
+	@classmethod
+	def get_soup(cls, url, filename, **kwargs):
+		""" Simple caching mechanism. Fetch a page from url and save it in filename.
+
+		If filename exists, return its contents instead.
+		"""
+		if cls.use_cache:
+			try:
+				with open(filename, 'r') as fh:
+					return BeautifulSoup(fh.read(), 'lxml')
+			except FileNotFoundError:
+				pass
+
+		cls.wait(url)
 		r = requests.get(url, **kwargs)
-		with open(filename, 'w') as fh:
-			print(r.text, file=fh)
-		soup = BeautifulSoup(r.text, 'lxml')
-	return soup
 
+		if cls.use_cache:
+			with open(filename, 'w') as fh:
+				print(r.text, file=fh)
 
-def get_uncached_soup(url, filename, **kwargs):
-	""" Simple caching mechanism. Fetch a page from url and save it in filename.
-
-	If filename exists, return its contents instead.
-	"""
-	r = requests.get(url, **kwargs)
-	return BeautifulSoup(r.text, 'lxml')
-
-
-def get_soup(url, filename, **kwargs):
-	raise NotImplementedError('Should point to  get_cached_soup or  get_uncached_soup')
+		return BeautifulSoup(r.text, 'lxml')
 
 
 def normalize(string):
@@ -632,7 +651,7 @@ class CallForPapers(ConfMetaData):
 		conf_series = defaultdict(lambda: [])
 		for i in (chr(ord('A') + x) for x in range(26)):
 			f='cache/cfp_series_{}.html'.format(i)
-			soup = get_soup(cls._url_cfpseries.format(initial = i), f)
+			soup = RequestWrapper.get_soup(cls._url_cfpseries.format(initial = i), f)
 
 			for acronym, name, link in cls.parse_confseries(soup):
 				conf_series[acronym].append((ConfMetaData(title = name, acronym = acronym), link))
@@ -644,7 +663,7 @@ class CallForPapers(ConfMetaData):
 		""" Parse a page from wiki-cfp. Return all useful data about the conference.
 		"""
 		f = 'cache/' + 'cfp_{}-{}_{}.html'.format(self.conf.acronym, self.year, self.conf.topic()).replace('/', '_') # topic('-')
-		self.parse_cfp(get_soup(self.url_cfp, f))
+		self.parse_cfp(RequestWrapper.get_soup(self.url_cfp, f))
 
 
 	def verify_conf_dates(self):
@@ -739,7 +758,7 @@ class CallForPapers(ConfMetaData):
 		Use the amount of missing ("TBD") fields as a tie breaker.
 		"""
 		search_f = 'cache/' + 'search_cfp_{}-{}.html'.format(conf.acronym, year).replace('/', '_')
-		soup = get_soup(cls._url_cfpsearch, search_f, params = {'q': conf.acronym, 'year': year})
+		soup = RequestWrapper.get_soup(cls._url_cfpsearch, search_f, params = {'q': conf.acronym, 'year': year})
 
 		# Rating of 1000 disqualifies.
 		best_candidate = None
@@ -953,7 +972,7 @@ class CoreRanking(object):
 		""" Generator of all conferences listed on the core site, as dicts
 		"""
 		# fetch page 0 outside loop to get page/result counts, will be in cache for loop access
-		soup = get_soup(cls._url_corerank.format(0), 'cache/ranked_{}.html'.format(1))
+		soup = RequestWrapper.get_soup(cls._url_corerank.format(0), 'cache/ranked_{}.html'.format(1))
 
 		result_count_re = re.compile('Showing results 1 - ([0-9]+) of ([0-9]+)')
 		result_count = soup.find(text = result_count_re)
@@ -965,7 +984,7 @@ class CoreRanking(object):
 		with Progress(operation = 'fetching CORE list', maxpos = n_results) as prog:
 			for p in range(pages):
 				f = 'cache/ranked_{}.html'.format(per_page * p + 1)
-				soup = get_soup(cls._url_corerank.format(p), f)
+				soup = RequestWrapper.get_soup(cls._url_corerank.format(p), f)
 
 				table = soup.find('table')
 				rows = iter(table.find_all('tr'))
@@ -1049,16 +1068,17 @@ def json_encode_dates(obj):
 
 @click.group(invoke_without_command=True)
 @click.option('--quiet/--no-quiet', default=False, help='Silence output')
-@click.option('--cache/--no-cache', default=False, help='Cache files in ./cache')
+@click.option('--cache/--no-cache', default=True, help='Cache files in ./cache')
+@click.option('--delay', type=float, default=0, help='Delay between requests to the same domain')
 @click.pass_context
-def update(ctx, quiet, cache):
+def update(ctx, quiet, cache, delay):
 	""" Update the Core-CFP data. If no command is provided, update_confs is run.
 	"""
 	if quiet:
 		Progress.quiet()
 
-	global get_soup
-	get_soup = get_cached_soup if cache else get_uncached_soup
+	RequestWrapper.set_delay(delay)
+	RequestWrapper.set_use_cache(cache)
 
 	if not ctx.invoked_subcommand:
 		# Default is update_confs
