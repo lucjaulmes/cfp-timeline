@@ -42,7 +42,8 @@ class Progress():
 	next_pos = 0
 	update_freq = 0
 	start = 0
-	template = "\rProgress{}: {{: 3.1f}} %\tElapsed: {{:2}}:{{:02}}\tETA: {{:2}}:{{:02}} "
+	template = "\rProgress{}: {{: 3.1f}} %\tElapsed: {{:2.0f}}:{{:02.0f}}\tETA: {{:2.0f}}:{{:02.0f}} "
+
 
 	def change_max(self, maxpos):
 		""" Change the number of items on hwihc me iterate.
@@ -60,9 +61,9 @@ class Progress():
 		if pos < self.maxpos:
 			ratio = pos / self.maxpos
 			elapsed = get_time() - self.start
-			est_remaining = elapsed * (1 - ratio) / ratio
+			est_remaining = elapsed * (1 - ratio) / ratio if ratio else float('inf')
 
-			stdout.write(self.template.format(100 * ratio, *(divmod(int(elapsed), 60) + divmod(int(est_remaining), 60))))
+			stdout.write(self.template.format(100 * ratio, *(divmod(elapsed, 60) + divmod(est_remaining, 60))))
 			stdout.flush()
 
 	def update_diff(self, pos):
@@ -104,18 +105,26 @@ class Progress():
 
 
 	def __init__(self, maxpos = 0.0, operation = ""):
-		self.template = self.template.format(' ' + operation if operation else '')
+		self.operation = ' ' + operation if operation else ''
+		self.template = self.template.format(self.operation)
 		self.change_max(maxpos)
 
 	def __enter__(self):
 		self.start = get_time()
+		self._print_update(0)
 		self.next_pos = self.update_freq
-		stdout.write(self.template.split('\t')[0].format(0))
-		stdout.flush()
 		return self
 
 	def __exit__(self, type, value, traceback):
-		print(self.template.format(100, *(divmod(int(get_time() - self.start), 60) + (0, 0))))
+		self.clean_print("Finished{} in {:2}:{:02}".format(self.operation, *divmod(int(get_time() - self.start), 60)))
+
+	@classmethod
+	def quiet(cls):
+		""" Replace all functions with quieter ones
+		"""
+		cls._print_update = lambda *a, **k: None
+		cls.iterate = lambda obj, iterable, *enum_args: iterable
+		cls.clean_print = lambda obj, *a, **k: print(*a, **k)
 
 
 def head(n, iterable):
@@ -1026,13 +1035,18 @@ def json_encode_dates(obj):
 
 
 @click.group(invoke_without_command=True)
+@click.option('--quiet/--no-quiet', default=False, help='Silence output')
 @click.pass_context
-def update(ctx):
+def update(ctx, quiet):
 	""" Update the Core-CFP data. If no command is provided, update_confs is run.
 	"""
+	if quiet:
+		Progress.quiet()
+
 	if not ctx.invoked_subcommand:
 		# Default is update_confs
 		update_cfp()
+
 
 @update.command()
 def update_core():
