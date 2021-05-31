@@ -33,7 +33,7 @@ jobs:
         git commit -m "Update scraping $(date --rfc-3339=date)"
 
         remote=$(git remote get-url --push origin)
-        git push https://${TOKEN}@${remote#https://}
+        git push https://${TOKEN}@github.com/${GITHUB_REPOSITORY} HEAD:master
 
       env:
         TOKEN: ${{ secrets.CORE_CFP_PUSHER }}
