@@ -519,7 +519,7 @@ function populatePage(json)
 	data.sort((rowA, rowB) => sortIdx.map(col => (rowA[col] || '').replace(/-/g, '') - (rowB[col] || '').replace(/-/g, ''))
 									.find(diff => diff !== 0) || 0);
 
-	document.getElementById('head').textContent += ' The last scraping took place on ' + json['date'] + '.';
+	document.getElementById('head').appendChild(document.createTextNode(' The last scraping took place on ' + json['date'] + '.'));
 
 	document.getElementById('search').appendChild(makeFilter(confIdx, "conf"));
 	filtered_confs = form.querySelector('p.filter_conf');
