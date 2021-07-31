@@ -1,5 +1,5 @@
 const ranks = ['D', 'C', 'B', 'A', 'A*'];
-let confIdx = 0, titleIdx = 1, rankIdx = 3, fieldIdx = 4, linkIdx = 17, cfpIdx = 18;
+let confIdx = 0, titleIdx = 1, rankingIdx = 2, rankIdx = 3, fieldIdx = 4, linkIdx = 17, cfpIdx = 18;
 let abstIdx = 5, subIdx = 6, notifIdx = 7, camIdx = 8, startIdx = 9, endIdx = 10;
 let yearIdx = 5, yearOffset = 14, origOffset = 6;
 const today = new Date(), year = today.getFullYear();
@@ -417,9 +417,9 @@ function filterFromFragment()
 
 function renderAcronym(p, row)
 {
-	var conf = document.createElement('span');
+	let conf = document.createElement('span');
 
-	for (var y = n_years - 1; y >= 0; y--)
+	for (let y = n_years - 1; y >= 0; y--)
 		if (row[linkIdx + y * yearOffset] && row[linkIdx + y * yearOffset] != '(missing)')
 		{
 			conf = document.createElement('a');
@@ -433,7 +433,15 @@ function renderAcronym(p, row)
 	p.appendChild(conf);
 	p.innerHTML += '&nbsp;'
 
-	for (y = n_years - 1; y >= 0; y--)
+	let rating = document.createElement('span');
+	rating.textContent = row[rankIdx];
+	rating.title = row[rankingIdx];
+	rating.className = 'ratingsys';
+
+	p.appendChild(rating);
+	p.innerHTML += '&nbsp;'
+
+	for (let y = n_years - 1; y >= 0; y--)
 		if (row[cfpIdx + y * yearOffset] && row[cfpIdx + y * yearOffset] != '(missing)')
 		{
 			cfp = p.appendChild(wikicfp.cloneNode(true));
@@ -464,6 +472,7 @@ function populatePage(json)
 	let year = json['years'][0];
 	confIdx    = json['columns'].indexOf('Acronym')
 	titleIdx   = json['columns'].indexOf('Title')
+	rankingIdx = json['columns'].indexOf('Rank system')
 	rankIdx    = json['columns'].indexOf('Rank')
 	fieldIdx   = json['columns'].indexOf('Field')
 	linkIdx    = json['columns'].indexOf(`Link ${year}`)

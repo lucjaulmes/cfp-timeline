@@ -577,6 +577,19 @@ label[for=collapse_errors]:before {
 }
 
 
+.ratingsys {
+  font-size: .7em;
+  vertical-align: top;
+  width: 1em;
+  text-align: left;
+  color: #777;
+}
+
+.ratingsys[title="CORE2020"] {
+	color: black;
+}
+
+
 /* Error log’s toggle mechanism */
 
 #collapse_errors {
