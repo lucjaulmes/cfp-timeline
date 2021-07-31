@@ -531,7 +531,7 @@ class Conference(ConfMetaData):
 	__slots__ = ('acronym', 'title', 'rank', 'ranksys', 'field')
 	_ranks = ['A*', 'A', 'B', 'C', 'D', 'E']
 
-	def __init__(self, title, acronym, rank=None, field=None, ranksys='CORE2020', **kwargs):
+	def __init__(self, title, acronym, rank=None, field=None, ranksys='CORE2021', **kwargs):
 		super(Conference, self).__init__(title, acronym, **kwargs)
 
 		self.title = title
@@ -935,7 +935,7 @@ class WikicfpCFP(CallForPapers):
 class CoreRanking(object):
 	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.
 	"""
-	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2020&sort=arank&page={}'
+	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2021&sort=arank&page={}'
 	_core_file = 'core.csv'
 
 	_historical = re.compile(r'\b(previous(ly)?|was|(from|pre) [0-9]{4}|merge[dr])\b', re.IGNORECASE)
