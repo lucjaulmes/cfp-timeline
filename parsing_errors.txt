@@ -1,4 +1,5 @@
 EuroCrypt 2021 (2021-10-17 -- 2021-10-21); Submission dates issues: submission (2020-10-08) too long before conference: no satisfying correction heuristic;http://www.wikicfp.com/cfp/servlet/event.showcfp?copyownerid=90704&eventid=127517;ignored
+IJCAI 2022 (2022-07-23 -- 2022-07-29); Submission dates issues: notification (2021-02-18) too long before conference: no satisfying correction heuristic;http://www.wikicfp.com/cfp/servlet/event.showcfp?copyownerid=90704&eventid=145168;ignored
 MOBICOM 2022; Conferences dates 2022-09-01 -- 2022-09-30 are too far apart: no satisfying correction heuristic;http://www.wikicfp.com/cfp/servlet/event.showcfp?copyownerid=90704&eventid=143775;ignored
 OOPSLA 2022 (2022-11-14 -- 2022-11-19); Submission dates issues: submission (2021-10-12) too long before conference: no satisfying correction heuristic;http://www.wikicfp.com/cfp/servlet/event.showcfp?copyownerid=90704&eventid=143360;ignored
 CoNLL 2021; Conferences dates 2011-11-10 -- 2011-11-11 are not in correct year: using 2021-11-10 -- 2021-11-11 instead;http://www.wikicfp.com/cfp/servlet/event.showcfp?copyownerid=90704&eventid=129341;corrected
