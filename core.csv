@@ -223,7 +223,7 @@ TEI;Tangible, Embedded, and Embodied Interaction;CORE2020;A;Human-centred comput
 TrustCom;International Conference on Trust, Security and Privacy in Computing and Communications;CORE2020;A;Cybersecurity and privacy
 UIST;ACM Symposium on User Interface Software and Technology;CORE2020;A;Human-centred computing
 USENIX;Usenix Annual Technical Conference;CORE2020;A;Distributed computing and systems software
-USITS;Unix Symposium on Internet Technologies;CORE2020;A;(missing)
+USITS;Unix Symposium on Internet Technologies;CORE2020;A;Distributed computing and systems software
 VEE;International Conference on Virtual Execution Environments;CORE2020;A;Distributed computing and systems software
 VR;IEEE Conference on Virtual Reality and 3D User Interfaces;CORE2020;A;Graphics, augmented reality and games
 VRST;ACM Virtual Reality Software and Technology;CORE2020;A;Graphics, augmented reality and games
@@ -734,7 +734,7 @@ ACSAC;Annual Computer Security Applications Conference;CORE2020;National: usa;Cy
 ACSSC;Asilomar Conference on Signals, Systems and Computing;CORE2020;National: USA;Distributed computing and systems software
 ADC;Australasian Database Conference;CORE2020;Australasian B;Data management and data science
 ADCS;Australasian Document Computing Symposium;CORE2020;Australasian B;Data management and data science
-AI;Australasian Joint Conference on Artificial Intelligence;CORE2020;Australasian C;Artificial intelligence
+AI;Australasian Joint Conference on Artificial Intelligence;CORE2020;Australasian B;Artificial intelligence
 AICE;Australian Institute of Computer Ethics Conference;CORE2020;Australasian C;Human-centred computing
 AIMSA;International Conference on Artificial Intelligence: Methodology, Systems, Applications;CORE2020;National: Bulgaria;Artificial intelligence
 AISC;Australasian Information Security Conference;CORE2020;Australasian B;Cybersecurity and privacy
