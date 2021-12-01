@@ -3,3 +3,4 @@ lxml
 click
 inflection
 pyenchant
+pandas

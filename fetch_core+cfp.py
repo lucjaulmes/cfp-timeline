@@ -932,25 +932,17 @@ class WikicfpCFP(CallForPapers):
 			self.link = metadata['source']
 
 
-class CoreRanking(object):
-	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.
-	"""
-	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2021&sort=arank&page={}'
-	_core_file = 'core.csv'
-
+class Ranking(object):
 	_historical = re.compile(r'\b(previous(ly)?|was|(from|pre) [0-9]{4}|merge[dr])\b', re.IGNORECASE)
 
 	@classmethod
-	@memoize
-	def get_forcodes(cls):
-		""" Fetch and return the mapping of For Of Research (FOR) codes to the corresponding names.
+	def get_confs(cls):
+		""" Generator of all conferences listed on the core site, as dicts
 		"""
-		forcodes = {}
-
-		with open('for_codes.json', 'r') as f:
-			forcodes = json.load(f)
-
-		return forcodes
+		try:
+			return list(cls._load_confs())
+		except FileNotFoundError:
+			return cls.update_confs()
 
 
 	@classmethod
@@ -965,6 +957,65 @@ class CoreRanking(object):
 		except ValueError:
 			pass
 		return string
+
+
+class GGSRanking(Ranking):
+	_url_gssrank = 'https://scie.lcc.uma.es/gii-grin-scie-rating/conferenceRating.jsf'
+	_ggs_file = 'ggs.csv'
+
+	@classmethod
+	def _load_confs(cls):
+		""" Load conferences from a file where we have the values cached cleanly.  """
+		f_age = datetime.datetime.fromtimestamp(os.stat(cls._ggs_file).st_mtime)
+		if datetime.datetime.today() - f_age > datetime.timedelta(days=365):
+			raise FileNotFoundError('Cached file too old')
+
+		with open(cls._ggs_file, 'r') as f:
+			assert 'title;acronym;rating' == next(f).strip()
+			confs = [l.strip().split(';') for l in f]
+
+		with Progress(operation = 'loading GGS list', maxpos = len(confs)) as prog:
+			return [Conference(cls.strip_trailing_paren(tit), acr, rat, None, 'GGS2021') for tit, acr, rat in prog.iterate(confs)]
+
+	@classmethod
+	def update_confs(cls):
+		soup = RequestWrapper.get_soup(cls._url_gssrank, 'cache/gii-grin-scie-rating_conferenceRating.html')
+		link = soup.find('a', attrs={'href': lambda dest: dest.split(';jsessionid=')[0].endswith('.xlsx')}).attrs['href']
+		file_url = urljoin(cls._url_gssrank, link)
+
+		import pandas as pd, csv
+		df = pd.read_excel(file_url, header=1, usecols=['Title', 'Acronym', 'GGS Rating'])\
+			   .rename(columns={'GGS Rating': 'rating', 'Title': 'title', 'Acronym': 'acronym'})\
+			   .transform(lambda s: s.str.replace(';', ','))
+
+		# Drop old stuff
+		df = df[~df['rating'].str.contains('discontinued|now published as journal', case=False)]
+
+		ok_rating = df['rating'].str.match('^[A-Z][+-]*$')
+		print('Non-standard ratings:')
+		print(df['rating'].mask(ok_rating).value_counts())
+		df['rating'] = df['rating'].where(ok_rating)
+
+		df.to_csv(cls._ggs_file, sep=';', index=False, quoting=csv.QUOTE_NONE)
+
+
+class CoreRanking(Ranking):
+	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.
+	"""
+	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2021&sort=arank&page={}'
+	_core_file = 'core.csv'
+
+	@classmethod
+	@memoize
+	def get_forcodes(cls):
+		""" Fetch and return the mapping of For Of Research (FOR) codes to the corresponding names.
+		"""
+		forcodes = {}
+
+		with open('for_codes.json', 'r') as f:
+			forcodes = json.load(f)
+
+		return forcodes
 
 
 	@classmethod
@@ -1106,6 +1157,13 @@ def update_core():
 	""" Update the cached list of CORE conferences.
 	"""
 	CoreRanking.update_confs()
+
+
+@update.command()
+def update_gss():
+	""" Update the cached list of GII-GRIN-SCIE (GGS) conferences.
+	"""
+	GGSRanking.update_confs()
 
 
 @update.command()
