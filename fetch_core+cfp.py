@@ -1007,9 +1007,25 @@ class CoreRanking(object):
 						val[apos] = 'Euro-Par'
 					yield Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
 
-		# Manually add missing conferences from previous year data. Copying ISCA’s FoR code for Micro
-		yield Conference('International Symposium on Microarchitecture', 'MICRO', 'A', forcodes.get('4601', None), 'CORE2018')
-		yield Conference('Design Automation Conference', 'DAC', 'A', forcodes.get('4606', None), 'CORE2018')
+		# Manually add some missing conferences from previous year data.
+		manual = [
+			('MICRO',     'International Symposium on Microarchitecture',                                           'A',  '4601', 'CORE2018'),
+			('VLSI',      'Symposia on VLSI Technology and Circuits',                                               'A',  '4009', 'CORE2018'),
+			('ICC',       'IEEE International Conference on Communications',                                        'B',  '4006', 'CORE2018'),
+			('IEEE RFID', 'IEEE International Conference on Radio Frequency Identification',                        'B',  '4006', 'CORE2018'),
+			('M2VIP',     'Mechatronics and Machine Vision in Practice',                                            'B',  '4611', 'CORE2018'),
+			('ICASSP',    'IEEE International Conference on Acoustics, Speech and Signal Processing',               'B',  '4006', 'CORE2018'),
+			('RSS',       'Robotics: Science and Systems',                                                          'A*', '4611', 'CORE2018'),
+			('BuildSys',  'ACM International Conference on Systems for Energy-Efficient Built Environments',        'A',  '4606', 'CORE2018'),
+			('DAC',       'Design Automation Conference',                                                           'A',  '4606', 'CORE2018'),
+			('FSR',       'International Conference on Field and Service Robotics',                                 'A',  '4602', 'CORE2018'),
+			('CDC',       'IEEE Conference on Decision and Control',                                                'A',  '4009', 'CORE2018'),
+			('ASAP',      'International Conference on Application-specific Systems, Architectures and Processors', 'A',  '4606', 'CORE2018'),
+			('ISR',       'International Symposium on Robotics',                                                    'A',  '4007', 'CORE2018'),
+			('ISSCC',     'IEEE International Solid-State Circuits Conference',                                     'A',  '4009', 'CORE2018'),
+		]
+		for acronym, name, rank, code, ranking in manual:
+			yield Conference(name, acronym, rank, forcodes.get(code, None), ranking)
 
 
 	@classmethod
