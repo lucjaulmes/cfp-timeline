@@ -963,6 +963,45 @@ class Ranking(object):
 		return string
 
 
+	@classmethod
+	def merge(cls, confs_a, confs_b):
+		dict_a = {}
+		dict_b = {}
+		for conf in confs_a:
+			dict_a.setdefault(conf.acronym, []).append(conf)
+		for conf in confs_b:
+			dict_b.setdefault(conf.acronym, []).append(conf)
+
+		common = set(dict_a.keys()) & set(dict_b.keys())
+		merged = [conf for k in set(dict_a) - common for conf in dict_a[k]] \
+			   + [conf for k in set(dict_b) - common for conf in dict_b[k]]
+		for acronym in common:
+			list_a = dict_a.pop(acronym)
+			list_b = dict_b.pop(acronym)
+			cmp = [[1000 for _ in list_b] for _ in list_a]
+			for n, conf_a in enumerate(list_a):
+				for m, conf_b in enumerate(list_b):
+					cmp[n][m] = sum(conf_a._difference(conf_b))
+			while list_a and list_b and min(map(min, cmp)) < 1000:
+				rowmins = [min(row) for row in cmp]
+				match_a = rowmins.index(min(rowmins))
+				match_b = cmp[match_a].index(min(rowmins))
+
+				merge_pair = [list_a[match_a], list_b[match_b]]
+				conf = merge_pair[0]
+				conf.rank = SEP.join(item.rank for item in merge_pair if item.rank != '(missing)')
+				conf.ranksys = SEP.join(item.ranksys for item in merge_pair)
+				merged.append(conf)
+
+				cmp = [row[:match_b] + row[match_b + 1:] for row in cmp]
+				del cmp[match_a], list_a[match_a], list_b[match_b]
+
+			merged.extend(list_a)
+			merged.extend(list_b)
+
+		return merged
+
+
 class GGSRanking(Ranking):
 	_url_ggsrank = 'https://scie.lcc.uma.es/gii-grin-scie-rating/conferenceRating.jsf'
 	_ggs_file = 'ggs.csv'
@@ -1186,9 +1225,9 @@ def update_cfp(out, debug=False):
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
-	core = CoreRanking.get_confs()
+	confs = Ranking.merge(CoreRanking.get_confs(), GGSRanking.get_confs())
 	with open('parsing_errors.txt', 'w') as errlog, Progress(operation = 'fetching calls for papers') as prog:
-		for conf in prog.iterate(core):
+		for conf in prog.iterate(confs):
 			values = conf.values()
 			cfps_found = 0
 			last_year = None
