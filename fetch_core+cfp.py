@@ -964,7 +964,7 @@ class Ranking(object):
 
 
 class GGSRanking(Ranking):
-	_url_gssrank = 'https://scie.lcc.uma.es/gii-grin-scie-rating/conferenceRating.jsf'
+	_url_ggsrank = 'https://scie.lcc.uma.es/gii-grin-scie-rating/conferenceRating.jsf'
 	_ggs_file = 'ggs.csv'
 
 	@classmethod
@@ -975,7 +975,7 @@ class GGSRanking(Ranking):
 			raise FileNotFoundError('Cached file too old')
 
 		with open(cls._ggs_file, 'r') as f:
-			assert 'title;acronym;rating' == next(f).strip()
+			assert 'title;acronym;rank' == next(f).strip()
 			confs = [l.strip().split(';') for l in f]
 
 		with Progress(operation = 'loading GGS list', maxpos = len(confs)) as prog:
@@ -983,22 +983,23 @@ class GGSRanking(Ranking):
 
 	@classmethod
 	def update_confs(cls):
-		soup = RequestWrapper.get_soup(cls._url_gssrank, 'cache/gii-grin-scie-rating_conferenceRating.html')
+		soup = RequestWrapper.get_soup(cls._url_ggsrank, 'cache/gii-grin-scie-rating_conferenceRating.html')
 		link = soup.find('a', attrs={'href': lambda dest: dest.split(';jsessionid=')[0].endswith('.xlsx')}).attrs['href']
-		file_url = urljoin(cls._url_gssrank, link)
+		file_url = urljoin(cls._url_ggsrank, link)
 
 		import pandas as pd, csv
 		df = pd.read_excel(file_url, header=1, usecols=['Title', 'Acronym', 'GGS Rating'])\
-			   .rename(columns={'GGS Rating': 'rating', 'Title': 'title', 'Acronym': 'acronym'})\
-			   .transform(lambda s: s.str.replace(';', ','))
+			   .rename(columns={'GGS Rating': 'rank', 'Title': 'title', 'Acronym': 'acronym'})\
 
-		# Drop old stuff
-		df = df[~df['rating'].str.contains('discontinued|now published as journal', case=False)]
+		# Drop old stuff or no acronyms (as they are used for lookup)
+		df = df[~(df['rank'].str.contains('discontinued|now published as journal', case=False) | df['acronym'].isna() | df['acronym'].str.len().eq(0))]
 
-		ok_rating = df['rating'].str.match('^[A-Z][+-]*$')
+		ok_rank = df['rank'].str.match('^[A-Z][+-]*$')
 		print('Non-standard ratings:')
-		print(df['rating'].mask(ok_rating).value_counts())
-		df['rating'] = df['rating'].where(ok_rating)
+		print(df['rank'].mask(ok_rank).value_counts())
+		df['rank'] = df['rank'].where(ok_rank)
+		df['title'] = df['title'].str.replace(';', ',').str.title().str.replace(r'\b(Acm|Ieee)\b', lambda m: m[1].upper(), regex=True)\
+				.str.replace(r'\b(On|And|In|Of|For|The|To|Its)\b', lambda m: m[1].lower(), regex=True)
 
 		df.to_csv(cls._ggs_file, sep=';', index=False, quoting=csv.QUOTE_NONE)
 
@@ -1164,7 +1165,7 @@ def update_core():
 
 
 @update.command()
-def update_gss():
+def update_ggs():
 	""" Update the cached list of GII-GRIN-SCIE (GGS) conferences.
 	"""
 	GGSRanking.update_confs()
