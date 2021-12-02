@@ -22,6 +22,8 @@ from time import sleep, time as get_time
 from sys import stdout
 from math import floor
 
+SEP='|'
+
 try:
 	from enchant import Dict
 except ImportError:
@@ -529,7 +531,7 @@ class ConfMetaData(object):
 @total_ordering
 class Conference(ConfMetaData):
 	__slots__ = ('acronym', 'title', 'rank', 'ranksys', 'field')
-	_ranks = ['A*', 'A', 'B', 'C', 'D', 'E']
+	_ranks = ['A++', 'A*', 'A+', 'A', 'A-', 'B', 'B-', 'C', 'D', 'E'] # unified for both sources
 
 	def __init__(self, title, acronym, rank=None, field=None, ranksys='CORE2021', **kwargs):
 		super(Conference, self).__init__(title, acronym, **kwargs)
@@ -544,8 +546,10 @@ class Conference(ConfMetaData):
 	def ranksort(self): # lower is better
 		""" Utility to sort the ranks based on the order we want (specificially A* < A).
 		"""
-		try: return self._ranks.index(self.rank)
-		except ValueError: return len(self._ranks) # non-ranked, e.g. 'Australasian'
+		def ranknum(rank):
+			try: return self._ranks.index(rank)
+			except ValueError: return len(self._ranks) # non-ranked, e.g. 'Australasian'
+		return min(ranknum(rk) for rk in self.rank.split(SEP))
 
 
 	@classmethod
