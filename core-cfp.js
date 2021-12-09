@@ -1,4 +1,4 @@
-const ranks = ['D', 'C', 'B', 'A', 'A*'];
+const ranks = ['E', 'D', 'C', 'B-', 'B', 'A-', 'A', 'A+', 'A*', 'A++'];
 let confIdx = 0, titleIdx = 1, rankingIdx = 2, rankIdx = 3, fieldIdx = 4, linkIdx = 17, cfpIdx = 18;
 let abstIdx = 5, subIdx = 6, notifIdx = 7, camIdx = 8, startIdx = 9, endIdx = 10;
 let yearIdx = 5, yearOffset = 14, origOffset = 6;
@@ -357,7 +357,10 @@ async function filterUpdated(search)
 	Array.from(filtered_confs.children).slice(0, timeline.children.length)
 		.filter(conf => conf.style.display !== 'none').forEach(conf => conf.style.display = 'none');
 
-	data.filter(row => Object.keys(filters).every(col => filters[col].test(row[col]))).forEach(row =>
+	// Every filter needs to match at least one of its values
+	data.filter(row => Object.entries(filters).every(
+		([col, regex]) => Array.isArray(row[col]) ? row[col].some(entry => regex.test(entry)) : regex.test(row[col])
+	)).forEach(row =>
 	{
 		var idx = timeline_conf_lookup[row[confIdx]];
 		timeline.children[idx].style.display = 'block';
@@ -367,7 +370,10 @@ async function filterUpdated(search)
 
 function makeFilter(colIdx, name, sortfunction)
 {
-	var values = data.map(row => row[colIdx]).sort(sortfunction).filter((val, idx, arr) => idx === 0 || val !== arr[idx - 1]);
+	let values = data.map(row => row[colIdx]);
+	if (name === 'rank')
+		values = [].concat(...values).map(rank => rank || '(unranked)');
+	values = values.sort(sortfunction).filter((val, idx, arr) => idx === 0 || val !== arr[idx - 1]);
 
 	var p = document.createElement('p');
 	p.className += 'filter_' + name
@@ -385,7 +391,7 @@ function makeFilter(colIdx, name, sortfunction)
 	{
 		var option = select.appendChild(document.createElement('option'));
 		option.textContent = t;
-		option.value = t;
+		option.value = t === '(unranked)' ? null : t;
 	});
 
 	select.onchange = updateFilter
@@ -434,8 +440,8 @@ function renderAcronym(p, row)
 	p.innerHTML += '&nbsp;'
 
 	let rating = document.createElement('span');
-	rating.textContent = row[rankIdx];
-	rating.title = row[rankingIdx];
+	rating.textContent = row[rankIdx].filter(rank => rank).join(',');
+	rating.title = row[rankIdx].map((val, idx) => `${val || 'unrated'} (${row[rankingIdx][idx]})`).join(', ');
 	rating.className = 'ratingsys';
 
 	p.appendChild(rating);

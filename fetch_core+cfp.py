@@ -14,7 +14,7 @@ import requests
 import datetime
 from requests.exceptions import ConnectionError, MissingSchema
 from functools import total_ordering
-from collections import defaultdict
+from collections import defaultdict, Counter
 from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs, urlencode
 from bs4 import BeautifulSoup
 
@@ -538,8 +538,8 @@ class Conference(ConfMetaData):
 
 		self.title = title
 		self.acronym = acronym
-		self.ranksys = ranksys
-		self.rank = rank or '(missing)'
+		self.ranksys = [ranksys]
+		self.rank = [rank or None]
 		self.field = field or '(missing)'
 
 
@@ -549,7 +549,7 @@ class Conference(ConfMetaData):
 		def ranknum(rank):
 			try: return self._ranks.index(rank)
 			except ValueError: return len(self._ranks) # non-ranked, e.g. 'Australasian'
-		return min(ranknum(rk) for rk in self.rank.split(SEP))
+		return min(ranknum(rk) for rk in self.rank)
 
 
 	@classmethod
@@ -968,9 +968,9 @@ class Ranking(object):
 		dict_a = {}
 		dict_b = {}
 		for conf in confs_a:
-			dict_a.setdefault(conf.acronym, []).append(conf)
+			dict_a.setdefault(conf.acronym.upper(), []).append(conf)
 		for conf in confs_b:
-			dict_b.setdefault(conf.acronym, []).append(conf)
+			dict_b.setdefault(conf.acronym.upper(), []).append(conf)
 
 		common = set(dict_a.keys()) & set(dict_b.keys())
 		merged = [conf for k in set(dict_a) - common for conf in dict_a[k]] \
@@ -989,8 +989,8 @@ class Ranking(object):
 
 				merge_pair = [list_a[match_a], list_b[match_b]]
 				conf = merge_pair[0]
-				conf.rank = SEP.join(item.rank for item in merge_pair if item.rank != '(missing)')
-				conf.ranksys = SEP.join(item.ranksys for item in merge_pair)
+				conf.rank = [*list_a[match_a].rank, *list_b[match_b].rank]
+				conf.ranksys = [*list_a[match_a].ranksys, *list_b[match_b].ranksys]
 				merged.append(conf)
 
 				cmp = [row[:match_b] + row[match_b + 1:] for row in cmp]
@@ -999,6 +999,7 @@ class Ranking(object):
 			merged.extend(list_a)
 			merged.extend(list_b)
 
+		print(f'Merged conferences {len(confs_a)} + {len(confs_b)} = {len(merged)} total + {len(confs_a) + len(confs_b) - len(merged)} in common')
 		return merged
 
 
@@ -1075,6 +1076,7 @@ class CoreRanking(Ranking):
 		pages = (n_results + per_page - 1) // per_page
 
 		forcodes = cls.get_forcodes()
+		non_standard_ranks = Counter()
 
 		with Progress(operation = 'fetching CORE list', maxpos = n_results) as prog:
 			for p in range(pages):
@@ -1098,8 +1100,17 @@ class CoreRanking(Ranking):
 					# - Searching cfps for Euro-Par finds EuroPar, but not the other way around
 					if val[apos] == 'ISC' and cls.strip_trailing_paren(val[tpos]) == 'ISC High Performance':
 						val[apos] += ' HPC'
-					if val[apos] == 'EuroPar' and cls.strip_trailing_paren(val[tpos]) == 'International European Conference on Parallel and Distributed Computing':
+					elif val[apos] == 'EuroPar' and cls.strip_trailing_paren(val[tpos]) == 'International European Conference on Parallel and Distributed Computing':
 						val[apos] = 'Euro-Par'
+
+					# Also normalize rankings
+					if val[rpos].startswith('National') or val[rpos].startswith('Regional'):
+						place = val[rpos][8:].strip("(): -").title()
+						val[rpos] = f'{val[rpos][:8]}{": " if place else ""}{"USA" if place == "Usa" else "Korea" if place == "S. korea" else place}'
+					elif not re.match(r'^(Australasian )?[A-Z]\*?$', val[rpos]):
+						non_standard_ranks[val[rpos]] += 1
+						val[rpos] = None
+
 					yield Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
 
 		# Manually add some missing conferences from previous year data.
@@ -1122,6 +1133,12 @@ class CoreRanking(Ranking):
 		for acronym, name, rank, code, ranking in manual:
 			yield Conference(name, acronym, rank, forcodes.get(code, None), ranking)
 
+		if non_standard_ranks:
+			print('Non-standard ratings:')
+			width = max(map(len, non_standard_ranks.keys())) + 3
+			for key, num in non_standard_ranks.most_common():
+				print(f'{key:{width}} {num}')
+
 
 	@classmethod
 	def _save_confs(cls, conflist):
@@ -1130,7 +1147,11 @@ class CoreRanking(Ranking):
 		with open(cls._core_file, 'w') as csv:
 			print('acronym;title;ranksys;rank;field', file=csv)
 			for conf in conflist:
-				print(';'.join((conf.acronym, conf.title, conf.ranksys, conf.rank, conf.field)), file=csv)
+				try:
+					print(';'.join((conf.acronym, conf.title, conf.ranksys[0], conf.rank[0] or '', conf.field)), file=csv)
+				except TypeError:
+					print(conf.acronym, conf.title, conf.ranksys, conf.rank, conf.field, file=sys.stderr)
+					raise
 
 
 
@@ -1227,7 +1248,7 @@ def update_cfp(out, debug=False):
 
 	confs = Ranking.merge(CoreRanking.get_confs(), GGSRanking.get_confs())
 	with open('parsing_errors.txt', 'w') as errlog, Progress(operation = 'fetching calls for papers') as prog:
-		for conf in prog.iterate(confs):
+		for conf in prog.iterate(sorted(confs, key=lambda conf: (conf.acronym, conf.title))):
 			values = conf.values()
 			cfps_found = 0
 			last_year = None

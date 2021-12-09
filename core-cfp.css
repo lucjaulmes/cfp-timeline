@@ -162,7 +162,7 @@ body > *:not(#timeline_container) {
 }
 
 #filters p.filter_rank::before {
-	content: "CORE Ranking";
+	content: "CORE/GGS Rankings";
 }
 #filters p.filter_field::before {
 	content: "Field";
@@ -307,13 +307,13 @@ img.cfpurl {
 }
 
 span.acronyms {
-	width: 8em;
+	width: 11em;
 	padding-right: 0.5em;
 	text-align: right;
 }
 
 .timeblocks {
-	width: calc(100% - 8.5em);
+	width: calc(100% - 11.5em);
 	position: relative;
 	text-align: center;
 }
@@ -580,7 +580,7 @@ label[for=collapse_errors]:before {
 .ratingsys {
   font-size: .7em;
   vertical-align: top;
-  width: 1em;
+  width: 2em;
   text-align: left;
   color: #777;
 }
@@ -602,6 +602,8 @@ label[for=collapse_errors]:before {
 
 #collapse_errors:checked ~ #error_log {
 	display: block;
+	max-height: calc(100vh - 12px - 2em);
+	overflow: auto;
 }
 
 #collapse_errors:not(:checked) ~ label[for=collapse_errors]:before {
