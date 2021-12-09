@@ -714,42 +714,63 @@ class CallForPapers(ConfMetaData):
 					s, e = (self.dates['conf_start'], self.dates['conf_end'])
 
 			if err:
-				diag = '{} {}: Conferences dates {} are '.format(self.conf.acronym, self.year, orig) + ' and '.join(err)
+				diag = f'{self.conf.acronym} {self.year}: Conferences dates {orig} are {" and ".join(err)}'
 
 				if len(err) == fix:
 					# Use corrected dates, but take care to mark as guesses
 					self.dates['conf_start'], self.dates['conf_end'] = (s, e)
 					self.orig['conf_start'], self.orig['conf_end'] = (False, False)
-					return diag + ': using {} -- {} instead'.format(s, e)
+					return f'{diag}: using {s} -- {e} instead'
 				else:
 					raise CFPCheckError(diag)
 
 
 	def verify_submission_dates(self):
-		pre_dates = {'submission', 'abstract', 'notification'} & set(self.dates.keys())
+		pre_dates = {'submission', 'abstract', 'notification', 'camera_ready'} & set(self.dates.keys())
+		typical_delays = {key: (datetime.timedelta(lo), datetime.timedelta(hi)) for key, (lo, hi) in {
+			'abstract': (95, 250),
+			'camera_ready': (0, 120),
+			'notification': (20, 150),
+			'submission': (40, 250),
+		}.items()}
+
 		if 'conf_start' in self.dates and pre_dates:
 			err = []
-			fix = 0
+			uncorrected = set()
+			corrected = set()
 
 			for k, d in [(k, self.dates[k]) for k in pre_dates]:
-				if d > self.dates['conf_start']:
+				delay = self.dates['conf_start'] - d
+				if delay < datetime.timedelta(0):
 					err.append('{} ({}) after conference'.format(k, d))
-					if d.year == self.year:
-						# Classic error: for conf at year Y put all dates at year Y even if it should be previous year.
-						# Use corrected dates, but take care to mark as guessed.
-						self.dates[k] = d.replace(year = d.year - 1)
-						self.orig[k] = False
-						fix += 1
-				elif self.dates['conf_start'] - d > datetime.timedelta(days = 365):
+				elif delay > datetime.timedelta(days=365):
 					err.append('{} ({}) too long before conference'.format(k, d))
-					pass
+				else:
+					continue
+
+				# If shifting the year gets us into the “typical” delay, use that date and mark as a guess
+				# Typically for conf at year Y, all dates are set at year Y even if they should be previous year.
+				shifted = d.replace(year=d.year + int(delay.days // 365.2425))
+				lo, hi = typical_delays.get(k)
+				if hi >= self.dates['conf_start'] - shifted >= lo:
+					self.dates[k] = shifted
+					self.orig[k] = False
+					corrected.add(k)
+				else:
+					err[-1] += f' (shifted: {(self.dates["conf_start"] - shifted).days}d)'
+					# delete uncorrectable camera ready dates to avoid raising an error
+					if k == 'camera_ready':
+						self.dates.pop('camera_ready')
+						corrected.add(k)
+					else:
+						uncorrected.add(k)
 
 			if err:
-				diag = '{} {} ({} -- {}): Submission dates issues: '.format(self.conf.acronym, self.year,
-						self.dates['conf_start'], self.dates['conf_end']) + ' and '.join(err)
+				diag = f'{self.conf.acronym} {self.year} ({self.dates["conf_start"]} -- {self.dates["conf_end"]}): '\
+					   f'Submission dates issues: {" and ".join(err)}'
 
-				if len(err) == fix:
-					return diag + ': using {} instead'.format(', '.join('{}={}'.format(k, self.dates[k]) for k in pre_dates))
+				if not uncorrected:
+					return f'{diag}: using {", ".join(f"{k}={self.dates.get(k)}" for k in corrected)} instead'
 				else:
 					raise CFPCheckError(diag)
 
