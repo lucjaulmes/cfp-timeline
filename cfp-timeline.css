@@ -183,6 +183,10 @@ body > *:not(#timeline_container) {
 	border-radius: 3px;
 }
 
+#search p.filter_conf span.filtered-out {
+	opacity: 0.4;
+}
+
 #search p.filter_conf button {
 	margin: 3px;
 }

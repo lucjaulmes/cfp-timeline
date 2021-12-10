@@ -358,13 +358,26 @@ async function filterUpdated(search)
 		.filter(conf => conf.style.display !== 'none').forEach(conf => conf.style.display = 'none');
 
 	// Every filter needs to match at least one of its values
-	data.filter(row => Object.entries(filters).every(
-		([col, regex]) => Array.isArray(row[col]) ? row[col].some(entry => regex.test(entry)) : regex.test(row[col])
-	)).forEach(row =>
+	data.map(row => Object.entries(filters).reduce(
+		(ret, [col, regex]) => Object.assign(ret, {[col]: Array.isArray(row[col]) ? row[col].some(entry => regex.test(entry)) : regex.test(row[col])}),
+		{index: timeline_conf_lookup[row[confIdx]]}
+	)).forEach(({ index, ...row_filters }) =>
 	{
-		var idx = timeline_conf_lookup[row[confIdx]];
-		timeline.children[idx].style.display = 'block';
-		if (filters[confIdx] !== undefined) filtered_confs.children[idx].style.display = 'inline-block';
+		const show = Object.values(row_filters).every(val => val);
+		const tl_display = show ? 'block' : 'none';
+		const conf_display = row_filters[confIdx] === true ? 'inline-block' : 'none';
+
+		if (timeline.children[index].style.display !== tl_display)
+			timeline.children[index].style.display = tl_display;
+
+		if (filtered_confs.children[index].style.display !== conf_display)
+			filtered_confs.children[index].style.display = conf_display;
+
+		if (filtered_confs.children[index]) {
+			const conf_class = show ? '' : 'filtered-out';
+			if (filtered_confs.children[index].className !== conf_class)
+				filtered_confs.children[index].className = conf_class;
+		}
 	});
 }
 
