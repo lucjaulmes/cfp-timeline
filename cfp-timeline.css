@@ -126,19 +126,18 @@ body > *:not(#timeline_container) {
 
 #suggestions li span {
 	display: inline-block;
-	padding: 5px;
 }
 
 #suggestions li span.conf {
 	background: lightblue;
 	color: darkblue;
 	font-weight: bold;
+	padding: 5px;
+	margin: 0 5px;
 }
 
-#suggestions li span.rank::before { content: " (Core ranking: " }
-#suggestions li span.rank::after { content: ", " }
-#suggestions li span.field::before { content: "field: " }
-#suggestions li span.field::after { content: ")" }
+#suggestions li span.rank::before { content: "rating: " }
+#suggestions li span.field:not(:empty)::before { content: " ; field: " }
 
 #suggestions li span.rank,
 #suggestions li span.field {
@@ -147,6 +146,7 @@ body > *:not(#timeline_container) {
 
 #suggestions li span.title {
 	display:block;
+	padding: 5px;
 }
 
 #filters p > * {

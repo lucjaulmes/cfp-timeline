@@ -281,8 +281,8 @@ function makeSuggestionItem(row)
 	var item = suggestion.cloneNode(true);
 
 	item.children[0].textContent = row[confIdx];
-	item.children[1].textContent = row[rankIdx];
-	item.children[2].textContent = row[fieldIdx];
+	item.children[1].textContent = row[rankIdx].map((val, idx) => `${val || 'unrated'} (${row[rankingIdx][idx]})`).join(', ');;
+	item.children[2].textContent = row[fieldIdx] == '(missing)' ? '': row[fieldIdx];
 	item.children[3].textContent = row[titleIdx];
 
 	var opt = Array.from(form.querySelector('select[name="conf"]').options).find(opt => opt.value === row[confIdx]);
