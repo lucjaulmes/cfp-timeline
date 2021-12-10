@@ -46,27 +46,6 @@ def clean_print(*args, **kwargs):
 	print(*args, **kwargs)
 
 
-def uniq(iterable, **sorted_kwargs):
-	""" Sort the iterator using sorted(it, **sorted_kwargs) and return
-	all non-duplicated elements.
-
-	Args:
-		iterable (iterable): the elements to be listed uniquely in order
-		sorted_kwargs (`dict`): the arguments to be passed to sorted(iterable, ...)
-	"""
-	_it = iter(sorted(iterable, **sorted_kwargs))
-	try:
-		y = next(_it)
-	except StopIteration:
-		return
-
-	yield y
-	for x in _it:
-		if x != y:
-			yield x
-		y = x
-
-
 class PeekIter(object):
 	""" Iterator that allows
 
@@ -1100,12 +1079,14 @@ class CoreRanking(Ranking):
 
 	@classmethod
 	def update_confs(cls):
-		""" Refresh and make a generator of all conferences listed on the core site, as dicts
-		"""
-		confs = list(uniq(cls._fetch_confs()))
-		cls._save_confs(confs)
+		""" Refresh and make a generator of all conferences listed on the core site, as dicts """
+		conf_list = []
+		for conf in sorted(cls._fetch_confs()):
+			if not conf_list or conf != conf_list[-1]:
+				conf_list.append(conf)
+		cls._save_confs(conf_list)
 
-		return confs
+		return conf_list
 
 
 	@classmethod
