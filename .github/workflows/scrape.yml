@@ -22,10 +22,11 @@ jobs:
 
     - name: Do the scraping
       run: |
-        # Expected ~3200 requests, ~4h30 at the wikicfp-requested 5s interval, <1h with 1s interval
+        # Expected ~3200 requests, ~4h30 at the wikicfp-requested 5s interval, <1h with 1s interval.
+        # Was actually 3h. Now much more conferences − let’s try with 2s
         # Limit for github actions is 6h, so let’s got with 5s delay
-        (( $RANDOM < 32768 / 30 )) && python3 ./fetch_core+cfp.py --quiet --no-cache --delay 5 update-core
-        python3 ./fetch_core+cfp.py --quiet --no-cache --delay 5 update-cfp
+        (( $RANDOM < 32768 / 30 )) && python3 ./fetch_core+cfp.py --quiet --no-cache --delay 2.5 update-core
+        python3 ./fetch_core+cfp.py --quiet --no-cache --delay 2.5 update-cfp
 
     - name: Push to GitHub
       run: |
