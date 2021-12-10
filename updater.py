@@ -960,7 +960,7 @@ class Ranking(object):
 
 	@classmethod
 	def get_confs(cls):
-		""" Generator of all conferences listed on the core site, as dicts
+		""" Generator of all conferences listed in a source, as dicts
 		"""
 		try:
 			return list(cls._load_confs())
@@ -1048,14 +1048,14 @@ class GGSRanking(Ranking):
 
 		import pandas as pd, csv
 		df = pd.read_excel(file_url, header=1, usecols=['Title', 'Acronym', 'GGS Rating'])\
-			   .rename(columns={'GGS Rating': 'rank', 'Title': 'title', 'Acronym': 'acronym'})\
+			   .rename(columns={'GGS Rating': 'rank', 'Title': 'title', 'Acronym': 'acronym'})
 
 		# Drop old stuff or no acronyms (as they are used for lookup)
 		df = df[~(df['rank'].str.contains('discontinued|now published as journal', case=False) | df['acronym'].isna() | df['acronym'].str.len().eq(0))]
 
 		ok_rank = df['rank'].str.match('^[A-Z][+-]*$')
 		print('Non-standard ratings:')
-		print(df['rank'].mask(ok_rank).value_counts())
+		print(df['rank'].mask(ok_rank).value_counts().to_string())
 		df['rank'] = df['rank'].where(ok_rank)
 		df['title'] = df['title'].str.replace(';', ',').str.title().str.replace(r'\b(Acm|Ieee)\b', lambda m: m[1].upper(), regex=True)\
 				.str.replace(r'\b(On|And|In|Of|For|The|To|Its)\b', lambda m: m[1].lower(), regex=True)
@@ -1084,7 +1084,7 @@ class CoreRanking(Ranking):
 
 	@classmethod
 	def _fetch_confs(cls):
-		""" Generator of all conferences listed on the core site, as dicts
+		""" Internal generator of all conferences listed on the core site, as dicts
 		"""
 		# fetch page 0 outside loop to get page/result counts, will be in cache for loop access
 		soup = RequestWrapper.get_soup(cls._url_corerank.format(0), 'cache/ranked_{}.html'.format(1))
@@ -1192,7 +1192,7 @@ class CoreRanking(Ranking):
 
 	@classmethod
 	def update_confs(cls):
-		""" Generator of all conferences listed on the core site, as dicts
+		""" Refresh and make a generator of all conferences listed on the core site, as dicts
 		"""
 		confs = list(uniq(cls._fetch_confs()))
 		cls._save_confs(confs)
@@ -1217,7 +1217,7 @@ def json_encode_dates(obj):
 		raise TypeError('{} not encodable'.format(obj))
 
 
-@click.group(invoke_without_command=True)
+@click.group(invoke_without_command=True, chain=True)
 @click.option('--quiet/--no-quiet', default=False, help='Silence output')
 @click.option('--cache/--no-cache', default=True, help='Cache files in ./cache')
 @click.option('--delay', type=float, default=0, help='Delay between requests to the same domain')
@@ -1232,19 +1232,19 @@ def update(ctx, quiet, cache, delay):
 	RequestWrapper.set_use_cache(cache)
 
 	if not ctx.invoked_subcommand:
-		# Default is update_confs
-		update_cfp()
+		# Default is to_update calls for papers
+		cfps()
 
 
 @update.command()
-def update_core():
+def core():
 	""" Update the cached list of CORE conferences.
 	"""
 	CoreRanking.update_confs()
 
 
 @update.command()
-def update_ggs():
+def ggs():
 	""" Update the cached list of GII-GRIN-SCIE (GGS) conferences.
 	"""
 	GGSRanking.update_confs()
@@ -1253,7 +1253,7 @@ def update_ggs():
 @update.command()
 @click.option('--out', default='cfp.json', help='Output file for CFPs', type=click.File('w'))
 @click.option('--debug/--no-debug', default=False, help='Show debug output')
-def update_cfp(out, debug=False):
+def cfps(out, debug=False):
 	""" Using all conferences from CORE, fetch their CfPs and print the output data as json to out.
 	"""
 	today = datetime.datetime.now().date()
