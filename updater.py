@@ -112,6 +112,7 @@ def memoize(f):
 
 
 class RequestWrapper:
+	""" Static wrapper of request.get() to implement caching and waiting between requests """
 	last_req_times = {}
 	use_cache = True
 	delay = 0
@@ -126,6 +127,7 @@ class RequestWrapper:
 
 	@classmethod
 	def wait(cls, url):
+		""" Wait until at least :attr:`~delay` seconds for the next same-domain request """
 		key = urlsplit(url).netloc
 		now = get_time()
 
@@ -160,6 +162,7 @@ class RequestWrapper:
 
 
 def normalize(string):
+	""" Singularize and lower casing of a word """
 	# Asia -> Asium and Meta -> Metum, really?
 	return inflection.singularize(string.lower()) if len(string) > 3 else string.lower()
 
@@ -387,8 +390,7 @@ class ConfMetaData(object):
 
 
 	def _difference(self, other):
-		""" Compare the two ConfMetaData instances and rate how similar they are.
-		"""
+		""" Compare the two ConfMetaData instances and rate how similar they are.  """
 		return (self._set_diff(self.type_, other.type_),
 				self._set_diff(self.organisers, other.organisers),
 				self._list_diff(self.topic_keywords, other.topic_keywords),
@@ -400,15 +402,15 @@ class ConfMetaData(object):
 	def __str__(self):
 		vals = []
 		if self.topic_keywords:
-			vals.append('topic=[' + ', '.join(self.topic_keywords) + ']')
+			vals.append(f'topic=[{", ".join(self.topic_keywords)}]')
 		if self.organisers:
-			vals.append('organisers={' + ', '.join(self.organisers) + '}')
+			vals.append(f'organisers={{{", ".join(self.organisers)}}}')
 		if self.number:
-			vals.append('number={' + ', '.join(self.number) + '}')
+			vals.append(f'number={{{", ".join(self.number)}}}')
 		if self.type_:
-			vals.append('type={' + ', '.join(self.type_) + '}')
+			vals.append(f'type={{{", ".join(self.type_)}}}')
 		if self.qualifiers:
-			vals.append('qualifiers={' + ', '.join(self.qualifiers) + '}')
+			vals.append(f'qualifiers={{{", ".join(self.qualifiers)}}}')
 		return ', '.join(vals)
 
 
@@ -428,8 +430,7 @@ class Conference(ConfMetaData):
 
 
 	def ranksort(self): # lower is better
-		""" Utility to sort the ranks based on the order we want (specificially A* < A).
-		"""
+		""" Utility to sort the ranks based on the order we want (typically A* < A).  """
 		def ranknum(rank):
 			try: return self._ranks.index(rank)
 			except ValueError: return len(self._ranks) # non-ranked, e.g. 'Australasian'
@@ -438,14 +439,12 @@ class Conference(ConfMetaData):
 
 	@classmethod
 	def columns(cls):
-		""" Return column titles for cfp data.
-		"""
+		""" Return column titles for cfp data """
 		return ['Acronym', 'Title', 'Rank system', 'Rank', 'Field']
 
 
 	def values(self):
-		""" What we'll show
-		"""
+		""" What we'll show """
 		return [self.acronym, self.title, self.ranksys, self.rank, self.field]
 
 
@@ -548,8 +547,7 @@ class CallForPapers(ConfMetaData):
 
 
 	def fetch_cfp_data(self):
-		""" Parse a page from wiki-cfp. Return all useful data about the conference.
-		"""
+		""" Parse a page from wiki-cfp. Return all useful data about the conference.  """
 		f = 'cache/' + 'cfp_{}-{}_{}.html'.format(self.conf.acronym, self.year, self.conf.topic()).replace('/', '_') # topic('-')
 		self.parse_cfp(RequestWrapper.get_soup(self.url_cfp, f))
 
@@ -690,8 +688,7 @@ class CallForPapers(ConfMetaData):
 
 	@classmethod
 	def get_cfp(cls, conf, year, debug=False):
-		""" Fetch the cfp from wiki-cfp for the given conference at the given year.
-		"""
+		""" Fetch the cfp from wiki-cfp for the given conference at the given year.  """
 		try:
 			cfp = cls.find_link(conf, year, debug=debug)
 			cfp.fetch_cfp_data()
@@ -703,26 +700,22 @@ class CallForPapers(ConfMetaData):
 
 	@classmethod
 	def columns(cls):
-		""" Return column titles for cfp data.
-		"""
+		""" Return column titles for cfp data.  """
 		return cls._date_names + ['orig_' + d for d in cls._date_fields] + ['Link', 'CFP url']
 
 
 	def values(self):
-		""" Return values of cfp data, in column order.
-		"""
+		""" Return values of cfp data, in column order.  """
 		return [self.dates.get(f, None) for f in self._date_fields] + [self.orig.get(f, None) for f in self._date_fields] + [self.link, self.url_cfp]
 
 
 	def max_date(self):
-		""" Get the max date in the cfp
-		"""
+		""" Get the max date in the cfp """
 		return max(self.dates.values())
 
 
 	def rating(self):
-		""" Rate the (in)adequacy of the cfp with its conference: lower is better.
-		"""
+		""" Rate the (in)adequacy of the cfp with its conference: lower is better.  """
 		return self._difference(self.conf)[:4]
 
 
@@ -846,8 +839,7 @@ class Ranking(object):
 
 	@classmethod
 	def get_confs(cls):
-		""" Generator of all conferences listed in a source, as dicts
-		"""
+		""" Generator of all conferences listed in a source, as dicts """
 		try:
 			return list(cls._load_confs())
 		except FileNotFoundError:
@@ -856,8 +848,7 @@ class Ranking(object):
 
 	@classmethod
 	def strip_trailing_paren(cls, string):
-		""" If string ends with a parenthesized part, remove it, e.g. "foo (bar)" -> "foo"
-		"""
+		""" If string ends with a parenthesized part, remove it, e.g. "foo (bar)" -> "foo" """
 		string = string.strip()
 		try:
 			paren = string.index(' (')
@@ -950,8 +941,7 @@ class GGSRanking(Ranking):
 
 
 class CoreRanking(Ranking):
-	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.
-	"""
+	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.  """
 	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2021&sort=arank&page={}'
 	_core_file = 'core.csv'
 
@@ -970,8 +960,7 @@ class CoreRanking(Ranking):
 
 	@classmethod
 	def _fetch_confs(cls):
-		""" Internal generator of all conferences listed on the core site, as dicts
-		"""
+		""" Internal generator of all conferences listed on the core site, as dicts """
 		# fetch page 0 outside loop to get page/result counts, will be in cache for loop access
 		soup = RequestWrapper.get_soup(cls._url_corerank.format(0), 'cache/ranked_{}.html'.format(1))
 
@@ -1048,8 +1037,7 @@ class CoreRanking(Ranking):
 
 	@classmethod
 	def _save_confs(cls, conflist):
-		""" Save conferences to a file where to cache them.
-		"""
+		""" Save conferences to a file where to cache them.  """
 		with open(cls._core_file, 'w') as csv:
 			print('acronym;title;ranksys;rank;field', file=csv)
 			for conf in conflist:
@@ -1063,8 +1051,7 @@ class CoreRanking(Ranking):
 
 	@classmethod
 	def _load_confs(cls):
-		""" Load conferences from a file where we have the values cached cleanly.
-		"""
+		""" Load conferences from a file where we have the values cached cleanly.  """
 		f_age = datetime.datetime.fromtimestamp(os.stat(cls._core_file).st_mtime)
 		if datetime.datetime.today() - f_age > datetime.timedelta(days = 1):
 			raise FileNotFoundError('Cached file too old')
@@ -1091,8 +1078,7 @@ class CoreRanking(Ranking):
 
 	@classmethod
 	def get_confs(cls):
-		""" Generator of all conferences listed on the core site, as dicts
-		"""
+		""" Generator of all conferences listed on the core site, as dicts """
 		try:
 			return list(cls._load_confs())
 		except FileNotFoundError:
@@ -1111,8 +1097,7 @@ def json_encode_dates(obj):
 @click.option('--delay', type=float, default=0, help='Delay between requests to the same domain')
 @click.pass_context
 def update(ctx, cache, delay):
-	""" Update the Core-CFP data. If no command is provided, update_confs is run.
-	"""
+	""" Update the Core-CFP data. If no command is provided, update_confs is run.  """
 	RequestWrapper.set_delay(delay)
 	RequestWrapper.set_use_cache(cache)
 
@@ -1123,15 +1108,13 @@ def update(ctx, cache, delay):
 
 @update.command()
 def core():
-	""" Update the cached list of CORE conferences.
-	"""
+	""" Update the cached list of CORE conferences """
 	CoreRanking.update_confs()
 
 
 @update.command()
 def ggs():
-	""" Update the cached list of GII-GRIN-SCIE (GGS) conferences.
-	"""
+	""" Update the cached list of GII-GRIN-SCIE (GGS) conferences """
 	GGSRanking.update_confs()
 
 
@@ -1139,8 +1122,7 @@ def ggs():
 @click.option('--out', default='cfp.json', help='Output file for CFPs', type=click.File('w'))
 @click.option('--debug/--no-debug', default=False, help='Show debug output')
 def cfps(out, debug=False):
-	""" Using all conferences from CORE, fetch their CfPs and print the output data as json to out.
-	"""
+	""" Update the calls for papers from the conference lists  """
 	today = datetime.datetime.now().date()
 	# use years from 6 months ago until next year
 	years = range((today - datetime.timedelta(days = 366 / 2)).year, (today + datetime.timedelta(days = 365)).year + 1)
