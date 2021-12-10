@@ -25,7 +25,7 @@ var filtered_confs; // #search p.filter_conf
 var sethash = '';
 
 // Escape data to pass as regexp
-RegExp.escape = s => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+RegExp.escape = s => s.replace(/[\\^$*+?.()|[\]{}]/g, '\\$&')
 
 
 /* Template elements that we can clone() */
@@ -318,9 +318,11 @@ function hideSuggestions()
 }
 
 
-function updateSearch()
+let updateSearchTimeoutId = 0;
+
+function delayedUpdateSearch(value)
 {
-	var search = this.value.split(/[ ;:,.]/).filter(val => val && val.length >= 2).map(val => new RegExp(RegExp.escape(val), 'iu'))
+	var search = value.split(/[ ;:,.]/).filter(val => val && val.length >= 2).map(val => new RegExp(RegExp.escape(val), 'iu'))
 
 	hideSuggestions();
 
@@ -331,15 +333,28 @@ function updateSearch()
 			var idx = timeline_conf_lookup[row[confIdx]];
 			suggestions.children[idx].style.display = 'block';
 		});
+
+	updateSearchTimeoutId = 0;
 }
+
+function updateSearch()
+{
+	if (updateSearchTimeoutId)
+		clearTimeout(updateSearchTimeoutId);
+
+	updateSearchTimeoutId = setTimeout(delayedUpdateSearch, 150, this.value)
+}
+
 
 function setColumnFilter(select, col_id)
 {
 	var val = Array.from(select.selectedOptions).map(opt => RegExp.escape(opt.value));
 	var regex = val.length ? ('^(' + val.join('|') + ')$') : '';
 
-	if (regex) filters[col_id] = new RegExp(regex);
-	else delete filters[col_id];
+	if (regex)
+		filters[col_id] = new RegExp(regex);
+	else
+		delete filters[col_id];
 }
 
 // this is the select
