@@ -422,8 +422,8 @@ class Conference(ConfMetaData):
 
 		self.title = title
 		self.acronym = acronym
-		self.ranksys = [ranksys]
-		self.rank = [rank or None]
+		self.ranksys = (ranksys,)
+		self.rank = (rank or None,)
 		self.field = field or '(missing)'
 
 
@@ -450,15 +450,15 @@ class Conference(ConfMetaData):
 
 
 	def __eq__(self, other):
-		return isinstance(other, self.__class__) and (self.rank, self.acronym, self.title, self.ranksys, self.field) == (other.rank, other.acronym, other.title, other.ranksys, other.field)
+		return isinstance(other, self.__class__) and (self.acronym, self.title, self.rank, self.ranksys, self.field) == (other.acronym, other.title, other.rank, other.ranksys, other.field)
 
 
 	def __lt__(self, other):
-		return (self.ranksort(), self.acronym, self.title, self.ranksys, self.field) < (other.ranksort(), other.acronym, other.title, other.ranksys, other.field)
+		return (self.acronym, self.title, self.ranksort(), self.ranksys, self.field) < (other.acronym, other.title, other.ranksort(), other.ranksys, other.field)
 
 
 	def __str__(self):
-		vals = ['{}={}'.format(s, getattr(self, s)) for s in self.__slots__ if getattr(self, s) not in {None, '(missing)'}]
+		vals = ['{}={}'.format(slot, val) for slot, val in ((s, getattr(self, s)) for s in self.__slots__) if val != '(missing)']
 		dat = super(Conference, self).__str__()
 		if dat:
 			vals.append(dat)
@@ -894,8 +894,8 @@ class Ranking(object):
 
 				merge_pair = [list_a[match_a], list_b[match_b]]
 				conf = merge_pair[0]
-				conf.rank = [*list_a[match_a].rank, *list_b[match_b].rank]
-				conf.ranksys = [*list_a[match_a].ranksys, *list_b[match_b].ranksys]
+				conf.rank = (*list_a[match_a].rank, *list_b[match_b].rank)
+				conf.ranksys = (*list_a[match_a].ranksys, *list_b[match_b].ranksys)
 				merged.append(conf)
 
 				cmp = [row[:match_b] + row[match_b + 1:] for row in cmp]
@@ -1150,7 +1150,7 @@ def cfps(out, debug=False):
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
-	confs = sorted(Ranking.merge(CoreRanking.get_confs(), GGSRanking.get_confs()), key=lambda conf: (conf.acronym, conf.title))
+	confs = sorted(Ranking.merge(CoreRanking.get_confs(), GGSRanking.get_confs()))
 
 	progressbar = click.progressbar(confs, label='fetching calls for papers…', update_min_steps=len(confs) // 1000 if not RequestWrapper.delay else 1,
 									item_show_func=lambda conf: f'{conf.acronym} {conf.title}' if conf is not None else '')
