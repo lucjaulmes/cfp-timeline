@@ -37,107 +37,13 @@ class CFPCheckError(Exception):
 	pass
 
 
-class Progress():
-	maxpos = 0.0
-	next_pos = 0
-	update_freq = 0
-	start = 0
-	template = "\rProgress{}: {{: 5.1f}} %\tElapsed: {{:2.0f}}:{{:02.0f}}\tETA: {{:2.0f}}:{{:02.0f}} "
-
-
-	def change_max(self, maxpos):
-		""" Change the number of items on hwihc me iterate.
-		"""
-		self.maxpos = float(maxpos)
-		self.update_freq = max(1, int(floor(maxpos / 1000)))
-		self.next_pos = 1
-
-	def _print_update(self, pos):
-		if pos < self.next_pos:
-			return
-
-		self.next_pos = pos + self.update_freq
-
-		if pos < self.maxpos:
-			ratio = pos / self.maxpos
-			elapsed = get_time() - self.start
-			est_remaining = elapsed * (1 - ratio) / ratio if ratio else float('inf')
-
-			stdout.write(self.template.format(100 * ratio, *(divmod(elapsed, 60) + divmod(est_remaining, 60))))
-			stdout.flush()
-
-	def update_diff(self, pos):
-		""" Wrap a pos != maxpos test to print updates
-		"""
-		self._print_update(pos)
-		return pos != self.maxpos
-
-	def update_less(self, pos):
-		""" Wrap a pos < maxpos test to print updates
-		"""
-		self._print_update(pos)
-		return pos < self.maxpos
-
-	update = update_less
-
-
-	def iterate(self, iterable, *enum_args):
-		""" Wrap an iterable, yielding all its elements, to print updates
-		"""
-		if self.maxpos == 0.0:
-			try:
-				self.change_max(len(iterable))
-			except TypeError as e:
-				raise TypeError(("{}\nYou can use Progress.iterate() with an iterable that has no len() "
-					+ "by providing its (expected) length to the constructor: Progress(maxpos = ...).\n").format(e.args[0]))
-
-
-		for pos, item in enumerate(iterable, *enum_args):
-			self._print_update(pos)
-			yield item
-
-
-	def clean_print(self, string, *print_args, **print_kwargs):
-		""" Want to cleanly print a line in between progress updates? No problem!
-		"""
-		print('\r{}\r'.format(' ' * shutil.get_terminal_size().columns) + string, *print_args, **print_kwargs)
-		self.next_pos = 1
-
-
-	def __init__(self, maxpos = 0.0, operation = ""):
-		self.operation = ' ' + operation if operation else ''
-		self.template = self.template.format(self.operation)
-		self.change_max(maxpos)
-
-	def __enter__(self):
-		self.start = get_time()
-		self._print_update(0)
-		self.next_pos = self.update_freq
-		return self
-
-	def __exit__(self, type, value, traceback):
-		self.clean_print("Finished{} in {:2}:{:02}".format(self.operation, *divmod(int(get_time() - self.start), 60)))
-
-	@classmethod
-	def quiet(cls):
-		""" Replace all functions with quieter ones
-		"""
-		cls._print_update = lambda *a, **k: None
-		cls.iterate = lambda obj, iterable, *enum_args: iterable
-		cls.clean_print = lambda obj, *a, **k: print(*a, **k)
-
-
-def head(n, iterable):
-	""" Generator listing the first (up to) n elements of an iterable
-
-	Args:
-		n (`int`): the maximum amount of elements to list
-		iterable `iterable`: An iterable whose first elements we want to get
-	"""
-	_it = iter(iterable)
-	for pos, item in enumerate(_it):
-		if pos == n: break
-		yield item
+def clean_print(*args, **kwargs):
+	""" Line print(), but first erase anything on the current line (e.g. a progress bar) """
+	if args and kwargs.get('file', sys.stdout).isatty():
+		if not hasattr(clean_print, '_clear_line'):
+			clean_print._clear_line = f'\r{" " * shutil.get_terminal_size().columns}\r{{}}'
+		args = (clean_print._clear_line.format(args[0]), *args[1:])
+	print(*args, **kwargs)
 
 
 def uniq(iterable, **sorted_kwargs):
@@ -156,7 +62,8 @@ def uniq(iterable, **sorted_kwargs):
 
 	yield y
 	for x in _it:
-		if x != y: yield x
+		if x != y:
+			yield x
 		y = x
 
 
@@ -1037,8 +944,8 @@ class GGSRanking(Ranking):
 			assert 'title;acronym;rank' == next(f).strip()
 			confs = [l.strip().split(';') for l in f]
 
-		with Progress(operation = 'loading GGS list', maxpos = len(confs)) as prog:
-			return [Conference(cls.strip_trailing_paren(tit), acr, rat, None, 'GGS2021') for tit, acr, rat in prog.iterate(confs)]
+		with click.progressbar(confs, label='loading GGS list…') as prog:
+			return [Conference(cls.strip_trailing_paren(tit), acr, rat, None, 'GGS2021') for tit, acr, rat in prog]
 
 	@classmethod
 	def update_confs(cls):
@@ -1097,7 +1004,7 @@ class CoreRanking(Ranking):
 		forcodes = cls.get_forcodes()
 		non_standard_ranks = Counter()
 
-		with Progress(operation = 'fetching CORE list', maxpos = n_results) as prog:
+		with click.progressbar(label='fetching CORE list…', length=n_results) as prog:
 			for p in range(pages):
 				f = 'cache/ranked_{}.html'.format(per_page * p + 1)
 				soup = RequestWrapper.get_soup(cls._url_corerank.format(p), f)
@@ -1112,7 +1019,7 @@ class CoreRanking(Ranking):
 				rpos = headers.index('rank')
 				fpos = headers.index('primary for')
 
-				for row in prog.iterate(rows, p * per_page):
+				for row in rows:
 					val = [' '.join(r.text.split()) for r in row.find_all('td')]
 					# Some manual corrections applied to the CORE database:
 					# - ISC changed their acronym to "ISC HPC"
@@ -1131,6 +1038,7 @@ class CoreRanking(Ranking):
 						val[rpos] = None
 
 					yield Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
+					prog.update(1)
 
 		# Manually add some missing conferences from previous year data.
 		manual = [
@@ -1186,8 +1094,8 @@ class CoreRanking(Ranking):
 			assert 'acronym;title;ranksys;rank;field' == next(f).strip()
 			confs = [l.strip().split(';') for l in f]
 
-		with Progress(operation = 'loading CORE list', maxpos = len(confs)) as prog:
-			return [Conference(cls.strip_trailing_paren(tit), acr, rnk, fld, sys) for acr, tit, sys, rnk, fld in prog.iterate(confs)]
+		with click.progressbar(confs, label='loading CORE list…') as prog:
+			return [Conference(cls.strip_trailing_paren(tit), acr, rnk, fld, sys) for acr, tit, sys, rnk, fld in prog]
 
 
 	@classmethod
@@ -1218,16 +1126,12 @@ def json_encode_dates(obj):
 
 
 @click.group(invoke_without_command=True, chain=True)
-@click.option('--quiet/--no-quiet', default=False, help='Silence output')
 @click.option('--cache/--no-cache', default=True, help='Cache files in ./cache')
 @click.option('--delay', type=float, default=0, help='Delay between requests to the same domain')
 @click.pass_context
-def update(ctx, quiet, cache, delay):
+def update(ctx, cache, delay):
 	""" Update the Core-CFP data. If no command is provided, update_confs is run.
 	"""
-	if quiet:
-		Progress.quiet()
-
 	RequestWrapper.set_delay(delay)
 	RequestWrapper.set_use_cache(cache)
 
@@ -1265,26 +1169,30 @@ def cfps(out, debug=False):
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
-	confs = Ranking.merge(CoreRanking.get_confs(), GGSRanking.get_confs())
-	with open('parsing_errors.txt', 'w') as errlog, Progress(operation = 'fetching calls for papers') as prog:
-		for conf in prog.iterate(sorted(confs, key=lambda conf: (conf.acronym, conf.title))):
+	confs = sorted(Ranking.merge(CoreRanking.get_confs(), GGSRanking.get_confs()), key=lambda conf: (conf.acronym, conf.title))
+
+	progressbar = click.progressbar(confs, label='fetching calls for papers…', update_min_steps=len(confs) // 1000 if not RequestWrapper.delay else 1,
+									item_show_func=lambda conf: f'{conf.acronym} {conf.title}' if conf is not None else '')
+
+	with open('parsing_errors.txt', 'w') as errlog, progressbar as conf_iterator:
+		for conf in conf_iterator:
 			values = conf.values()
 			cfps_found = 0
 			last_year = None
 			for y in years:
 				if debug:
-					prog.clean_print(f'Looking up CFP {conf} {y}')
+					clean_print(f'Looking up CFP {conf} {y}')
 				try:
 					cfp = WikicfpCFP.get_cfp(conf, y, debug=debug)
 
 					err = cfp.verify_conf_dates()
 					if err:
-						prog.clean_print(str(err))
+						clean_print(err)
 						print(err.replace(':', ';', 1) + ';' + cfp.url_cfp + ';corrected', file=errlog)
 
 					err = cfp.verify_submission_dates()
 					if err:
-						prog.clean_print(str(err))
+						clean_print(err)
 						print(err.replace(':', ';', 1) + ';' + cfp.url_cfp + ';corrected', file=errlog)
 
 					cfps_found += 1
@@ -1298,7 +1206,7 @@ def cfps(out, debug=False):
 					if debug:
 						print(f'> {e}\n')
 					else:
-						prog.clean_print(str(e))
+						clean_print(e)
 					print(str(e).replace(':', ';', 1) + ': no satisfying correction heuristic;' + cfp.url_cfp + ';ignored', file=errlog)
 					cfp = None
 				else:
