@@ -22,8 +22,6 @@ from time import sleep, time as get_time
 from sys import stdout
 from math import floor
 
-SEP='|'
-
 try:
 	from enchant import Dict
 except ImportError:
