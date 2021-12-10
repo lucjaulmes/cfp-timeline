@@ -1,32 +1,21 @@
 #!/usr/bin/python3
 
-from __future__ import generator_stop
-
 import re
 import os
 import sys
 import json
 import glob
+import time
 import click
 import shutil
+import enchant
 import inflection
 import requests
 import datetime
-from requests.exceptions import ConnectionError, MissingSchema
 from functools import total_ordering
-from collections import defaultdict, Counter
+from collections import Counter
 from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs, urlencode
 from bs4 import BeautifulSoup
-
-from time import sleep, time as get_time
-from sys import stdout
-from math import floor
-
-try:
-	from enchant import Dict
-except ImportError:
-	def Dict(*args):
-		return None
 
 
 class CFPNotFoundError(Exception):
@@ -94,23 +83,6 @@ class PeekIter(object):
 			return self._ahead[:n]
 
 
-def memoize(f):
-	""" A decorator that replaces a function f with a wrapper caching its result.
-	The cached result is computed only at the first call, and stored in an attribute of f.
-
-	Args:
-		f (`function`): A function whose output needs to be (lazily) cached
-
-	Returns:
-		`function`: The wrapper that calls f, caches its result, and serves it
-	"""
-	def wrapper(*args, **kwargs):
-		if not hasattr(f, '_cached'): f._cached = f(*args, **kwargs)
-		return f._cached
-
-	return wrapper
-
-
 class RequestWrapper:
 	""" Static wrapper of request.get() to implement caching and waiting between requests """
 	last_req_times = {}
@@ -129,13 +101,13 @@ class RequestWrapper:
 	def wait(cls, url):
 		""" Wait until at least :attr:`~delay` seconds for the next same-domain request """
 		key = urlsplit(url).netloc
-		now = get_time()
+		now = time.time()
 
 		wait = cls.last_req_times.get(urlsplit(url).netloc, 0) + cls.delay - now
 		cls.last_req_times[urlsplit(url).netloc] = now + max(0, wait)
 
 		if wait >= 0:
-			sleep(wait)
+			time.sleep(wait)
 
 
 	@classmethod
@@ -229,7 +201,7 @@ class ConfMetaData(object):
 	_acronym_start = {v[0]:a for a, v in _acronyms.items()}
 	_sig_start = {normalize(v.split()[0]):a for a, v in _sig.items() if a != 'ART'}
 
-	_dict = Dict('EN_US')
+	_dict = enchant.Dict('EN_US')
 	_misspelled = {}
 
 	topic_keywords = None
@@ -527,22 +499,6 @@ class CallForPapers(ConfMetaData):
 		raise NotImplementedError
 
 
-	@classmethod
-	@memoize
-	def get_conf_series(cls):
-		""" Returns map of all conference series listed on the core site, as dicts: acronym -> list of (conf name, link) tuples
-		"""
-		conf_series = defaultdict(lambda: [])
-		for i in (chr(ord('A') + x) for x in range(26)):
-			f='cache/cfp_series_{}.html'.format(i)
-			soup = RequestWrapper.get_soup(cls._url_cfpseries.format(initial = i), f)
-
-			for acronym, name, link in cls.parse_confseries(soup):
-				conf_series[acronym].append((ConfMetaData(title = name, acronym = acronym), link))
-
-		return dict(conf_series)
-
-
 	def fetch_cfp_data(self):
 		""" Parse a page from wiki-cfp. Return all useful data about the conference.  """
 		f = 'cache/' + 'cfp_{}-{}_{}.html'.format(self.conf.acronym, self.year, self.conf.topic()).replace('/', '_') # topic('-')
@@ -691,7 +647,7 @@ class CallForPapers(ConfMetaData):
 			cfp.fetch_cfp_data()
 			return cfp
 
-		except ConnectionError:
+		except requests.exceptions.ConnectionError:
 			raise CFPNotFoundError('Connection error when fetching CFP for {} {}'.format(conf.acronym, year))
 
 
@@ -943,19 +899,7 @@ class CoreRanking(Ranking):
 	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.  """
 	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2021&sort=arank&page={}'
 	_core_file = 'core.csv'
-
-	@classmethod
-	@memoize
-	def get_forcodes(cls):
-		""" Fetch and return the mapping of For Of Research (FOR) codes to the corresponding names.
-		"""
-		forcodes = {}
-
-		with open('for_codes.json', 'r') as f:
-			forcodes = json.load(f)
-
-		return forcodes
-
+	_for_file = 'for_codes.json'
 
 	@classmethod
 	def _fetch_confs(cls):
@@ -968,7 +912,8 @@ class CoreRanking(Ranking):
 		per_page, n_results = map(int, result_count_re.search(result_count).groups())
 		pages = (n_results + per_page - 1) // per_page
 
-		forcodes = cls.get_forcodes()
+		with open(cls._for_file, 'r') as f:
+			forcodes = json.load(f)
 		non_standard_ranks = Counter()
 
 		with click.progressbar(label='fetching CORE list…', length=n_results) as prog:
