@@ -417,7 +417,7 @@ class ConfMetaData(object):
 @total_ordering
 class Conference(ConfMetaData):
 	__slots__ = ('acronym', 'title', 'rank', 'ranksys', 'field')
-	_ranks = ['A++', 'A*', 'A+', 'A', 'A-', 'B', 'B-', 'C', 'D', 'E'] # unified for both sources
+	_ranks = {rk: num for num, rk in enumerate('A++ A* A+ A A- B B- C D E'.split())}  # unified for both sources, lower is better
 
 	def __init__(self, title, acronym, rank=None, field=None, ranksys='CORE2021', **kwargs):
 		super(Conference, self).__init__(title, acronym, **kwargs)
@@ -429,12 +429,9 @@ class Conference(ConfMetaData):
 		self.field = field or '(missing)'
 
 
-	def ranksort(self): # lower is better
-		""" Utility to sort the ranks based on the order we want (typically A* < A).  """
-		def ranknum(rank):
-			try: return self._ranks.index(rank)
-			except ValueError: return len(self._ranks) # non-ranked, e.g. 'Australasian'
-		return min(ranknum(rk) for rk in self.rank)
+	def ranksort(self):
+		""" Utility to sort the ranks based on the order we want (such ash A* < A).  """
+		return min(self._ranks.get(rank, len(self._ranks)) for rank in self.rank)
 
 
 	@classmethod
@@ -911,11 +908,11 @@ class GGSRanking(Ranking):
 			raise FileNotFoundError('Cached file too old')
 
 		with open(cls._ggs_file, 'r') as f:
-			assert 'title;acronym;rank' == next(f).strip()
+			assert 'acronym;title;rank' == next(f).strip()
 			confs = [l.strip().split(';') for l in f]
 
 		with click.progressbar(confs, label='loading GGS list…') as prog:
-			return [Conference(cls.strip_trailing_paren(tit), acr, rat, None, 'GGS2021') for tit, acr, rat in prog]
+			return [Conference(cls.strip_trailing_paren(tit), acr, rat, None, 'GGS2021') for acr, tit, rat in prog]
 
 	@classmethod
 	def update_confs(cls):
@@ -937,7 +934,9 @@ class GGSRanking(Ranking):
 		df['title'] = df['title'].str.replace(';', ',').str.title().str.replace(r'\b(Acm|Ieee)\b', lambda m: m[1].upper(), regex=True)\
 				.str.replace(r'\b(On|And|In|Of|For|The|To|Its)\b', lambda m: m[1].lower(), regex=True)
 
-		df.to_csv(cls._ggs_file, sep=';', index=False, quoting=csv.QUOTE_NONE)
+		sort_ranks = lambda ser: ser.map(Conference._ranks).fillna(len(Conference._ranks)) if ser.name == 'rank' else ser
+		col_order = ['acronym', 'title', 'rank']
+		df[col_order].sort_values(by=col_order, key=sort_ranks).to_csv(cls._ggs_file, sep=';', index=False, quoting=csv.QUOTE_NONE)
 
 
 class CoreRanking(Ranking):
