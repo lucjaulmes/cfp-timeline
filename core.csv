@@ -17,6 +17,7 @@ ACIIDS;Asian Conference on Intelligent Information and Database Systems;CORE2021
 ACISP;Australasian Conference on Information Security and Privacy;CORE2021;Australasian B;Cybersecurity and privacy
 ACIVS;Advanced Concepts for Intelligent Vision Systems;CORE2021;B;Computer vision and multimedia computation
 ACL;Association of Computational Linguistics;CORE2021;A*;Artificial intelligence
+ACML;Asian Conference on Machine Learning;CORE2021;;Machine learning
 ACMMM;ACM Multimedia;CORE2021;A*;Computer vision and multimedia computation
 ACNS;International Conference on Applied Cryptography and Network Security;CORE2021;B;Cybersecurity and privacy
 ACRA;Australasian Conference on Robotics and Automation;CORE2021;Australasian C;Artificial intelligence
@@ -384,7 +385,6 @@ ICANN;International Conference on Artificial Neural Networks;CORE2021;C;Machine 
 ICAPS;International Conference on Automated Planning and Scheduling;CORE2021;A*;Artificial intelligence
 ICARCV;International Conference on Control, Automation, Robotics and Vision;CORE2021;C;Artificial intelligence
 ICASSP;IEEE International Conference on Acoustics, Speech and Signal Processing;CORE2018;B;Communications engineering
-ICATPN;International Conference on the Application and Theory of Petri Nets and Concurrency;CORE2021;B;Distributed computing and systems software
 ICC;IEEE International Conference on Communications;CORE2018;B;Communications engineering
 ICCAD;IEEE/ACM International Conference on Computer-Aided Design;CORE2021;A;Distributed computing and systems software
 ICCAM;International Congress on Computational and Applied Mathematics;CORE2021;C;Theory of computation
@@ -501,10 +501,8 @@ IEEE CISDA;IEEE Symposium on Computational Intelligence for Security and Defence
 IEEE HPCS;IEEE International Conference on High Performance Computing and Simulation;CORE2021;B;Distributed computing and systems software
 IEEE ICIA;IEEE International Conference on Information and Automation;CORE2021;National: China;(missing)
 IEEE IS;IEEE International Conference on Intelligent Systems;CORE2021;C;Artificial intelligence
-IEEE InfoVis;IEEE Information Visualization Conference;CORE2021;;Human-centred computing
 IEEE RFID;IEEE International Conference on Radio Frequency Identification;CORE2018;B;Communications engineering
 IEEE SIS;IEEE Swarm Intelligence Symposium;CORE2021;C;Artificial intelligence
-IEEE VAST;IEEE Symposium on Visual Analytics Science and Technology;CORE2021;C;Human-centred computing
 IEEE VIS;IEEE Visualization;CORE2021;A;Human-centred computing
 IEEE-IV;Intelligent Vehicles Conference;CORE2021;B;Artificial intelligence
 IES;Asia Pacific Symposium on Intelligent and Evolutionary Systems;CORE2021;C;Artificial intelligence
@@ -594,7 +592,7 @@ ITNAC;International Telecommunication Networks and Applications Conference;CORE2
 ITP;Conference on Interactive Theorem Proving;CORE2021;A;Theory of computation
 ITS;International Conference on Intelligent Tutoring Systems;CORE2021;B;Applied computing
 ITW;Information Theory Workshop;CORE2021;B;Theory of computation
-ITiCSE;Annual Conference on Innovation and Technology in Computer Science Education;CORE2021;A;Applied computing
+ITiCSE;Annual Conference on Innovation and Technology in Computer Science Education;CORE2021;A;Human-centred computing
 IUI;International Conference on Intelligent User Interfaces;CORE2021;A;Human-centred computing
 IV;International Conference on Information Visualisation;CORE2021;B;Human-centred computing
 IV-App;Applications of Information Visualization;CORE2021;C;Human-centred computing
@@ -661,6 +659,7 @@ MFPS;International Conference on Mathematical Foundations of Programming Semanti
 MICC;Malaysia International Conference on Communications;CORE2021;Regional;Distributed computing and systems software
 MICCAI;Medical Image Computing and Computer-Assisted Intervention;CORE2021;A;Applied computing
 MICRO;International Symposium on Microarchitecture;CORE2018;A;Applied computing
+MIS4TEL;International Conference in Methodologies and Intelligent Systems for Technology Enhanced Learning;CORE2021;;Applied computing
 MISE;International Workshop on Modelling in Software Engineering;CORE2021;C;Software engineering
 MISSI;Multimedia and Network Information Systems;CORE2021;National: Poland;Computer vision and multimedia computation
 MMAR;International Conference on Methods and Models in Automation and Robotics;CORE2021;National: Poland;Machine learning
@@ -759,6 +758,7 @@ PST;Annual Conference on Privacy, Security and Trust;CORE2021;C;Cybersecurity an
 PacificVis;IEEE Pacific Visualization Symposium;CORE2021;B;Computer vision and multimedia computation
 Pairing;International Conference on Pairing-based Cryptography;CORE2021;C;Cybersecurity and privacy
 PerDis;INTERNATIONAL SYMPOSIUM ON PERVASIVE DISPLAYS;CORE2021;B;Human-centred computing
+Petri Nets;International Conference on the Application and Theory of Petri Nets and Concurrency;CORE2021;B;Distributed computing and systems software
 PoEM;IFIP WG8.1 Working Conference on the Practice of Enterprise Modeling;CORE2021;C;Other information and computing sciences
 ProvSec;International Conference on Provable Security;CORE2021;B;Cybersecurity and privacy
 QRS;Software Quality, Reliability, and Security;CORE2021;B;Software engineering
@@ -811,7 +811,7 @@ SEA;International Symposium on Experimental Algorithms;CORE2021;B;Theory of comp
 SEAA;Euromicro Conference on Software Engineering and Advanced Applications;CORE2021;B;Software engineering
 SEAL;Asia-Pacific Conference on Simulated Evolution and Learning;CORE2021;B;Machine learning
 SEAMS;International Symposium on Software Engineering for Adaptive and Self-Managing Systems;CORE2021;A;Software engineering
-SEC;ACM/IEEE Symposium on Edge Computing;CORE2021;B;Distributed computing and systems software
+SEC;ACM/IEEE Symposium on Edge Computing;CORE2021;;Distributed computing and systems software
 SECON;IEEE International Conference on Sensing, Communication and Networking;CORE2021;B;Distributed computing and systems software
 SECRYPT;International Conference on Information Security and Cryptography;CORE2021;B;Cybersecurity and privacy
 SEFM;International Conference on Software Engineering and Formal Methods;CORE2021;B;Software engineering
