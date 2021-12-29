@@ -243,7 +243,7 @@ function makeTimelineItem(row)
 		{
 			if (sub > abst)
 			{
-				tooltip = (abstOrig === false ? 'Estimated' : '') + acronym + ' registration ' + abstText;
+				tooltip = (abstOrig === false ? 'Estimated ' : '') + acronym + ' registration ' + abstText;
 				blocks.appendChild(makeTimelineDuration('abstract', abst, sub, tooltip, abstOrig));
 			}
 
