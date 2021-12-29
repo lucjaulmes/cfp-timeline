@@ -1,6 +1,7 @@
 beautifulsoup4
 lxml
-click
+click >= 8.0
 inflection
 pyenchant
 pandas
+requests
