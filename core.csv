@@ -176,6 +176,7 @@ CSICC;International CSI Computer Conference;CORE2021;National: Iran;(missing)
 CSIT;Computer Sciences and Information Technologies;CORE2021;National;Artificial intelligence
 CSL;Annual Conference on Computer Science Logic;CORE2021;B;Theory of computation
 CSR;International Computer Science Symposium in Russia;CORE2021;National: Russia;Information And Computing Sciences
+CT-RSA;Cryptographers Track at RSA Conference;CORE2021;B;Cybersecurity and privacy
 CTW;Cologne-Twente Workshop on Graphs and Combinatorial Optimization;CORE2021;C;Theory of computation
 CVPR;IEEE Conference on Computer Vision and Pattern Recognition;CORE2021;A*;Computer vision and multimedia computation
 CW;International Conference on Cyberworlds;CORE2021;B;Graphics, augmented reality and games
@@ -186,7 +187,7 @@ CoDIT;International Conference on Control, Decision and Information Technologies
 CoNEXT;ACM International Conference on Emerging Networking Experiments and Technologies;CORE2021;A;Distributed computing and systems software
 CoNLL;Conference on Computational Natural Language Learning;CORE2021;A;Machine learning
 CogSIMA;IEEE Conference on Cognitive and Computational Aspects of Situation Management;CORE2021;National: USA;Distributed computing and systems software
-CogSci;Annual Conference of the Cognitive Science Society;CORE2021;A;Artificial intelligence
+CogSci;Annual Meeting of the Cognitive Science Society;CORE2021;A;Artificial intelligence
 CollaborateCom;International Conference on Collaborative Computing: Networks, Applications and Worksharing;CORE2021;C;Distributed computing and systems software
 CoopIS;International Conference on Cooperative Information Systems;CORE2021;B;Human-centred computing
 Coordination;International Conference on Coordination Models and Languages;CORE2021;C;Distributed computing and systems software
@@ -322,7 +323,7 @@ FQAS;Flexible Query-Answering Systems;CORE2021;C;Data management and data scienc
 FRUCT;IEEE Conference of the Open Innovations Association FRUCT;CORE2021;Regional;Distributed computing and systems software
 FSE;International Workshop on Fast Software Encryption;CORE2021;B;Cybersecurity and privacy
 FSR;International Conference on Field and Service Robotics;CORE2018;A;Artificial intelligence
-FST&TCS;Foundations of Software Technology and Theoretical Computer Science;CORE2021;B;Theory of computation
+FST&TCS;Foundations of Software Technology and Theoretical Computer Science;CORE2021;National: India;Theory of computation
 FTfJP;Workshop on Formal Techniques for Java-like Programs;CORE2021;C;Software engineering
 FUN;Conference on Fun with Algorithms;CORE2021;National: Italy;Theory of computation
 FUSION;International Conference on Information Fusion;CORE2021;C;Data management and data science
@@ -772,7 +773,6 @@ RCIS;International Conference on Research Challenges in Information Science;CORE
 RE;IEEE International Requirements Engineering Conference;CORE2021;A;Software engineering
 RECOMB;International Conference on Computational Molecular Biology;CORE2021;B;Applied computing
 REFSQ;International Workshop on Requirements Engineering: Foundation for Software Quality;CORE2021;B;Software engineering
-RSA;RSA Conference;CORE2021;B;Cybersecurity and privacy
 RSP;IEEE International Symposium on Rapid System Prototyping;CORE2021;C;Software engineering
 RSS;Robotics: Science and Systems;CORE2018;A*;Machine learning
 RTAS;IEEE Real-Time and Embedded Technology and Applications Symposium;CORE2021;A;Distributed computing and systems software
