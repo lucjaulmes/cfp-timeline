@@ -48,6 +48,7 @@ ALTA;Australasian Language Technology Workshop;CORE2021;Australasian B;Artificia
 AMIA;American Medical Informatics Annual Fall Symposium;CORE2021;National: USA;Applied computing
 AMTA;Conference of the Association for Machine Translation in the Americas;CORE2021;B;Artificial intelligence
 ANALCO;Workshop on Analytic Algorithmics and Combinatorics;CORE2021;B;Theory of computation
+ANT;International Conference on Ambient Systems, Networks and Technologies;CORE2021;;Distributed computing and systems software
 APBC;Asia-Pacific Bioinformatics Conference;CORE2021;B;Applied computing
 APCC;Asia Pacific Conference on Communications;CORE2021;C;Distributed computing and systems software
 APCCM;Asia-Pacific Conference on Conceptual Modelling;CORE2021;Australasian C;Data management and data science
@@ -220,6 +221,7 @@ DLT;Developments in Language Theory;CORE2021;B;Theory of computation
 DM;SIAM Conference on Discrete Mathematics;CORE2021;C;Theory of computation
 DNA;DNA Computing and Molecular Programming;CORE2021;B;Applied computing
 DOLAP;International Workshop on Data Warehousing and OLAP;CORE2021;B;Data management and data science
+DS;Discovery Science;CORE2021;;Theory of computation
 DS-RT;International Symposium on Distributed Simulation and Real Time Applications;CORE2021;C;Distributed computing and systems software
 DSAA;IEEE International Conference on Data Science and Advanced Analytics;CORE2021;A;Data management and data science
 DSM;Workshop on Domain Specific Modelling;CORE2021;C;Software engineering
@@ -252,6 +254,7 @@ ECSCW;European Conference on Computer Supported Cooperative Work;CORE2021;B;Huma
 ECSQARU;European Conference on Symbolic and Quantitative Approaches to Reasoning with Uncertainty;CORE2021;C;Artificial intelligence
 ED-MEDIA;World Conference on Educational Multimedia, Hypermedia and Telecommunications;CORE2021;B;Applied computing
 EDBT;Extending Database Technology;CORE2021;A;Data management and data science
+EDCC;European Dependable Computing Conference;CORE2021;;Cybersecurity and privacy
 EDM;Educational Data Mining;CORE2021;B;Applied computing
 EDOC;IEEE International Enterprise Distributed Object Computing Conference;CORE2021;B;Distributed computing and systems software
 EGPGV;Eurographics Symposium on Parallel Graphics and Visualization;CORE2021;B;Graphics, augmented reality and games
@@ -546,7 +549,6 @@ ISAGA;Conference for the International Simulation and Gaming Association;CORE202
 ISAIM;International Symposium on Artificial Intelligence and Mathematics;CORE2021;National: USA;Artificial intelligence
 ISARC;International Symposium on Automation and Robotics in Construction;CORE2021;C;Artificial intelligence
 ISAT;International Conference Information Systems Architecture and Technology;CORE2021;National: Poland;Distributed computing and systems software
-ISC;IASTED International Conference on Intelligent Systems and Control;CORE2021;National: Germany;Distributed computing and systems software
 ISC;Industrial Simulation Conference;CORE2021;C;Artificial intelligence
 ISC;Information Security Conference;CORE2021;B;Cybersecurity and privacy
 ISC HPC;ISC High Performance;CORE2021;C;Distributed computing and systems software
@@ -626,7 +628,7 @@ KDD;ACM International Conference on Knowledge Discovery and Data Mining;CORE2021
 KDViz;Knowledge Domain Visualisation;CORE2021;National: Uk;Human-centred computing
 KEOD;International Conference on Knowledge Engineering and Ontology Development;CORE2021;C;Data management and data science
 KES;International Conference on Knowledge-Based and Intelligent Information and Engineering Systems;CORE2021;B;Artificial intelligence
-KES AMSTA;International KES Symposium on Agents and Multiagent systems - Technologies and Applications;CORE2021;C;Artificial intelligence
+KES AMSTA;International KES Conference on Agents and Multiagent systems - Technologies and Applications;CORE2021;C;Artificial intelligence
 KES IDT;KES International Symposium on Intelligent Decision Technologies;CORE2021;C;Artificial intelligence
 KES IIMSS;International Symposium on Intelligent and Interactive Multimedia: Systems and Services;CORE2021;C;Computer vision and multimedia computation
 KR;International Conference on the Principles of Knowledge Representation and Reasoning;CORE2021;A*;Artificial intelligence
@@ -760,7 +762,6 @@ PacificVis;IEEE Pacific Visualization Symposium;CORE2021;B;Computer vision and m
 Pairing;International Conference on Pairing-based Cryptography;CORE2021;C;Cybersecurity and privacy
 PerDis;INTERNATIONAL SYMPOSIUM ON PERVASIVE DISPLAYS;CORE2021;B;Human-centred computing
 Petri Nets;International Conference on the Application and Theory of Petri Nets and Concurrency;CORE2021;B;Distributed computing and systems software
-PoEM;IFIP WG8.1 Working Conference on the Practice of Enterprise Modeling;CORE2021;C;Other information and computing sciences
 ProvSec;International Conference on Provable Security;CORE2021;B;Cybersecurity and privacy
 QRS;Software Quality, Reliability, and Security;CORE2021;B;Software engineering
 QUATIC;International Conference on the Quality of Information and Communications Technology;CORE2021;C;Software engineering
@@ -885,7 +886,6 @@ TASE;International Symposium on Theoretical Aspects of Software Engineering;CORE
 TCC;Theory of Cryptography Conference;CORE2021;A;Cybersecurity and privacy
 TEI;Tangible, Embedded, and Embodied Interaction;CORE2021;A;Human-centred computing
 TIME;International Symposium on Temporal Representation and Reasoning;CORE2021;B;Artificial intelligence
-TOOLS;Technology of Object-Oriented Languages and Systems;CORE2021;B;Software engineering
 TPDL;International Conference on Theory and Practice of Digital Libraries;CORE2021;B;Data management and data science
 TRB;International Visualization in Transportation Symposium;CORE2021;National: USA;Human-centred computing
 Tapia;Richard Tapia Celebration of Diversity in Computing Conference;CORE2021;National: USA;Information And Computing Sciences
