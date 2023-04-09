@@ -16,7 +16,6 @@ ACIIDS;Asian Conference on Intelligent Information and Database Systems;CORE2021
 ACISP;Australasian Conference on Information Security and Privacy;CORE2021;Australasian B;Cybersecurity and privacy
 ACIVS;Advanced Concepts for Intelligent Vision Systems;CORE2021;B;Computer vision and multimedia computation
 ACL;Association of Computational Linguistics;CORE2021;A*;Artificial intelligence
-ACML;Asian Conference on Machine Learning;CORE2021;;Machine learning
 ACMMM;ACM Multimedia;CORE2021;A*;Computer vision and multimedia computation
 ACNS;International Conference on Applied Cryptography and Network Security;CORE2021;B;Cybersecurity and privacy
 ACRA;Australasian Conference on Robotics and Automation;CORE2021;Australasian C;Artificial intelligence
@@ -127,6 +126,7 @@ CIAA;International Conference on Implementation and Application of Automata;CORE
 CIAC;International Conference on Algorithms and Complexity;CORE2021;C;Theory of computation
 CIARP;IberoAmerican Congress on Pattern Recognition;CORE2021;C;Computer vision and multimedia computation
 CIBCB;IEEE Symposium on Computational Intelligence in Bioinformatics and Computational Biology;CORE2021;C;Applied computing
+CICLING;International Conference on Intelligent Text Processing and Computational Linguistics;CORE2021;B;Artificial intelligence
 CICM;Conference on Intelligent Computer Mathematics;CORE2021;C;Theory of computation
 CIDM;IEEE Symposium on Computational Intelligence and Data Mining;CORE2021;C;Data management and data science
 CIDR;Conference on Innovative Data Systems Research;CORE2021;A;Data management and data science
@@ -155,7 +155,7 @@ COMAD;International Conference on Management of Data;CORE2021;National: India;Da
 COMPLEXIS;International Conference on Complexity, Future Information Systems and Risk;CORE2021;C;Theory of computation
 COMPSAC;International Computer Software and Applications Conference;CORE2021;B;Applied computing
 COMSNETS;International Conference on COMmunication Systems & NETworkS;CORE2021;National: India;Distributed computing and systems software
-CONCUR;International Conference on Concurrency Theory;CORE2021;A;Distributed computing and systems software
+CONCUR;International Conference on Concurrency Theory;CORE2021;A;Theory of computation
 CONTEXT;International and Interdisciplinary Conference on Modelling and Using Context;CORE2021;C;Artificial intelligence
 COPLAS;Workshop on Constraint Satisfaction for Planning and Scheduling;CORE2021;B;Artificial intelligence
 CP;International Conference on Principles and Practice of Constraint Programming;CORE2021;A;Artificial intelligence
