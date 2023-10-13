@@ -15,7 +15,8 @@ ACII;International Conference on Affective Computing and Intelligent;CORE2021;C;
 ACIIDS;Asian Conference on Intelligent Information and Database Systems;CORE2021;B;Data management and data science
 ACISP;Australasian Conference on Information Security and Privacy;CORE2021;Australasian B;Cybersecurity and privacy
 ACIVS;Advanced Concepts for Intelligent Vision Systems;CORE2021;B;Computer vision and multimedia computation
-ACL;Association of Computational Linguistics;CORE2021;A*;Artificial intelligence
+ACL;Association for Computational Linguistics;CORE2021;A*;Artificial intelligence
+ACML;Asian Conference on Machine Learning;CORE2021;;Machine learning
 ACMMM;ACM Multimedia;CORE2021;A*;Computer vision and multimedia computation
 ACNS;International Conference on Applied Cryptography and Network Security;CORE2021;B;Cybersecurity and privacy
 ACRA;Australasian Conference on Robotics and Automation;CORE2021;Australasian C;Artificial intelligence
@@ -68,7 +69,6 @@ ASPLOS;Architectural Support for Programming Languages and Operating Systems;COR
 ASRU;IEEE Automatic Speech Recognition and Understanding Workshop;CORE2021;C;Artificial intelligence
 ASSETS;International ACM SIGACCESS Conference on Computers and Accessibility;CORE2021;A;Human-centred computing
 AST;Automation of Software Test;CORE2021;C;Software engineering
-ASWEC;Australian Software Engineering Conference;CORE2021;Australasian B;Software engineering
 ATC;International Conference on Advanced and Trusted Computing;CORE2021;C;Cybersecurity and privacy
 ATMOS;Workshop on Algorithmic Approaches for Transportation Modelling, Optimization, and Systems;CORE2021;C;Theory of computation
 ATSIP;International Conference on Advanced Technologies For Signal & Image Processing;CORE2021;National: Tunisia;Computer vision and multimedia computation
@@ -183,7 +183,7 @@ CiE;Computability in Europe: Logic and Theory of Algorithms;CORE2021;C;Theory of
 CloudCom;IEEE International Conference on Cloud Computing Technology and Science;CORE2021;C;Distributed computing and systems software
 CoDIT;International Conference on Control, Decision and Information Technologies;CORE2021;C;Software engineering
 CoNEXT;ACM International Conference on Emerging Networking Experiments and Technologies;CORE2021;A;Distributed computing and systems software
-CoNLL;Conference on Computational Natural Language Learning;CORE2021;A;Machine learning
+CoNLL;Conference on Computational Natural Language Learning;CORE2021;A;Artificial intelligence
 CogSIMA;IEEE Conference on Cognitive and Computational Aspects of Situation Management;CORE2021;National: USA;Distributed computing and systems software
 CogSci;Annual Meeting of the Cognitive Science Society;CORE2021;A;Artificial intelligence
 CollaborateCom;International Conference on Collaborative Computing: Networks, Applications and Worksharing;CORE2021;C;Distributed computing and systems software
@@ -227,7 +227,7 @@ DaMoN;International Workshop on Data Management on New Hardware;CORE2021;C;Data 
 DaWaK;Data Warehousing and Knowledge Discovery;CORE2021;B;Data management and data science
 DeSE;Developments in eSystems Engineering;CORE2021;C;Information And Computing Sciences
 DocEng;ACM Symposium on Document Engineering;CORE2021;B;Data management and data science
-EACL;European Association of Computational Linguistics;CORE2021;A;Artificial intelligence
+EACL;European Association for Computational Linguistics;CORE2021;A;Artificial intelligence
 EAMT;Conference of the European Association for Machine Translation;CORE2021;B;Artificial intelligence
 EANN;International Conference on Engineering Applications of Neural Networks;CORE2021;C;Machine learning
 EASE;International Conference on Evaluation and Assessment in Software Engineering;CORE2021;A;Software engineering
@@ -276,7 +276,7 @@ ESWC;Extended Semantic Web Conference;CORE2021;A;Data management and data scienc
 ETHICOMP;ETHICOMP Conference;CORE2021;B;Human-centred computing
 ETRA;Eye Tracking Research and Applications;CORE2021;B;Human-centred computing
 EUC;IEEE/IFIP International Conference on Embedded and Ubiquitous Computing;CORE2021;C;Distributed computing and systems software
-EUMAS;European Workshop on Multi-Agent Systems;CORE2021;C;Artificial intelligence
+EUMAS;European Conference on Multi-Agent Systems;CORE2021;C;Artificial intelligence
 EURO;European Conference on Operations Research;CORE2021;C;Artificial intelligence
 EUROGP;European Conference on Genetic Programming;CORE2021;B;Artificial intelligence
 EUSFLAT;Conference of the European Society for Fuzzy Logic and Technologies;CORE2021;C;Artificial intelligence
@@ -487,7 +487,7 @@ ICVR;International Conference on Virtual Rehabilitation;CORE2021;;Applied comput
 ICVS;International Conference on Computer Vision Systems;CORE2021;C;Computer vision and multimedia computation
 ICWE;International Conference on Web Engineering;CORE2021;B;Data management and data science
 ICWS;IEEE International Conference on Web Services;CORE2021;A;Distributed computing and systems software
-ICWSM;International Conference on Web and Social Media;CORE2021;;Information And Computing Sciences
+ICWSM;International Conference on Web and Social Media;CORE2021;;Applied computing
 IDA;Intelligent Data Analysis;CORE2021;B;Data management and data science
 IDC;Intelligent Distributed Computing;CORE2021;;Distributed computing and systems software
 IDDM;International Conference on Informatics & Data-Driven Medicine;CORE2021;C;Machine learning
@@ -509,6 +509,7 @@ IEEE ICIA;IEEE International Conference on Information and Automation;CORE2021;N
 IEEE IS;IEEE International Conference on Intelligent Systems;CORE2021;C;Artificial intelligence
 IEEE RFID;IEEE International Conference on Radio Frequency Identification;CORE2018;B;Communications engineering
 IEEE SIS;IEEE Swarm Intelligence Symposium;CORE2021;C;Artificial intelligence
+IEEE SSE;IEEE International Conference on Software Services Engineering;CORE2021;B;Distributed computing and systems software
 IEEE VIS;IEEE Visualization;CORE2021;A;Human-centred computing
 IEEE-IV;Intelligent Vehicles Conference;CORE2021;B;Artificial intelligence
 IES;Asia Pacific Symposium on Intelligent and Evolutionary Systems;CORE2021;C;Artificial intelligence
@@ -804,8 +805,7 @@ SAT;International Conference on Theory and Applications of Satisfiability Testin
 SBAC-PAD;International Symposium on Computer Architecture and High Performance Computing;CORE2021;B;Distributed computing and systems software
 SC;International Conference for High Performance Computing, Networking, Storage and Analysis;CORE2021;A;Distributed computing and systems software
 SCA;ACM SIGGRAPH/Eurographics Symposium on Computer Animation;CORE2021;B;Graphics, augmented reality and games
-SCAM;IEEE International Workshop on Source Code Analysis and Manipulation;CORE2021;C;Software engineering
-SCC;IEEE International Conference on Services Computing;CORE2021;B;Distributed computing and systems software
+SCAM;IEEE International Working Conference on Source Code Analysis and Manipulation;CORE2021;C;Software engineering
 SCN;Conference on Security and Cryptography for Networks;CORE2021;National: Italy;Cybersecurity and privacy
 SCOPES;International Workshop on Software and Compilers for Embedded Systems;CORE2021;C;Distributed computing and systems software
 SCSC;Summer Computer Simulation Conference;CORE2021;B;Artificial intelligence
