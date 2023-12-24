@@ -53,7 +53,7 @@ APCCM;Asia-Pacific Conference on Conceptual Modelling;CORE2021;Australasian C;Da
 APLAS;ASIAN Symposium on Programming Languages and Systems;CORE2021;B;Software engineering
 APNOMS;Asia-Pacific Network Operations and Management Symposium;CORE2021;C;Distributed computing and systems software
 APORS;Conference of the Association of Asian-Pacific Operational Research Societies;CORE2021;C;Artificial intelligence
-APPROX;International Workshop on Approximation Algorithms for Combinatorial Optimization Problems;CORE2021;A;Theory of computation
+APPROX/RANDOM;International Workshop on Approximation Algorithms for Combinatorial Optimization Problems and International Conference on Randomization and Computation;CORE2021;A;Theory of computation
 APSCC;Asia-Pacific Services Computing Conference;CORE2021;C;Distributed computing and systems software
 APSEC;Asia-Pacific Software Engineering Conference;CORE2021;B;Software engineering
 APWEB;Web and Big Data;CORE2021;B;Data management and data science
@@ -786,7 +786,7 @@ RTNS;International Conference on Real-Time and Network Systems;CORE2021;National
 RTSS;Real Time Systems Symposium;CORE2021;A*;Distributed computing and systems software
 RV;International Conference on Runtime Verification;CORE2021;B;Software engineering
 RecSys;ACM International Conference on Recommender Systems;CORE2021;A;Data management and data science
-Redundancy;International Symposium "Problems of Redundancy in Information and Control Systems";CORE2021;National: Russia;Cybersecurity and privacy
+Redundancy;International Symposium 'Problems of Redundancy in Information and Control Systems';CORE2021;National: Russia;Cybersecurity and privacy
 RoVISP;International Conference on Robotics, Vision, Signal Processing and Power Applications;CORE2021;National: Malaysia;Computer vision and multimedia computation
 RoboCup;Robot Soccer World Cup;CORE2021;B;Artificial intelligence
 RuleML+RR;International Joint Conference on Rules and Reasoning;CORE2021;B;Artificial intelligence
