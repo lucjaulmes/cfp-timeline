@@ -391,7 +391,7 @@ class Conference(ConfMetaData):
 	__slots__ = ('acronym', 'title', 'rank', 'ranksys', 'field')
 	_ranks = {rk: num for num, rk in enumerate('A++ A* A+ A A- B B- C D E'.split())}  # unified for both sources, lower is better
 
-	def __init__(self, title, acronym, rank=None, field=None, ranksys='CORE2021', **kwargs):
+	def __init__(self, title, acronym, rank=None, field=None, ranksys=None, **kwargs):
 		super(Conference, self).__init__(title, acronym, **kwargs)
 
 		self.title = title
@@ -897,7 +897,8 @@ class GGSRanking(Ranking):
 
 class CoreRanking(Ranking):
 	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.  """
-	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE2021&sort=arank&page={}'
+	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE{}&sort=arank&page={}'
+	_year = 2023
 	_core_file = 'core.csv'
 	_for_file = 'for_codes.json'
 
@@ -905,7 +906,8 @@ class CoreRanking(Ranking):
 	def _fetch_confs(cls):
 		""" Internal generator of all conferences listed on the core site, as dicts """
 		# fetch page 1 outside loop to get page/result counts, will be in cache for loop access
-		soup = RequestWrapper.get_soup(cls._url_corerank.format(1), 'cache/ranked_{1}.html')
+		soup = RequestWrapper.get_soup(cls._url_corerank.format(cls._year, 1), 'cache/ranked_{1}.html')
+		ranking = f'CORE{cls._year}'
 
 		result_count_re = re.compile('Showing results 1 - ([0-9]+) of ([0-9]+)')
 		result_count = soup.find(string=result_count_re)
@@ -918,7 +920,7 @@ class CoreRanking(Ranking):
 
 		with click.progressbar(label='fetching CORE list…', length=n_results) as prog:
 			for p in range(1, pages + 1):
-				soup = RequestWrapper.get_soup(cls._url_corerank.format(p), f'cache/ranked_{p}.html')
+				soup = RequestWrapper.get_soup(cls._url_corerank.format(cls._year, p), f'cache/ranked_{p}.html')
 
 				table = soup.find('table')
 				rows = iter(table.find_all('tr'))
@@ -932,7 +934,7 @@ class CoreRanking(Ranking):
 
 				for row in rows:
 					val = [' '.join(r.text.split()) for r in row.find_all('td')]
-					acronym, title, rank, forcode = val[apos], val[tpos], val[rpos], val[fpos]
+					acronym, title, rank, code = val[apos], val[tpos], val[rpos], val[fpos]
 					# Some manual corrections applied to the CORE database:
 					# - ISC changed their acronym to "ISC HPC"
 					# - Searching cfps for Euro-Par finds EuroPar, but not the other way around
@@ -951,7 +953,7 @@ class CoreRanking(Ranking):
 						non_standard_ranks[rank] += 1
 						rank = None
 
-					yield Conference(cls.strip_trailing_paren(title), acronym, rank, forcodes.get(forcode, None))
+					yield Conference(cls.strip_trailing_paren(title), acronym, rank, forcodes.get(code, None), ranking)
 					prog.update(1)
 
 		# Manually add some missing conferences from previous year data.
@@ -970,6 +972,11 @@ class CoreRanking(Ranking):
 			('ASAP',      'International Conference on Application-specific Systems, Architectures and Processors', 'A',  '4606', 'CORE2018'),
 			('ISR',       'International Symposium on Robotics',                                                    'A',  '4007', 'CORE2018'),
 			('ISSCC',     'IEEE International Solid-State Circuits Conference',                                     'A',  '4009', 'CORE2018'),
+
+			('RANDOM',	   'International Workshop on Randomization and Computation',								'A',  '4613', 'CORE2021'),
+			('SIMULTECH',  'International Conference on Simulation and Modeling Methodologies, Technologies '
+						   'and Applications',																		'C',  '4606', 'CORE2021'),
+			('ICCS',       'International Conference on Conceptual Structures',										'B',  '4613', 'CORE2021'),
 		]
 		for acronym, name, rank, code, ranking in manual:
 			yield Conference(name, acronym, rank, forcodes.get(code, None), ranking)
