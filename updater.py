@@ -932,23 +932,26 @@ class CoreRanking(Ranking):
 
 				for row in rows:
 					val = [' '.join(r.text.split()) for r in row.find_all('td')]
+					acronym, title, rank, forcode = val[apos], val[tpos], val[rpos], val[fpos]
 					# Some manual corrections applied to the CORE database:
 					# - ISC changed their acronym to "ISC HPC"
 					# - Searching cfps for Euro-Par finds EuroPar, but not the other way around
-					if val[apos] == 'ISC' and cls.strip_trailing_paren(val[tpos]) == 'ISC High Performance':
-						val[apos] += ' HPC'
-					elif val[apos] == 'EuroPar' and cls.strip_trailing_paren(val[tpos]) == 'International European Conference on Parallel and Distributed Computing':
-						val[apos] = 'Euro-Par'
+					if acronym == 'ISC' and cls.strip_trailing_paren(title) == 'ISC High Performance':
+						acronym += ' HPC'
+					elif acronym == 'EuroPar' and (cls.strip_trailing_paren(title) ==
+									  'International European Conference on Parallel and Distributed Computing'):
+						acronym = 'Euro-Par'
 
 					# Also normalize rankings
-					if val[rpos].startswith('National') or val[rpos].startswith('Regional'):
-						place = val[rpos][8:].strip("(): -").title()
-						val[rpos] = f'{val[rpos][:8]}{": " if place else ""}{"USA" if place == "Usa" else "Korea" if place == "S. korea" else place}'
-					elif not re.match(r'^(Australasian )?[A-Z]\*?$', val[rpos]):
-						non_standard_ranks[val[rpos]] += 1
-						val[rpos] = None
+					if rank.startswith('National') or rank.startswith('Regional'):
+						place = rank[8:].strip("(): -").title()
+						rank = (f'{rank[:8]}{": " if place else ""}'
+									 f'{"USA" if place == "Usa" else "Korea" if place == "S. korea" else place}')
+					elif not re.match(r'^(Australasian )?[A-Z]\*?$', rank):
+						non_standard_ranks[rank] += 1
+						rank = None
 
-					yield Conference(cls.strip_trailing_paren(val[tpos]), val[apos], val[rpos], forcodes.get(val[fpos], None))
+					yield Conference(cls.strip_trailing_paren(title), acronym, rank, forcodes.get(forcode, None))
 					prog.update(1)
 
 		# Manually add some missing conferences from previous year data.
