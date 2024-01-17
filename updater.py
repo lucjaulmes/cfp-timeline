@@ -904,11 +904,11 @@ class CoreRanking(Ranking):
 	@classmethod
 	def _fetch_confs(cls):
 		""" Internal generator of all conferences listed on the core site, as dicts """
-		# fetch page 0 outside loop to get page/result counts, will be in cache for loop access
-		soup = RequestWrapper.get_soup(cls._url_corerank.format(0), 'cache/ranked_{}.html'.format(1))
+		# fetch page 1 outside loop to get page/result counts, will be in cache for loop access
+		soup = RequestWrapper.get_soup(cls._url_corerank.format(1), 'cache/ranked_{1}.html')
 
 		result_count_re = re.compile('Showing results 1 - ([0-9]+) of ([0-9]+)')
-		result_count = soup.find(text = result_count_re)
+		result_count = soup.find(string=result_count_re)
 		per_page, n_results = map(int, result_count_re.search(result_count).groups())
 		pages = (n_results + per_page - 1) // per_page
 
@@ -917,9 +917,8 @@ class CoreRanking(Ranking):
 		non_standard_ranks = Counter()
 
 		with click.progressbar(label='fetching CORE list…', length=n_results) as prog:
-			for p in range(pages):
-				f = 'cache/ranked_{}.html'.format(per_page * p + 1)
-				soup = RequestWrapper.get_soup(cls._url_corerank.format(p), f)
+			for p in range(1, pages + 1):
+				soup = RequestWrapper.get_soup(cls._url_corerank.format(p), f'cache/ranked_{p}.html')
 
 				table = soup.find('table')
 				rows = iter(table.find_all('tr'))
