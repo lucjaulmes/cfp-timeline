@@ -21,8 +21,10 @@ import pandas as pd
 from functools import total_ordering
 from collections import Counter
 from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs, urlencode
-from bs4 import BeautifulSoup
+import bs4
 import warnings
+
+from typing import cast, ClassVar, Generic, Iterator, Match, overload, TextIO, TypeVar
 
 # Annoying irrelevant pandas warning from .str.contains
 warnings.filterwarnings('ignore', 'This pattern is interpreted as a regular expression, and has match groups')
@@ -46,40 +48,54 @@ def clean_print(*args, **kwargs):
 	print(*args, **kwargs)
 
 
-class PeekIter:
+T = TypeVar('T')
+
+class PeekIter(Generic[T]):
 	""" Iterator that allows
 
 	Attributes:
-		_it (`iterable`): wrapped by this iterator
-		_ahead (`list`): stack of the next elements to be returned by __next__
+		_it: wrapped by this iterator
+		_ahead: stack of the next elements to be returned by __next__
 	"""
-	_it = None
-	_ahead = []
+	_it: Iterator[T]
+	_ahead: list[T]
 
-	def __init__(self, iterable):
+	def __init__(self, iterable: Iterator[T]):
 		super(PeekIter, self)
 		self._it = iterable
 		self._ahead = []
 
 
-	def __iter__(self):
+	def __iter__(self) -> Iterator[T]:
 		return self
 
 
-	def __next__(self):
+	def __next__(self) -> T:
 		if self._ahead:
 			return self._ahead.pop(0)
 		else:
 			return next(self._it)
 
 
-	def peek(self, n = 0):
+	@overload
+	def peek(self) -> T:
+		...
+
+	@overload
+	def peek(self, n: int) -> list[T]:
+		...
+
+	def peek(self, n: int = 0) -> T | list[T]:
 		""" Returns next element(s) that will be returned from the iterator.
 
 		Args:
-			n (`int`): Number of positions to look ahead in the iterator.
-					0 (by default) means next element, raises IndexError if there is none.
-					Any value n > 0 returns a list of length up to n.
+			n: Number of positions to look ahead in the iterator.
+
+		Returns:
+			The next element if n = 0, or the list of the up to n next elements if n > 0.
+
+		Raises:
+			IndexError: There are no further elements.
 		"""
 		if n < 0: raise ValueError('n < 0 but can not peek back, only ahead')
 
@@ -96,20 +112,20 @@ class PeekIter:
 
 class RequestWrapper:
 	""" Static wrapper of request.get() to implement caching and waiting between requests """
-	last_req_times = {}
-	use_cache = True
-	delay = 0
+	last_req_times: dict[str, float] = {}
+	use_cache: bool = True
+	delay: float = 0
 
 	@classmethod
-	def set_delay(cls, delay):
+	def set_delay(cls, delay: float):
 		cls.delay = delay
 
 	@classmethod
-	def set_use_cache(cls, use_cache):
+	def set_use_cache(cls, use_cache: bool):
 		cls.use_cache = use_cache
 
 	@classmethod
-	def wait(cls, url):
+	def wait(cls, url: str):
 		""" Wait until at least :attr:`~delay` seconds for the next same-domain request """
 		key = urlsplit(url).netloc
 		now = time.time()
@@ -122,15 +138,16 @@ class RequestWrapper:
 
 
 	@classmethod
-	def get_soup(cls, url, filename, **kwargs):
+	def get_soup(cls, url: str, filename: str, **kwargs) -> bs4.BeautifulSoup:
 		""" Simple caching mechanism. Fetch a page from url and save it in filename.
 
 		If filename exists, return its contents instead.
+		kwargs are forwarded to :func:`requests.get`
 		"""
 		if cls.use_cache:
 			try:
 				with open(filename, 'r') as fh:
-					return BeautifulSoup(fh.read(), 'lxml')
+					return bs4.BeautifulSoup(fh.read(), 'lxml')
 			except FileNotFoundError:
 				pass
 
@@ -141,23 +158,17 @@ class RequestWrapper:
 			with open(filename, 'w') as fh:
 				print(r.text, file=fh)
 
-		return BeautifulSoup(r.text, 'lxml')
+		return bs4.BeautifulSoup(r.text, 'lxml')
 
 
-def normalize(string):
+def normalize(string: str) -> str:
 	""" Singularize and lower casing of a word """
 	# Asia -> Asium and Meta -> Metum, really?
 	return inflection.singularize(string.lower()) if len(string) > 3 else string.lower()
 
 
 class ConfMetaData:
-	""" Heuristic to reduce a conference title to a matchable set of words.
-
-	Args:
-		title (`str`): the full title or string describing the conference (containing the title)
-		acronym (``): the acronym or short name of the conference
-		year (`int` or `str`): the year of the conference
-	"""
+	""" Heuristic to reduce a conference title to a matchable set of words. """
 	# separators in an acronum
 	_sep = re.compile(r'[-_/ @&,.]+')
 
@@ -249,10 +260,15 @@ class ConfMetaData:
 	_sig_start = {normalize(desc.split()[0]): group for group, desc in _sig.items() if group != 'ART'}
 
 	_dict = enchant.Dict('EN_US')
-	_misspelled = {}
+	_misspelled: dict[str, list[tuple[str, ...]]] = {}
 
+	topic_keywords: list[str]
+	organisers: set[str]
+	number: set[str]
+	type_: set[str]
+	qualifiers: list[str]
 
-	def __init__(self, title, conf_acronym, year=''):
+	def __init__(self, title: str, conf_acronym: str, year: str | int = ''):
 		super().__init__()
 
 		self.topic_keywords = []
@@ -264,10 +280,11 @@ class ConfMetaData:
 		self.classify_words(title, normalize(conf_acronym), str(year))
 
 
-	def classify_words(self, string, *ignored):
+	def classify_words(self, string: str, *ignored: str):
 		# lower case, replace characters in dict by whitepace, repeated spaces will be removed by split()
-		words = PeekIter(normalize(w) for w in string.translate({ord(c): ' ' for c in "-/&,():_~'."}).split()
-						 if normalize(w) not in {'the', 'on', 'for', 'of', 'in', 'and', *ignored})
+		normalized = (normalize(w) for w in string.translate({ord(c): ' ' for c in "-/&,():_~'.[]"}).split())
+		words = PeekIter(w for w in normalized
+						 if w not in {'', 'the', 'on', 'for', 'of', 'in', 'and', *ignored, ''.join(ignored)})
 
 		# semantically filter conference editors/organisations, special interest groups (sig...), etc.
 		for w in words:
@@ -353,15 +370,15 @@ class ConfMetaData:
 			# Log words marked as incorrect in misspellings - ad-hoc ignored words can be used as conf identifiers
 			if self._dict and not self._dict.check(w):
 				if w not in (normalize(s) for s in self._dict.suggest(w)):
-					self._misspelled[w] = (*ignored, string)
+					self._misspelled.setdefault(w, []).append((*ignored, string))
 
 
-	def topic(self, sep=' '):
+	def topic(self, sep: str = ' ') -> str:
 		return sep.join(self.topic_keywords).title()
 
 
-	@staticmethod
-	def _set_diff(left, right):
+	@classmethod
+	def _set_diff(cls, left: set[str], right: set[str]) -> int:
 		""" Return an int quantifying the difference between the sets. Lower is better.
 
 		Penalize a bit for difference on a single side, more for differences on both sides, under the assumption that
@@ -377,8 +394,8 @@ class ConfMetaData:
 			return  l + r + 10 * l * r - 2 * n_common
 
 
-	@staticmethod
-	def _list_diff(left, right):
+	@classmethod
+	def _list_diff(cls, left: list[str], right: list[str]) -> float:
 		""" Return an int quantifying the difference between the sets
 
 		Uset the same as `~set_diff` and add penalties for dfferences in word order.
@@ -402,7 +419,7 @@ class ConfMetaData:
 			return n_l + n_r + 10 * n_l * n_r - 4 * n_common + sort_diff
 
 
-	def _difference(self, other):
+	def _difference(self, other: ConfMetaData) -> tuple[int, int, float, float, int]:
 		""" Compare the two ConfMetaData instances and rate how similar they are.  """
 		return (self._set_diff(self.type_, other.type_),
 				self._set_diff(self.organisers, other.organisers),
@@ -412,7 +429,7 @@ class ConfMetaData:
 		)
 
 
-	def str_info(self):
+	def str_info(self) -> list[str]:
 		vals = []
 		if self.topic_keywords:
 			vals.append(f'topic=[{", ".join(self.topic_keywords)}]')
@@ -427,7 +444,7 @@ class ConfMetaData:
 		return vals
 
 
-	def __repr__(self):
+	def __repr__(self) -> str:
 		return f'{type(self).__name__}({", ".join(self.str_info())})'
 
 
@@ -435,9 +452,16 @@ class ConfMetaData:
 class Conference(ConfMetaData):
 	__slots__ = ('acronym', 'title', 'rank', 'ranksys', 'field')
 	# unified ranks from all used sources, lower is better
-	_ranks = {rk: num for num, rk in enumerate('A++ A* A+ A A- B B- C D E'.split())}
+	_ranks: dict[str, int] = {rk: num for num, rk in enumerate('A++ A* A+ A A- B B- C D E'.split())}
 
-	def __init__(self, acronym, title, rank=None, ranksys=None, field=None, **kwargs):
+	title: str
+	acronym: str
+	ranksys: tuple[str | None, ...]
+	rank: tuple[str | None, ...]
+	field: str
+
+	def __init__(self, acronym: str, title: str, rank: str | None = None, ranksys: str | None = None,
+				 field: str | None = None, **kwargs: int | str):
 		super(Conference, self).__init__(title, acronym, **kwargs)
 
 		self.title = title
@@ -447,72 +471,84 @@ class Conference(ConfMetaData):
 		self.field = field or '(missing)'
 
 
-	def ranksort(self):
+	def ranksort(self) -> int:
 		""" Utility to sort the ranks based on the order we want (such ash A* < A).  """
-		return min(self._ranks.get(rank, len(self._ranks)) for rank in self.rank)
+		return min(len(self._ranks) if rank is None else self._ranks.get(rank, len(self._ranks)) for rank in self.rank)
 
 
 	@classmethod
-	def columns(cls):
+	def columns(cls) -> list[str]:
 		""" Return column titles for cfp data """
 		return ['Acronym', 'Title', 'Rank', 'Rank system', 'Field']
 
 
-	def values(self, sort=False):
+	def values(self, sort: bool = False) -> tuple[str, str, int | tuple[str | None, ...], tuple[str | None, ...], str]:
 		""" What we'll show """
 		return (self.acronym, self.title, self.ranksort() if sort else self.rank, self.ranksys, self.field)
 
 
-	def to_series(self):
+	def to_series(self) -> pd.Series[str]:
 		""" Convert to a series, allows to convert a series of Conferences to a DataFrame of strings """
 		return pd.Series([self.acronym, self.title, self.rank[0], self.ranksys[0], self.field], index=self.__slots__)
 
 
 	@classmethod
-	def from_series(cls, series):
+	def from_series(cls, series: pd.Series[str]) -> Conference:
 		""" Convert from a series """
 		return cls(series['acronym'], series['title'], series['rank'], series['ranksys'], series['field'])
 
 
-	@staticmethod
-	def merge(left, right, copy=True):
+	@classmethod
+	def merge(cls, left: Conference, right: Conference, copy=True) -> Conference:
 		new = copy_.copy(left) if copy else left
 		new.rank = left.rank + right.rank
 		new.ranksys = left.ranksys + right.ranksys
 		return new
 
 
-	def __eq__(self, other):
-		return isinstance(other, self.__class__) and self.values() == other.values()
+	def __eq__(self, other: object) -> bool:
+		if not isinstance(other, self.__class__):
+			return NotImplemented
+		return self.values() == other.values()
 
 
-	def __lt__(self, other):
+	def __lt__(self, other: Conference) -> bool:
 		return self.values(True) < other.values(True)
 
 
-	def str_info(self):
+	def str_info(self) -> list[str]:
 		vals = [f'{slot}={getattr(self, slot)}' for slot in self.__slots__ if getattr(self, slot) != '(missing)']
 		vals.extend(super().str_info())
 		return vals
 
 
 class CallForPapers(ConfMetaData):
-	_date_fields = ['abstract', 'submission', 'notification', 'camera_ready', 'conf_start', 'conf_end']
-	_date_names = [
+	_date_fields = ('abstract', 'submission', 'notification', 'camera_ready', 'conf_start', 'conf_end')
+	_date_names = (
 		'Abstract Registration Due', 'Submission Deadline', 'Notification Due', 'Final Version Due', 'startDate',
 		'endDate',
-	]
+	)
 
 	__slots__ = ('conf', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link')
 
+	_url_cfpsearch: ClassVar[str]
 
-	def __init__(self, conf, year, desc = '', url_cfp = None, link = None, **kwargs):
+	conf: Conference
+	desc: str
+	year: int
+	dates: dict[str, datetime.datetime]
+	orig: dict[str, bool]
+	link: str
+	url_cfp: str | None
+
+	def __init__(self, conf: Conference, year: int | str, desc: str = '',
+				 url_cfp: str | None = None, link: str | None = None):
 		# Initialize parent parsing with the description
-		super(CallForPapers, self).__init__(desc, conf.acronym, year, **kwargs)
+		super(CallForPapers, self).__init__(desc, conf.acronym, year)
 
 		self.conf = conf
 		self.desc = desc
-		self.year = year
+		self.year = int(year)
 		self.dates = {}
 		self.orig = {}
 		self.link = link or '(missing)'
@@ -554,16 +590,13 @@ class CallForPapers(ConfMetaData):
 
 
 	@classmethod
-	def parse_confseries(cls, soup: BeautifulSoup):
+	def parse_search(cls, conf: Conference, year: int | str, soup: bs4.BeautifulSoup) -> Iterator[tuple[str, str, int]]:
+		""" Generate the list of conferences from a search page. """
 		raise NotImplementedError
 
 
-	@classmethod
-	def parse_search(cls, conf, year, soup: BeautifulSoup):
-		raise NotImplementedError
-
-
-	def parse_cfp(self, soup: BeautifulSoup):
+	def parse_cfp(self, soup: bs4.BeautifulSoup):
+		""" Load the cfp infos from the page soup """
 		raise NotImplementedError
 
 
@@ -574,6 +607,11 @@ class CallForPapers(ConfMetaData):
 
 
 	def verify_conf_dates(self):
+		""" Check coherence of conference dates
+
+		raises:
+			CPFCheckError: An error with no satisfying correction heuristic was encountered
+		"""
 		dates_found = self.dates.keys()
 
 		if {'conf_start', 'conf_end'} <= dates_found:
@@ -629,6 +667,11 @@ class CallForPapers(ConfMetaData):
 
 
 	def verify_submission_dates(self):
+		""" Check coherence of submission dates
+
+		raises:
+			CPFCheckError: An error with no satisfying correction heuristic was encountered
+		"""
 		pre_dates = {'submission', 'abstract', 'notification', 'camera_ready'} & set(self.dates.keys())
 		typical_delays = {key: (datetime.timedelta(lo), datetime.timedelta(hi)) for key, (lo, hi) in {
 			'abstract': (95, 250),
@@ -679,18 +722,21 @@ class CallForPapers(ConfMetaData):
 
 
 	@classmethod
-	def find_link(cls, conf, year, debug=False):
+	def find_link(cls, conf: Conference, year: int | str, debug: bool = False) -> CallForPapers:
 		""" Find the link to the conference page in the search page
 
 		Have parse_search extract links from the page's soup, then compute a rating for each and keep the best (lowest).
 		Use the amount of missing ("TBD") fields as a tie breaker.
+
+		raises:
+			CFPNotFoundError: No satisfying link was found on the search page
 		"""
-		search_f = 'cache/' + 'search_cfp_{}-{}.html'.format(conf.acronym, year).replace('/', '_')
+		search_f = f'cache/search_cfp_{conf.acronym.replace("/", "_")}-{year}.html'
 		soup = RequestWrapper.get_soup(cls._url_cfpsearch, search_f, params = {'q': conf.acronym, 'year': year})
 
 		# Rating of 1000 disqualifies.
 		best_candidate = None
-		best_score = (1000, 1000)
+		best_score = (1000., 1000)
 
 		for desc, url, missing in cls.parse_search(conf, year, soup):
 			candidate = cls(conf, year, desc, url)
@@ -708,7 +754,7 @@ class CallForPapers(ConfMetaData):
 
 
 	@classmethod
-	def get_cfp(cls, conf, year, debug=False):
+	def get_cfp(cls, conf: Conference, year: int | str, debug: bool = False) -> CallForPapers:
 		""" Fetch the cfp from wiki-cfp for the given conference at the given year.  """
 		try:
 			cfp = cls.find_link(conf, year, debug=debug)
@@ -720,28 +766,28 @@ class CallForPapers(ConfMetaData):
 
 
 	@classmethod
-	def columns(cls):
+	def columns(cls) -> list[str]:
 		""" Return column titles for cfp data.  """
-		return cls._date_names + ['orig_' + d for d in cls._date_fields] + ['Link', 'CFP url']
+		return list(cls._date_names) + ['orig_' + d for d in cls._date_fields] + ['Link', 'CFP url']
 
 
-	def values(self):
+	def values(self) -> list[datetime.datetime | bool | str | None]:
 		""" Return values of cfp data, in column order.  """
-		return ([self.dates.get(f, None) for f in self._date_fields] +
-				[self.orig.get(f, None) for f in self._date_fields] + [self.link, self.url_cfp])
+		return [*(self.dates.get(f, None) for f in self._date_fields),
+				*(self.orig.get(f, None) for f in self._date_fields), self.link, self.url_cfp]
 
 
-	def max_date(self):
+	def max_date(self) -> datetime.datetime:
 		""" Get the max date in the cfp """
 		return max(self.dates.values())
 
 
-	def rating(self):
-		""" Rate the (in)adequacy of the cfp with its conference: lower is better.  """
+	def rating(self) -> tuple[int, int, float, float]:
+		""" Rate the (in)adequacy of the cfp with its conference: lower is better. """
 		return self._difference(self.conf)[:4]
 
 
-	def __str__(self):
+	def __str__(self) -> str:
 		vals = ['{}={}'.format(attr, getattr(self, attr)) for attr in self.__slots__
 			    if attr not in {'dates', 'orig'} and (getattr(self, attr, None) or '(missing)') != '(missing)']
 		if self.dates:
@@ -758,26 +804,26 @@ class WikicfpCFP(CallForPapers):
 	_url_cfpsearch = urljoin(_base_url, '/cfp/servlet/tool.search')
 	_url_cfpseries = urljoin(_base_url, '/cfp/series?t=c&i={initial}')
 	_url_cfpevent  = urljoin(_base_url, '/cfp/servlet/event.showcfp') #?eventid={cfpid}
-	_url_cfpevent_query = {'copyownerid': '90704'} # override some parameters
+	_url_cfpevent_query = {'copyownerid': ['90704']} # override some parameters
 
 
 	@classmethod
-	def parse_date(cls, dt: datetime.datetime):
+	def parse_date(cls, dt: str) -> datetime.date:
 		# some ISO 8601 or RFC 3339 format
 		return datetime.datetime.strptime(dt, '%Y-%m-%dT%H:%M:%S').date()
 
 
 	@classmethod
-	def parse_confseries(cls, soup: BeautifulSoup):
+	def parse_confseries(cls, soup: bs4.BeautifulSoup) -> list[tuple[str, ...]]:
 		""" Given the BeautifulSoup of a CFP series list page, generate all (acronym, description, url) tuples
 		for links that point to conference series.
 		"""
 		links = soup.find_all('a', {'href': lambda l: l.startswith('/cfp/program')})
-		return (tuple(l.parent.text.strip().split(' - ', 1)) + urljoin(cls._base_url, l['href']) for l in links)
+		return [l.parent.text.strip().split(' - ', 1) + tuple(urljoin(cls._base_url, l['href']),) for l in links]
 
 
 	@classmethod
-	def parse_search(cls, conf: str, year: int, soup: BeautifulSoup):
+	def parse_search(cls, conf: Conference, year: int | str, soup: bs4.BeautifulSoup) -> Iterator[tuple[str, str, int]]:
 		""" Given the BeautifulSoup of a CFP search page, generate all (description, url) tuples for links that seem
 		to correspond to the conference and year requested.
 		"""
@@ -816,7 +862,7 @@ class WikicfpCFP(CallForPapers):
 			conf_name = [td.text for td in tr.find_all('td') if td not in conf_link.parents]
 			scheme, netloc, path, query, fragment = urlsplit(urljoin(cls._url_cfpevent, conf_link['href']))
 			# update the query with cls._url_cfpevent_query. Sort the parameters to minimize changes across versions.
-			query = urlencode(sorted({**parse_qs(query), **cls._url_cfpevent_query}.items()), doseq = True)
+			query = urlencode(sorted({**parse_qs(query), **cls._url_cfpevent_query}.items()), doseq=True)
 
 			# next row has the dates and location, count how many of those are not defined yet
 			while tr:
@@ -832,11 +878,11 @@ class WikicfpCFP(CallForPapers):
 
 
 	@classmethod
-	def _find_xmlns_attrs(cls, attr, tag):
+	def _find_xmlns_attrs(cls, attr: str, tag: bs4.Tag) -> bool:
 		return attr.startswith('xmlns:') and ('rdf.data-vocabulary.org' in tag[attr] or 'purl.org/dc/' in tag[attr])
 
 
-	def parse_cfp(self, soup):
+	def parse_cfp(self, soup: bs4.BeautifulSoup):
 		""" Given the BeautifulSoup of the CFP page, update self.dates and self.link
 
 		WikiCFP has all info nicely porcelain-ish formatted in some RDF and Dublin Core xmlns tags.
@@ -882,6 +928,8 @@ class WikicfpCFP(CallForPapers):
 
 class Ranking:
 	_historical = re.compile(r'\b(previous(ly)?|was|(from|pre) [0-9]{4}|merge[dr])\b', re.IGNORECASE)
+	_col_order: ClassVar[list[str]]
+	_file: ClassVar[str]
 
 	@classmethod
 	def get_confs(cls) -> pd.Series[Conference]:
@@ -903,16 +951,19 @@ class Ranking:
 
 	@classmethod
 	def _fetch_confs(cls) -> pd.DataFrame:
+		""" Fetch unparsed conference info from online """
 		raise NotImplementedError
 
 
 	@classmethod
 	def _save_confs(cls, confs: pd.DataFrame):
+		""" Save unparsed conference info as a local cache/csv file """
 		confs[cls._col_order].to_csv(cls._file, sep=';', index=False, quoting=csv.QUOTE_NONE)
 
 
 	@classmethod
 	def _load_confs(cls) -> pd.DataFrame:
+		""" Load unparsed conference info from a local cache/csv file """
 		f_age = datetime.datetime.fromtimestamp(os.stat(cls._file).st_mtime)
 		if datetime.datetime.today() - f_age > datetime.timedelta(days=365):
 			raise FileNotFoundError('Cached file too old')
@@ -932,7 +983,8 @@ class Ranking:
 
 
 	@classmethod
-	def merge(cls, confs_a, confs_b):
+	def merge(cls, confs_a: pd.Series[Conference], confs_b: pd.Series[Conference]) -> pd.Series[Conference]:
+		""" Merge 2 sources of conferences into a single one, merging duplicate conferences and keeping unique ones. """
 		# Mapping match-acronym to conference-id
 		idx_a = pd.Series(confs_a.index, index=confs_a.map(operator.attrgetter('acronym')).str.upper(), name='id')
 		idx_b = pd.Series(confs_b.index, index=confs_b.map(operator.attrgetter('acronym')).str.upper(), name='id')
@@ -963,7 +1015,7 @@ class Ranking:
 			axis='columns'
 		)
 
-		merged_ids = []
+		merged_id_dfs = []
 		unmerged_a, unmerged_b = confs_a, confs_b
 		while compared_pairs.size:
 			# Drop scores ≥ 1000
@@ -983,9 +1035,9 @@ class Ranking:
 			unmerged_a = unmerged_a.drop(index=best_matches['id_a'])
 			unmerged_b = unmerged_b.drop(index=best_matches['id_b'])
 
-			merged_ids.append(best_matches.drop(columns=['scores']))
+			merged_id_dfs.append(best_matches.drop(columns=['scores']))
 
-		merged_ids = pd.concat(merged_ids)
+		merged_ids = pd.concat(merged_id_dfs)
 		merged = pd.concat(ignore_index=True, objs=[unmerged_a, unmerged_b, merged_ids.agg(
 			lambda row: Conference.merge(confs_a[row['id_a']], confs_b[row['id_b']]),
 			axis='columns'
@@ -1018,16 +1070,17 @@ class GGSRanking(Ranking):
 
 
 	@classmethod
-	def _load_confs(cls):
+	def _load_confs(cls) -> pd.DataFrame:
 		""" Load conferences from a file where we have the values cached cleanly.  """
 		return super()._load_confs().pipe(cls._add_implicit_columns)
 
 
 	@classmethod
 	def _fetch_confs(cls) -> pd.DataFrame:
+		""" Fetch unparsed conference info from the GGS website """
 		soup = RequestWrapper.get_soup(cls._url_ggsrank, 'cache/gii-grin-scie-rating_conferenceRating.html')
-		link = soup.find('a', attrs={'href': lambda url: url.split(';jsessionid=')[0].endswith('.xlsx')}).attrs['href']
-		file_url = urljoin(cls._url_ggsrank, link)
+		link = cast(bs4.Tag, soup.find('a', attrs={'href': lambda url: url.split(';jsessionid=')[0].endswith('.xlsx')}))
+		file_url = urljoin(cls._url_ggsrank, link.attrs['href'])
 
 		df = pd.read_excel(file_url, header=1, usecols=['Title', 'Acronym', 'GGS Rating'])\
 			   .rename(columns={'GGS Rating': 'rank', 'Title': 'title', 'Acronym': 'acronym'})
@@ -1064,22 +1117,22 @@ class CoreRanking(Ranking):
 
 	@classmethod
 	def _fetch_confs(cls) -> pd.DataFrame:
-		""" Internal generator of all conferences listed on the core site, as dicts """
+		""" Fetch unparsed conference info from the core website """
 		# fetch page 1 outside loop to get page/result counts, will be in cache for loop access
 		soup = RequestWrapper.get_soup(cls._url_corerank.format(cls._source, 1), 'cache/ranked_{1}.html')
 
 		result_count_re = re.compile('Showing results 1 - ([0-9]+) of ([0-9]+)')
-		result_count = soup.find(string=result_count_re)
-		per_page, n_results = map(int, result_count_re.search(result_count).groups())
+		result_count = cast(bs4.NavigableString, soup.find(string=result_count_re))
+		per_page, n_results = map(int, cast(Match, result_count_re.search(result_count)).groups())
 		pages = (n_results + per_page - 1) // per_page
 
-		cfps = []
+		cfp_data = []
 		with click.progressbar(label='fetching CORE list…', length=n_results) as prog:
 			for p in range(1, pages + 1):
 				soup = RequestWrapper.get_soup(cls._url_corerank.format(cls._source, p), f'cache/ranked_{p}.html')
 
-				table = soup.find('table')
-				rows = iter(table.find_all('tr'))
+				table = cast(bs4.Tag, soup.find('table'))
+				rows = cast(Iterator[bs4.Tag], iter(table.find_all('tr')))
 
 				headers = [' '.join(r.text.split()).lower() for r in next(rows).find_all('th')]
 
@@ -1090,10 +1143,10 @@ class CoreRanking(Ranking):
 
 				for row in rows:
 					val = [' '.join(r.text.split()) for r in row.find_all('td')]
-					cfps.append([val[apos], val[tpos], val[rpos], val[fpos]])
+					cfp_data.append([val[apos], val[tpos], val[rpos], val[fpos]])
 					prog.update(1)
 
-		cfps = pd.DataFrame(cfps, columns=['acronym', 'title', 'rank', 'field'])
+		cfps = pd.DataFrame(cfp_data, columns=['acronym', 'title', 'rank', 'field'])
 		cfps.insert(3, 'ranksys', cls._source)
 
 		# Manually add some missing conferences from previous year data.
@@ -1165,7 +1218,7 @@ class CoreRanking(Ranking):
 		return cfps.sort_values(by=[*cfps.columns]).drop_duplicates()
 
 
-def json_encode_dates(obj):
+def json_encode_dates(obj: datetime.date):
 	if isinstance(obj, datetime.date):
 		return str(obj)
 	else:
@@ -1176,7 +1229,7 @@ def json_encode_dates(obj):
 @click.option('--cache/--no-cache', default=True, help='Cache files in ./cache')
 @click.option('--delay', type=float, default=0, help='Delay between requests to the same domain')
 @click.pass_context
-def update(ctx, cache, delay):
+def update(ctx: click.Context, cache: bool, delay: float):
 	""" Update the Core-CFP data. If no command is provided, update_confs is run.  """
 	RequestWrapper.set_delay(delay)
 	RequestWrapper.set_use_cache(cache)
@@ -1201,7 +1254,7 @@ def ggs():
 @update.command()
 @click.option('--out', default='cfp.json', help='Output file for CFPs', type=click.File('w'))
 @click.option('--debug/--no-debug', default=False, help='Show debug output')
-def cfps(out, debug=False):
+def cfps(out: TextIO, debug: bool = False):
 	""" Update the calls for papers from the conference lists  """
 	today = datetime.datetime.now().date()
 	# use years from 6 months ago until next year
@@ -1234,15 +1287,14 @@ def cfps(out, debug=False):
 					err = cfp.verify_conf_dates()
 					if err:
 						clean_print(err)
-						print(err.replace(':', ';', 1) + ';' + cfp.url_cfp + ';corrected', file=errlog)
+						print(f"{err.replace(':', ';', 1)};{cfp.url_cfp};corrected", file=errlog)
 
 					err = cfp.verify_submission_dates()
 					if err:
 						clean_print(err)
-						print(err.replace(':', ';', 1) + ';' + cfp.url_cfp + ';corrected', file=errlog)
+						print(f"{err.replace(':', ';', 1)};{cfp.url_cfp};corrected", file=errlog)
 
 					cfps_found += 1
-					# possibly try other CFP providers?
 
 				except CFPNotFoundError as e:
 					if debug:
@@ -1250,17 +1302,20 @@ def cfps(out, debug=False):
 					cfp = None
 
 				except CFPCheckError as e:
+					assert cfp is not None, 'By definition of a check'
 					if debug:
 						print(f'> {e}\n')
 					else:
 						clean_print(e)
 					print(f"{str(e).replace(':', ';', 1)}: no satisfying correction heuristic;{cfp.url_cfp};ignored",
-						 file=errlog)
+						  file=errlog)
 					cfp = None
 
 				else:
 					if debug:
 						print('> Found\n')
+
+				# possibly try other CFP providers?
 
 				if not cfp:
 					if last_year:
