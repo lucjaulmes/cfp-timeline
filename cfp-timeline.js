@@ -1,5 +1,5 @@
 const ranks = ['E', 'D', 'C', 'B-', 'B', 'A-', 'A', 'A+', 'A*', 'A++'];
-let confIdx = 0, titleIdx = 1, rankingIdx = 2, rankIdx = 3, fieldIdx = 4, linkIdx = 17, cfpIdx = 18;
+let confIdx = 0, titleIdx = 1, rankIdx = 2, rankingIdx = 3, fieldIdx = 4, linkIdx = 17, cfpIdx = 18;
 let abstIdx = 5, subIdx = 6, notifIdx = 7, camIdx = 8, startIdx = 9, endIdx = 10;
 let yearIdx = 5, yearOffset = 14, origOffset = 6;
 const today = new Date(), year = today.getFullYear();

@@ -29,10 +29,6 @@ ACISP;Australasian Conference on Information Security and Privacy;
 ACIVS;Advanced Concepts for Intelligent Vision Systems;B-
 ACL;Association of Computational Linguistics;A++
 ACL2;Workshop on the Acl2 Theorem Prover and its Applications;
-ACM CHANTS;Workshop Challenged Networks;
-ACM SAC;ACM Symposium on Applied Computing;A-
-ACM-SIGMIS CPR;ACM-Sigmis Cpr Conference;
-ACM/IEEE SEC;ACM/IEEE Symposium on Edge Computing;
 ACMDEV;ACM Symposium on Computing and Development;
 ACML;Asian Conference on Machine Learning;
 ACMMM;ACM Multimedia;A++
@@ -308,6 +304,7 @@ CGAMES;Computer Games;
 CGI;Computer Graphics International;B-
 CGIV;International Conference on Computer Graphics, Imaging and Visualisation;
 CGO;IEEE/ACM International Symposium on Code Generation and Optimization;A
+CHANTS;Workshop Challenged Networks;
 CHASE;Cooperative and Human Aspects of Software Engineering;
 CHES;Workshop on Cryptographic Hardware and Embedded Systems;A+
 CHI;Conference on Human Factors in Computing Systems;A++
@@ -326,26 +323,31 @@ CIAC;International Conference on Algorithms and Complexity;
 CIARP;Iberoamerican Congress on Pattern Recognition;
 CIBCB;IEEE Symposium on Computational Intelligence in Bioinformatics and Computational Biology;
 CIC;International Conference on Communications in Computing;
+CICA;IEEE Symposium on Computational Intelligence in Control and Automation;
 CICC;Custom Integrated Circuits Conference;B
 CICLING;Conference on Intelligent Text Processing and Computational Linguistics;B-
 CICM;Conference on Intelligent Computer Mathematics;
 CICN;International Conference on Computational Intelligence and Communication Networks;
+CICS;IEEE Symposium on Computational Intelligence in Cyber Security;
 CICSYN;Computational Intelligence, Communication Systems and Networks;
 CIDM;IEEE Symposium on Computational Intelligence and Data Mining;
 CIDR;Conference on Innovative Data Systems Research;A
 CIE;Computability in Europe Conference;B-
 CIEP;International Power Electronics Congress;
+CIFER;IEEE Symposium on Computational Intelligence for Financial Engineering;
 CIG;Computational Intelligence and Games;B
 CIKM;ACM International Conference on Information and Knowledge Management;A+
 CIMA;International Workshop on Combinations of Intelligent Methods and Applications;
 CIMCA;Computational Intelligence for Modelling, Control and Automation;
 CIMSA;International Conference on Computational Intelligence for Measurement Systems and Applications;
 CIMSIM;International Conference on Computational Intelligence, Modelling and Simulation;
+CIMSIVP;IEEE Symposium on Computational Intelligence for Multimedia Signal and Vision Processing;
 CINC;Computing in Cardiology Conference;
 CIP;International Conference on Critical Infrastructure Protection;
 CIRA;Computational Intelligence in Robotics and Automation;
 CIS;International Conference on Computational Intelligence and Security;B-
 CISCHED;IEEE Symposium on Computational Intelligence in Scheduling;
+CISDA;IEEE Symposium on Computational Intelligence for Security and Defence Applications;
 CISIM;Computer Information Systems and Industrial Management Applications;
 CISIS;Complex, Intelligent and Software Intensive Systems;
 CISP;International Congress on Image and Signal Processing;
@@ -779,6 +781,7 @@ FUSION;International Conference on Information Fusion;B-
 FUZZ-IEEE;IEEE International Conference on Fuzzy Systems;B
 GAICS;IEEE Gallium Arsenide Integrated Circuit Symposium;
 GAMESEC;Decision and Game Theory for Security;
+GC;IEEE Grenoble Conference;
 GCB;German Conference on Bioinformatics;
 GCC;Grid and Cooperative Computing;
 GCE;Grid Computing Environments;
@@ -796,6 +799,7 @@ GFP;International Conference on Group Iv Photonics;
 GGTACS;International Workshop on Graph-Grammars and Their Application to Computer Science;
 GHTC;Global Humanitarian Technology Conference;
 GI;Graphics Interface;A-
+GI;IEEE Global Internet Symposium;
 GIIS;Global Information Infrastructure and Networking Symposium;
 GIR;Geographic Information Retrieval;
 GISCIENCE;Geographic Information Science;
@@ -959,6 +963,7 @@ ICCGI;International Multi-Conference on Computing in Global Information Technolo
 ICCI*CC;IEEE International Conference on Cognitive Informatics;
 ICCIC;International Conference on Computational Intelligence and Computing Research;
 ICCIT;International Conference on Convergence Information Technology;
+ICCL;IEEE International Conference on Computer Languages;
 ICCL;International Conference on Computational Logistics;
 ICCMS;International Conference on Computer Modeling and Simulation;
 ICCN;IEEE International Conference on Cloud Networking;
@@ -1187,19 +1192,7 @@ IECEC;Intersociety Energy Conversion Engineering Conference;
 IECI;International Conference on Industrial Electronics, Control, and Instrumentation;
 IECON;Conference of the Industrial Electronics Society;
 IEDM;International Electron Devices Meeting;
-IEEE CICA;IEEE Symposium on Computational Intelligence in Control and Automation;
-IEEE CICS;IEEE Symposium on Computational Intelligence in Cyber Security;
-IEEE CIFER;IEEE Symposium on Computational Intelligence for Financial Engineering;
-IEEE CIMSIVP;IEEE Symposium on Computational Intelligence for Multimedia Signal and Vision Processing;
-IEEE CISDA;IEEE Symposium on Computational Intelligence for Security and Defence Applications;
-IEEE GI;IEEE Global Internet Symposium;
-IEEE IS;IEEE International Conference on Intelligent Systems;
-IEEE SIS;IEEE Swarm Intelligence Symposium;B-
-IEEE-GC;IEEE Grenoble Conference;
-IEEE-ICCL;IEEE International Conference on Computer Languages;
-IEEE-IV;Intelligent Vehicles Conference;A-
-IEEE-NANO;International Conference on Nanotechnology;
-IEEE/PES SUMMER MEETING;Power Engineering Society Summer Meeting;
+IEEE SEC;ACM/IEEE Symposium on Edge Computing;
 IEEEAPS;IEEE Antennas and Propagation Society International Symposium;
 IEEERFID;IEEE IEEE International Conference on Rfid;B
 IEEM;Industrial Engineering and Engineering Management;
@@ -1315,6 +1308,7 @@ IRMMW-THZ;International Conference on Infrared, Millimeter, and Terahertz Waves;
 IROS;IEEE/Rjs International Conference on Intelligent Robots and Systems;A+
 IRPS;International Reliability Physics Symposium;
 IRS;International Radar Symposium;
+IS;IEEE International Conference on Intelligent Systems;
 IS-EUD;International Symposium on End-User Development;
 ISA;Information Security and Assurance;
 ISAAC;International Symposium on Algorithms and Computation;B
@@ -1446,6 +1440,7 @@ ITW;Information Theory Workshop;B
 IUI;International Conference on Intelligent User Interfaces;A
 IUKM;Integrated Uncertainty in Knowledge Modelling and Decision Making;
 IUS;Internaltional Ultrasonics Symposium;
+IV;Intelligent Vehicles Conference;A-
 IV;International Conference on Information Visualisation;B
 IV-APP;Applications of Information Visualization;
 IVA;Intelligent Virtual Agents;B
@@ -1646,6 +1641,7 @@ NAACL;North American Association for Computational Linguistics;A+
 NABIC;Nature and Biologically Inspired Computing;
 NAECON;National Aerospace and Electronics Conference;
 NAFIPS;North American Fuzzy Information Processing Society;
+NANO;International Conference on Nanotechnology;
 NANOARCH;IEEE/ACM International Symposium on Nanoscale Architectures;
 NAPS;North American Power Symposium;
 NAS;Networking, Architecture and Storages;
@@ -1756,6 +1752,7 @@ PERFORMANCE;Ifip International Symposium on Computing Performance, Modelling, Me
 PERMIS;Performance Metrics for Intelligent Systems;
 PERSUASIVE;International Conference on Persuasive Technology;
 PES;Power and Energy Society General Meeting;
+PES SUMMER MEETING;Power Engineering Society Summer Meeting;
 PESA;International Conference on Power Electronics Systems and Applications;
 PESC;Power Electronics Specialists Conference;
 PETRA;International Conference on Pervasive Technologies Related to Assistive Environments;
@@ -1874,6 +1871,7 @@ RWC;IEEE Radio and Wireless Conference;
 RWS;IEEE Radio and Wireless Symposium;
 S&P;IEEE Symposium on Security and Privacy;A++
 SAB;International Conference on Simulation of Adaptive Behavior;
+SAC;ACM Symposium on Applied Computing;A-
 SAC;Selected Areas in Cryptography;B
 SACI;International Symposium on Applied Computational Intelligence and Informatics;
 SACMAT;ACM Symposium on Access Control Models and Technologies;B
@@ -1973,6 +1971,7 @@ SIGETDM;International Sige Technology and Device Meeting;
 SIGGRAPHA;Siggraph Asia;
 SIGIR;ACM International Conference on Research and Development in Information Retrieval;A++
 SIGITE;ACM Information Technology Education;
+SIGMIS CPR;ACM-Sigmis Cpr Conference;
 SIGMOD;ACM Sigmod International Conference on Management of Data;A++
 SIGSPATIAL;ACM International Conference on Advances in Geographic Information Systems;B
 SIGUCCS;ACM Siguccs Conference on User Services;
@@ -1988,6 +1987,7 @@ SIPN;IEEE Transactions on Signal and Information Processing Over Networks;
 SIPS;IEEE Workshop on Signal Processing Systems Design and Implementation;B
 SIRF;Topical Meeting on Silicon Monolithic Integrated Circuits in Rf Systems;
 SIROCCO;Colloquium on Structural Information and Communication Complexity;B-
+SIS;IEEE Swarm Intelligence Symposium;B-
 SISAP;International Conference on Similarity Search and Applications;
 SISPAD;International Conference on Simulation of Semiconductor Processes and Devices;
 SISY;International Symposium on Intelligent Systems and Informatics;

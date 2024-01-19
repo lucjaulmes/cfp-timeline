@@ -1,8 +1,12 @@
 #!/usr/bin/python3
 
+from __future__ import annotations
+
 import re
 import os
 import sys
+import csv
+import copy as copy_
 import json
 import glob
 import time
@@ -12,11 +16,18 @@ import enchant
 import inflection
 import requests
 import datetime
+import operator
+import pandas as pd
 from functools import total_ordering
 from collections import Counter
 from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs, urlencode
 from bs4 import BeautifulSoup
+import warnings
 
+# Annoying irrelevant pandas warning from .str.contains
+warnings.filterwarnings('ignore', 'This pattern is interpreted as a regular expression, and has match groups')
+# We’re parsing some xhtml
+warnings.filterwarnings('ignore', "It looks like you're parsing an XML document using an HTML parser.")
 
 class CFPNotFoundError(Exception):
 	pass
@@ -35,7 +46,7 @@ def clean_print(*args, **kwargs):
 	print(*args, **kwargs)
 
 
-class PeekIter(object):
+class PeekIter:
 	""" Iterator that allows
 
 	Attributes:
@@ -139,7 +150,7 @@ def normalize(string):
 	return inflection.singularize(string.lower()) if len(string) > 3 else string.lower()
 
 
-class ConfMetaData(object):
+class ConfMetaData:
 	""" Heuristic to reduce a conference title to a matchable set of words.
 
 	Args:
@@ -147,72 +158,102 @@ class ConfMetaData(object):
 		acronym (``): the acronym or short name of the conference
 		year (`int` or `str`): the year of the conference
 	"""
+	# separators in an acronum
+	_sep = re.compile(r'[-_/ @&,.]+')
 
 	# associations, societies, institutes, etc. that organize conferences
-	_org = {'ACIS':'Association for Computer and Information Science', 'ACL':'Association for Computational Linguistics', 'ACM':'Association for Computing Machinery',
-			'ACS':'Arab Computer Society', 'AoM':'Academy of Management', 'CSI':'Computer Society of Iran', 'DIMACS':'Center for Discrete Mathematics and Theoretical Computer Science',
-			'ERCIM':'European Research Consortium for Informatics and Mathematics', 'Eurographics':'Eurographics', 'Euromicro':'Euromicro',
-			'IADIS':'International Association for the Development of the Information Society', 'IAPR':'International Association for Pattern Recognition',
-			'IAVoSS':'International Association for Voting Systems Sciences', 'ICSC':'ICSC Interdisciplinary Research', 'IEEE':'Institute of Electrical and Electronics Engineers',
-			'IFAC':'International Federation of Automatic Control', 'IFIP':'International Federation for Information Processing', 'IMA':'Institute of Mathematics and its Applications',
-			'KES':'KES International', 'MSRI':'Mathematical Sciences Research Institute', 'RSJ':'Robotics Society of Japan', 'SCS':'Society for Modeling and Simulation International',
-			'SIAM':'Society for Industrial and Applied Mathematics', 'SLKOIS':'State Key Laboratory of Information Security', 'SIGOPT':'DMV Special Interest Group in Optimization',
-			'SIGNLL':'ACL Special Interest Group in Natural Language Learning', 'SPIE':'International Society for Optics and Photonics',
-			'TC13':'IFIP Technical Committee on Human–Computer Interaction', 'Usenix':'Advanced Computing Systems Association', 'WIC':'Web Intelligence Consortium'}
+	_org = {
+		'ACIS': 'Association for Computer and Information Science', 'ACL': 'Association for Computational Linguistics',
+		'ACM': 'Association for Computing Machinery', 'ACS': 'Arab Computer Society', 'AoM': 'Academy of Management',
+		'CSI': 'Computer Society of Iran', 'DIMACS': 'Center for Discrete Mathematics and Theoretical Computer Science',
+		'ERCIM': 'European Research Consortium for Informatics and Mathematics', 'Eurographics': 'Eurographics',
+		'Euromicro': 'Euromicro', 'IADIS': 'International Association for the Development of the Information Society',
+		'IAPR': 'International Association for Pattern Recognition',
+		'IAVoSS': 'International Association for Voting Systems Sciences', 'ICSC': 'ICSC Interdisciplinary Research',
+		'IEEE': 'Institute of Electrical and Electronics Engineers',
+		'IFAC': 'International Federation of Automatic Control',
+		'IFIP': 'International Federation for Information Processing',
+		'IMA': 'Institute of Mathematics and its Applications', 'KES': 'KES International',
+		'MSRI': 'Mathematical Sciences Research Institute', 'RSJ': 'Robotics Society of Japan',
+		'SCS': 'Society for Modeling and Simulation International',
+		'SIAM': 'Society for Industrial and Applied Mathematics',
+		'SLKOIS': 'State Key Laboratory of Information Security',
+		'SIGOPT': 'DMV Special Interest Group in Optimization',
+		'SIGNLL': 'ACL Special Interest Group in Natural Language Learning',
+		'SPIE': 'International Society for Optics and Photonics',
+		'TC13': 'IFIP Technical Committee on Human–Computer Interaction',
+		'Usenix': 'Advanced Computing Systems Association', 'WIC': 'Web Intelligence Consortium',
+	}
 
-	#ACM Special Interest Groups
-	_sig = {'ACCESS':'Accessible Computing', 'ACT':'Algorithms Computation Theory', 'Ada':'Ada Programming Language', 'AI':'Artificial Intelligence',
-			'APP':'Applied Computing', 'ARCH':'Computer Architecture', 'BED':'Embedded Systems', 'Bio':'Bioinformatics', 'CAS':'Computers Society',
-			'CHI':'Computer-Human Interaction', 'COMM':'Data Communication', 'CSE':'Computer Science Education', 'DA':'Design Automation',
-			'DOC':'Design Communication', 'ecom':'Electronic Commerce', 'EVO':'Genetic Evolutionary Computation', 'GRAPH':'Computer Graphics Interactive Techniques',
-			'HPC':'High Performance Computing', 'IR':'Information Retrieval', 'ITE':'Information Technology Education', 'KDD':'Knowledge Discovery Data',
-			'LOG':'Logic Computation', 'METRICS':'Measurement Evaluation', 'MICRO':'Microarchitecture', 'MIS':'Management Information Systems', 'MM':'Multimedia',
-			'MOBILE':'Mobility Systems, Users, Data Computing', 'MOD':'Management Data', 'OPS':'Operating Systems', 'PLAN':'Programming Languages',
-			'SAC':'Security, Audit Control', 'SAM':'Symbolic Algebraic Manipulation', 'SIM':'Simulation Modeling', 'SOFT':'Software Engineering',
-			'SPATIAL':'SIGSPATIAL', 'UCCS':'University College Computing Services', 'WEB':'Hypertext Web', 'ART': 'Artificial Intelligence'} # NB ART was renamed AI
+	# ACM Special Interest Groups
+	_sig = {
+		'ACCESS': 'Accessible Computing', 'ACT': 'Algorithms Computation Theory', 'Ada': 'Ada Programming Language',
+		'AI': 'Artificial Intelligence', 'APP': 'Applied Computing', 'ARCH': 'Computer Architecture',
+		'BED': 'Embedded Systems', 'Bio': 'Bioinformatics', 'CAS': 'Computers Society',
+		'CHI': 'Computer-Human Interaction', 'COMM': 'Data Communication', 'CSE': 'Computer Science Education',
+		'DA': 'Design Automation', 'DOC': 'Design Communication', 'ecom': 'Electronic Commerce',
+		'EVO': 'Genetic Evolutionary Computation', 'GRAPH': 'Computer Graphics Interactive Techniques',
+		'HPC': 'High Performance Computing', 'IR': 'Information Retrieval', 'ITE': 'Information Technology Education',
+		'KDD': 'Knowledge Discovery Data', 'LOG': 'Logic Computation', 'METRICS': 'Measurement Evaluation',
+		'MICRO': 'Microarchitecture', 'MIS': 'Management Information Systems',
+		'MOBILE': 'Mobility Systems, Users, Data Computing', 'MM': 'Multimedia', 'MOD': 'Management Data',
+		'OPS': 'Operating Systems', 'PLAN': 'Programming Languages', 'SAC': 'Security, Audit Control',
+		'SAM': 'Symbolic Algebraic Manipulation', 'SIM': 'Simulation Modeling', 'SOFT': 'Software Engineering',
+		'SPATIAL': 'SIGSPATIAL', 'UCCS': 'University College Computing Services', 'WEB': 'Hypertext Web',
+		'ART': 'Artificial Intelligence', # NB ART was renamed AI
+	}
 
 	_meeting_types = {'congress', 'conference', 'seminar', 'symposium', 'workshop', 'tutorial'}
-	_qualifiers = {'american', 'asian', 'australasian', 'australian', 'annual', 'biennial', 'european', 'iberoamerican', 'international', 'joint', 'national'}
-	_replace = { # remove shortenings and typos, and americanize text
-			**{'intl': 'international', 'conf': 'conference', 'dev': 'development'},
-			**{'visualisation':'visualization', 'modelling':'modeling', 'internationalisation':'internationalization', 'defence':'defense',
-				'standardisation':'standardization', 'organisation':'organization', 'optimisation':'optimization,', 'realising':'realizing', 'centre':'center'},
-			**{'syste':'system', 'computi':'computing', 'artifical':'artificial', 'librari':'library', 'databa':'database,', 'conferen':'conference',
-				'bioinformatic':'bioinformatics', 'symposi':'symposium', 'evoluti':'evolution', 'proce':'processes', 'provi':'proving', 'techology':'technology',
-				'bienniel':'biennial', 'entertainme':'entertainment', 'retriev':'retrieval', 'engineeri':'engineering', 'sigraph':'siggraph',
-				'intelleligence':'intelligence', 'simululation':'simulation', 'inteligence':'intelligence', 'manageme':'management', 'applicatio':'application',
-				'developme':'development', 'cyberworl':'cyberworld', 'scien':'science', 'personalizati':'personalization', 'computati':'computation',
-				'implementati':'implementation', 'languag':'language', 'traini':'training', 'servic':'services', 'intenational':'international', 'complexi':'complexity',
-				'storytelli':'storytelling', 'measureme':'measurement', 'comprehensi':'comprehension', 'synthe':'synthesis', 'evaluatin':'evaluation', 'technologi':'technology'}
-			}
+	_qualifiers = {
+		'american', 'asian', 'australasian', 'australian', 'annual', 'biennial', 'european', 'iberoamerican',
+		'international', 'joint', 'national',
+	}
+	_replace = {
+		 # shortenings
+		'intl': 'international', 'conf': 'conference', 'dev': 'development',
+		 # americanize
+		'visualisation': 'visualization', 'modelling': 'modeling', 'internationalisation': 'internationalization',
+		'defence': 'defense', 'standardisation': 'standardization', 'organisation': 'organization',
+		'optimisation': 'optimization,', 'realising': 'realizing', 'centre': 'center',
+		# encountered typos
+		'syste': 'system', 'computi': 'computing', 'artifical': 'artificial', 'librari': 'library',
+		'databa': 'database', 'conferen': 'conference', 'bioinformatic': 'bioinformatics', 'symposi': 'symposium',
+		'evoluti': 'evolution', 'proce': 'processes', 'provi': 'proving', 'techology': 'technology',
+		'bienniel': 'biennial', 'entertainme': 'entertainment', 'retriev': 'retrieval', 'engineeri': 'engineering',
+		'sigraph': 'siggraph', 'intelleligence': 'intelligence', 'simululation': 'simulation',
+		'inteligence': 'intelligence', 'manageme': 'management', 'applicatio': 'application',
+		'developme': 'development', 'cyberworl': 'cyberworld', 'scien': 'science', 'personalizati': 'personalization',
+		'computati': 'computation', 'implementati': 'implementation', 'languag': 'language', 'traini': 'training',
+		'servic': 'services', 'intenational': 'international', 'complexi': 'complexity', 'storytelli': 'storytelling',
+		'measureme': 'measurement', 'comprehensi': 'comprehension', 'synthe': 'synthesis', 'evaluatin': 'evaluation',
+		'technologi': 'technology',
+	}
 
 	# NB simple acronym management, only works while first word -> acronym mapping is unique
-	_acronyms = {''.join(s[0] for s in a.split()):[normalize(s) for s in a.split()] for a in \
-				{'call for papers', 'geographic information system', 'high performance computing', 'message passing interface', 'object oriented', 'operating system',
-					'parallel virtual machine', 'public key infrastructure', 'special interest group'}}
+	_acronyms = {''.join(word[0] for word in acr.split()): [normalize(word) for word in acr.split()] for acr in [
+		'call for papers', 'geographic information system', 'high performance computing', 'message passing interface',
+		'object oriented', 'operating system', 'parallel virtual machine', 'public key infrastructure',
+		'special interest group',
+	]}
 	# Computer Performance Evaluation ? Online Analytical Processing: OLAP? aspect-oriented programming ?
 
 	_tens = {'twenty', 'thirty', 'fourty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'}
-	_ordinal = re.compile(r'[0-9]+(st|nd|rd|th)|(({tens})?(first|second|third|(four|fif|six|seven|eigh|nine?)th))|(ten|eleven|twelf|(thir|fourt|fif|six|seven|eigh|nine?)teen)th'.format(tens = '|'.join(_tens)))
+	_ordinal = re.compile(r'[0-9]+(st|nd|rd|th)|(({tens})?(first|second|third|(four|fif|six|seven|eigh|nine?)th))|'
+					      r'(ten|eleven|twelf|(thir|fourt|fif|six|seven|eigh|nine?)teen)th'
+						  .format(tens = '|'.join(_tens)))
 
-	_sigcmp = {normalize('SIG' + s):s for s in _sig}
-	_orgcmp = {normalize(s):s for s in _org}
+	_sigcmp = {normalize(f'SIG{group}'): group for group in _sig}
+	_orgcmp = {normalize(entity): entity for entity in _org}
 
-	_acronym_start = {v[0]:a for a, v in _acronyms.items()}
-	_sig_start = {normalize(v.split()[0]):a for a, v in _sig.items() if a != 'ART'}
+	_acronym_start = {words[0]: acr for acr, words in _acronyms.items()}
+	_sig_start = {normalize(desc.split()[0]): group for group, desc in _sig.items() if group != 'ART'}
 
 	_dict = enchant.Dict('EN_US')
 	_misspelled = {}
 
-	topic_keywords = None
-	organisers = None
-	number = None
-	type_ = None
-	qualifiers = None
 
-
-	def __init__(self, title, conf_acronym, year = '', **kwargs):
-		super(ConfMetaData, self).__init__(**kwargs)
+	def __init__(self, title, conf_acronym, year=''):
+		super().__init__()
 
 		self.topic_keywords = []
 		self.organisers = set()
@@ -220,9 +261,13 @@ class ConfMetaData(object):
 		self.type_ = set()
 		self.qualifiers = []
 
+		self.classify_words(title, normalize(conf_acronym), str(year))
+
+
+	def classify_words(self, string, *ignored):
 		# lower case, replace characters in dict by whitepace, repeated spaces will be removed by split()
-		words = PeekIter(normalize(w) for w in title.translate({ord(c):' ' for c in "-/&,():_~'."}).split() \
-							if normalize(w) not in {'the', 'on', 'for', 'of', 'in', 'and', str(year)})
+		words = PeekIter(normalize(w) for w in string.translate({ord(c): ' ' for c in "-/&,():_~'."}).split()
+						 if normalize(w) not in {'the', 'on', 'for', 'of', 'in', 'and', *ignored})
 
 		# semantically filter conference editors/organisations, special interest groups (sig...), etc.
 		for w in words:
@@ -254,7 +299,8 @@ class ConfMetaData(object):
 					continue
 
 				# TODO some acronyms have special characters, e.g. A/V, which means they appear as 2 words
-			except KeyError: pass
+			except KeyError:
+				pass
 
 			# Some specific attention brought to ACM special interest groups
 			if w.startswith('sig'):
@@ -301,21 +347,16 @@ class ConfMetaData(object):
 				self.number.add(m.group(0))
 				continue
 
-			# acronym and year of conference if they are repeated
-			if w == normalize(conf_acronym):
-				try:
-					if words.peek() == str(year)[2:]: next(words)
-				except IndexError: pass
-				continue
-
 			# anything surviving to this point surely describes the topic of the conference
 			self.topic_keywords.append(w)
+
+			# Log words marked as incorrect in misspellings - ad-hoc ignored words can be used as conf identifiers
 			if self._dict and not self._dict.check(w):
 				if w not in (normalize(s) for s in self._dict.suggest(w)):
-					self._misspelled[w] = (conf_acronym, title)
+					self._misspelled[w] = (*ignored, string)
 
 
-	def topic(self, sep = ' '):
+	def topic(self, sep=' '):
 		return sep.join(self.topic_keywords).title()
 
 
@@ -345,9 +386,9 @@ class ConfMetaData(object):
 		# for 4 diffs => 4 + 0 -> 5, 3 + 1 -> 8, 2 + 2 -> 9
 		common = set(left) & set(right)
 		n_common = len(common)
+		n_l, n_r = len(left) - n_common, len(right) - n_common
 		l = [w for w in left if w in common]
 		r = [w for w in right if w in common]
-		n_l, n_r = len(l) - n_common, len(r) - n_common
 		try:
 			mid = round(sum(l.index(c) - r.index(c) for c in common) / len(common))
 			sort_diff = sum(abs(l.index(c) - r.index(c) - mid) for c in common) / n_common
@@ -371,7 +412,7 @@ class ConfMetaData(object):
 		)
 
 
-	def __str__(self):
+	def str_info(self):
 		vals = []
 		if self.topic_keywords:
 			vals.append(f'topic=[{", ".join(self.topic_keywords)}]')
@@ -383,21 +424,26 @@ class ConfMetaData(object):
 			vals.append(f'type={{{", ".join(self.type_)}}}')
 		if self.qualifiers:
 			vals.append(f'qualifiers={{{", ".join(self.qualifiers)}}}')
-		return ', '.join(vals)
+		return vals
+
+
+	def __repr__(self):
+		return f'{type(self).__name__}({", ".join(self.str_info())})'
 
 
 @total_ordering
 class Conference(ConfMetaData):
 	__slots__ = ('acronym', 'title', 'rank', 'ranksys', 'field')
-	_ranks = {rk: num for num, rk in enumerate('A++ A* A+ A A- B B- C D E'.split())}  # unified for both sources, lower is better
+	# unified ranks from all used sources, lower is better
+	_ranks = {rk: num for num, rk in enumerate('A++ A* A+ A A- B B- C D E'.split())}
 
-	def __init__(self, title, acronym, rank=None, field=None, ranksys=None, **kwargs):
+	def __init__(self, acronym, title, rank=None, ranksys=None, field=None, **kwargs):
 		super(Conference, self).__init__(title, acronym, **kwargs)
 
 		self.title = title
 		self.acronym = acronym
-		self.ranksys = (ranksys,)
-		self.rank = (rank or None,)
+		self.ranksys = (ranksys if pd.notna(ranksys) else None,)
+		self.rank = (rank if pd.notna(rank) else None,)
 		self.field = field or '(missing)'
 
 
@@ -409,38 +455,53 @@ class Conference(ConfMetaData):
 	@classmethod
 	def columns(cls):
 		""" Return column titles for cfp data """
-		return ['Acronym', 'Title', 'Rank system', 'Rank', 'Field']
+		return ['Acronym', 'Title', 'Rank', 'Rank system', 'Field']
 
 
-	def values(self):
+	def values(self, sort=False):
 		""" What we'll show """
-		return [self.acronym, self.title, self.ranksys, self.rank, self.field]
+		return (self.acronym, self.title, self.ranksort() if sort else self.rank, self.ranksys, self.field)
+
+
+	def to_series(self):
+		""" Convert to a series, allows to convert a series of Conferences to a DataFrame of strings """
+		return pd.Series([self.acronym, self.title, self.rank[0], self.ranksys[0], self.field], index=self.__slots__)
+
+
+	@classmethod
+	def from_series(cls, series):
+		""" Convert from a series """
+		return cls(series['acronym'], series['title'], series['rank'], series['ranksys'], series['field'])
+
+
+	@staticmethod
+	def merge(left, right, copy=True):
+		new = copy_.copy(left) if copy else left
+		new.rank = left.rank + right.rank
+		new.ranksys = left.ranksys + right.ranksys
+		return new
 
 
 	def __eq__(self, other):
-		return isinstance(other, self.__class__) and (self.acronym, self.title, self.rank, self.ranksys, self.field) == (other.acronym, other.title, other.rank, other.ranksys, other.field)
+		return isinstance(other, self.__class__) and self.values() == other.values()
 
 
 	def __lt__(self, other):
-		return (self.acronym, self.title, self.ranksort(), self.ranksys, self.field) < (other.acronym, other.title, other.ranksort(), other.ranksys, other.field)
+		return self.values(True) < other.values(True)
 
 
-	def __str__(self):
-		vals = ['{}={}'.format(slot, val) for slot, val in ((s, getattr(self, s)) for s in self.__slots__) if val != '(missing)']
-		dat = super(Conference, self).__str__()
-		if dat:
-			vals.append(dat)
-		return '{}({})'.format(type(self).__name__, ', '.join(vals))
-
+	def str_info(self):
+		vals = [f'{slot}={getattr(self, slot)}' for slot in self.__slots__ if getattr(self, slot) != '(missing)']
+		vals.extend(super().str_info())
+		return vals
 
 
 class CallForPapers(ConfMetaData):
-	_base_url = None
-	_url_cfpsearch = None
-	_url_cfpseries = None
-
 	_date_fields = ['abstract', 'submission', 'notification', 'camera_ready', 'conf_start', 'conf_end']
-	_date_names = ['Abstract Registration Due', 'Submission Deadline', 'Notification Due', 'Final Version Due', 'startDate', 'endDate']
+	_date_names = [
+		'Abstract Registration Due', 'Submission Deadline', 'Notification Due', 'Final Version Due', 'startDate',
+		'endDate',
+	]
 
 	__slots__ = ('conf', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link')
 
@@ -458,13 +519,13 @@ class CallForPapers(ConfMetaData):
 		self.url_cfp = url_cfp
 
 
-	def extrapolate_missing_dates(self, prev_cfp):
+	def extrapolate_missing_dates(self, prev_cfp: CallForPapers):
 		# NB: it isn't always year = this.year, e.g. the submission can be the year before the conference dates
-		prev_dates = set(prev_cfp.dates.keys())
-		dates = set(self.dates.keys())
 
-		# direct extrapolations to year + 1
-		for field in (field for field in {'conf_start', 'submission'} & prev_dates - dates):
+		# direct extrapolations to previous year + 1
+		for field in ('conf_start', 'submission'):
+			if field in self.dates or field not in prev_cfp.dates:
+				continue
 			n = self._date_fields.index(field)
 			try:
 				self.dates[field] = prev_cfp.dates[field].replace(year = prev_cfp.dates[field].year + 1)
@@ -474,34 +535,41 @@ class CallForPapers(ConfMetaData):
 				self.dates[field] = prev_cfp.dates[field].replace(year = prev_cfp.dates[field].year + 1, day = 28)
 
 			self.orig[field] = False
-			dates.add(field)
 
-		# extrapolate by keeping
-		extrapolate_from = {'conf_end': 'conf_start', 'camera_ready': 'conf_start', 'abstract': 'submission', 'notification': 'submission'}
-		for field in (field for field in extrapolate_from.keys() & prev_dates - dates if extrapolate_from[field] in dates & prev_dates):
-			self.dates[field] = self.dates[extrapolate_from[field]] + (prev_cfp.dates[field] - prev_cfp.dates[extrapolate_from[field]])
-
-			self.orig[field] = False
-			dates.add(field)
+		# extrapolate by keeping offset with other date
+		extrapolate_from = {
+			'conf_end': 'conf_start', 'camera_ready': 'conf_start', 'abstract': 'submission',
+			'notification': 'submission',
+		}
+		for field, orig in extrapolate_from.items():
+			if field in self.dates:
+				continue
+			try:
+				extrapolated_date = self.dates[orig] + (prev_cfp.dates[field] - prev_cfp.dates[orig])
+			except KeyError:
+				continue
+			else:
+				self.dates[field] = extrapolated_date
+				self.orig[field] = False
 
 
 	@classmethod
-	def parse_confseries(cls, soup):
+	def parse_confseries(cls, soup: BeautifulSoup):
 		raise NotImplementedError
 
 
 	@classmethod
-	def parse_search(cls, conf, year, soup):
+	def parse_search(cls, conf, year, soup: BeautifulSoup):
 		raise NotImplementedError
 
 
-	def parse_cfp(self, soup):
+	def parse_cfp(self, soup: BeautifulSoup):
 		raise NotImplementedError
 
 
 	def fetch_cfp_data(self):
-		""" Parse a page from wiki-cfp. Return all useful data about the conference.  """
-		f = 'cache/' + 'cfp_{}-{}_{}.html'.format(self.conf.acronym, self.year, self.conf.topic()).replace('/', '_') # topic('-')
+		""" Parse a page from wiki-cfp. Return all useful data about the conference. """
+		f = 'cache/' + 'cfp_{}-{}_{}.html'.format(self.conf.acronym, self.year, self.conf.topic()).replace('/', '_')
 		self.parse_cfp(RequestWrapper.get_soup(self.url_cfp, f))
 
 
@@ -659,7 +727,8 @@ class CallForPapers(ConfMetaData):
 
 	def values(self):
 		""" Return values of cfp data, in column order.  """
-		return [self.dates.get(f, None) for f in self._date_fields] + [self.orig.get(f, None) for f in self._date_fields] + [self.link, self.url_cfp]
+		return ([self.dates.get(f, None) for f in self._date_fields] +
+				[self.orig.get(f, None) for f in self._date_fields] + [self.link, self.url_cfp])
 
 
 	def max_date(self):
@@ -673,9 +742,11 @@ class CallForPapers(ConfMetaData):
 
 
 	def __str__(self):
-		vals = ['{}={}'.format(s, getattr(self, s)) for s in self.__slots__ if s not in {'dates', 'orig'} and getattr(self, s) != None and getattr(self, s)  != '(missing)']
+		vals = ['{}={}'.format(attr, getattr(self, attr)) for attr in self.__slots__
+			    if attr not in {'dates', 'orig'} and (getattr(self, attr, None) or '(missing)') != '(missing)']
 		if self.dates:
-			vals.append('dates={' + ', '.join('{}:{}{}'.format(field, self.dates[field], '*' if not self.orig[field] else '') for field in self._date_fields if field in self.dates) + '}')
+			vals.append('dates={' + ', '.join(f"{field}:{self.dates[field]}{'*' if not self.orig[field] else ''}"
+											  for field in self._date_fields if field in self.dates) + '}')
 		dat = super(CallForPapers, self).__str__()
 		if dat:
 			vals.append(dat)
@@ -690,28 +761,50 @@ class WikicfpCFP(CallForPapers):
 	_url_cfpevent_query = {'copyownerid': '90704'} # override some parameters
 
 
-	@staticmethod
-	def parse_date(d):
+	@classmethod
+	def parse_date(cls, dt: datetime.datetime):
 		# some ISO 8601 or RFC 3339 format
-		return datetime.datetime.strptime(d, '%Y-%m-%dT%H:%M:%S').date()
+		return datetime.datetime.strptime(dt, '%Y-%m-%dT%H:%M:%S').date()
 
 
 	@classmethod
-	def parse_confseries(cls, soup):
-		""" Given the BeautifulSoup of a CFP series list page, generate all (acronym, description, url) tuples for links that
-		point to conference series.
+	def parse_confseries(cls, soup: BeautifulSoup):
+		""" Given the BeautifulSoup of a CFP series list page, generate all (acronym, description, url) tuples
+		for links that point to conference series.
 		"""
 		links = soup.find_all('a', {'href': lambda l: l.startswith('/cfp/program')})
 		return (tuple(l.parent.text.strip().split(' - ', 1)) + urljoin(cls._base_url, l['href']) for l in links)
 
 
 	@classmethod
-	def parse_search(cls, conf, year, soup):
+	def parse_search(cls, conf: str, year: int, soup: BeautifulSoup):
 		""" Given the BeautifulSoup of a CFP search page, generate all (description, url) tuples for links that seem
 		to correspond to the conference and year requested.
 		"""
-		search = '{} {}'.format(conf.acronym, year).lower()
-		for conf_link in soup.find_all('a', href=True, text=lambda t: t and ' '.join(t.lower().strip().split()) == search):
+		test_words = ConfMetaData._sep.split(conf.acronym.lower())
+		first_test = {''.join(test_words[:n]): n for n in range(1, len(test_words) + 1)}
+		def match_acronym(text):
+			if text is None:
+				return False
+			try:
+				*words, cfp_year = ConfMetaData._sep.split(text.lower().strip())
+				cfp_year = int(cfp_year)
+			except ValueError:
+				return False
+			if year != cfp_year or not words:
+				return False
+			# We want the first word to match, but "foo-bar" could match "foo bar" and "foobar"
+			first_word = {''.join(words[:n]): n for n in range(1, len(words) + 1)}
+			intersect = first_test.keys() & first_word.keys()
+			if not intersect:
+				return False
+			# Get one of the common words
+			w = intersect.pop()
+			n, m = first_test[w], first_word[w]
+			return 0 > ConfMetaData._list_diff([''.join(words[:n]), *words[n:]],
+											   [''.join(test_words[:m]), *test_words[m:]])
+
+		for conf_link in soup.find_all('a', href=True, string=match_acronym):
 			# find links name "acronym year" and got to first parent <tr>
 			for tr in conf_link.parents:
 				if tr.name == 'tr':
@@ -719,7 +812,7 @@ class WikicfpCFP(CallForPapers):
 			else:
 				raise ValueError('Cound not find parent row!')
 
-			# first row has 2 td tags, one contains the link, the other the description. Get the one not parent of the link.
+			# first row has 2 td tags, one contains the link, the other the description. Get the non-parent of the link.
 			conf_name = [td.text for td in tr.find_all('td') if td not in conf_link.parents]
 			scheme, netloc, path, query, fragment = urlsplit(urljoin(cls._url_cfpevent, conf_link['href']))
 			# update the query with cls._url_cfpevent_query. Sort the parameters to minimize changes across versions.
@@ -757,8 +850,8 @@ class WikicfpCFP(CallForPapers):
 			xmlns_attr = next(attr for attr in xt.attrs if self._find_xmlns_attrs(attr, xt))
 			xmlns_pfx = xmlns_attr[len('xmlns:'):] + ':'
 
-			xt_data = {xt['property'][len(xmlns_pfx):]: xt['content'] if xt.has_attr('content') else xt.text for xt \
-						in xt.find_all(property = lambda val: type(val) is str and val.startswith(xmlns_pfx))}
+			xt_data = {xt['property'][len(xmlns_pfx):]: xt['content'] if xt.has_attr('content') else xt.text
+					   for xt in xt.find_all(property = lambda val: type(val) is str and val.startswith(xmlns_pfx))}
 
 			if 'purl.org/dc/' in xt[xmlns_attr]:
 				metadata.update(xt_data)
@@ -769,8 +862,8 @@ class WikicfpCFP(CallForPapers):
 
 			elif xt_data.get('eventType', None) == 'Conference':
 				# Remove any clashes with DC's values, which are cleaner
-				metadata.update({key:self.parse_date(val) if key.endswith('Date') else val \
-								for key, val in xt_data.items() if key not in metadata})
+				metadata.update({key: self.parse_date(val) if key.endswith('Date') else val
+								 for key, val in xt_data.items() if key not in metadata})
 
 			else:
 				print('Error: unexpected RDF or DC data: {}'.format(xt_data))
@@ -787,140 +880,203 @@ class WikicfpCFP(CallForPapers):
 			self.link = metadata['source']
 
 
-class Ranking(object):
+class Ranking:
 	_historical = re.compile(r'\b(previous(ly)?|was|(from|pre) [0-9]{4}|merge[dr])\b', re.IGNORECASE)
 
 	@classmethod
-	def get_confs(cls):
-		""" Generator of all conferences listed in a source, as dicts """
+	def get_confs(cls) -> pd.Series[Conference]:
+		""" Generator of all conferences listed in a source, as a series of Conference objects """
 		try:
-			return list(cls._load_confs())
+			confs = cls._load_confs()
 		except FileNotFoundError:
-			return cls.update_confs()
+			confs = cls.update_confs()
+		return confs.agg(Conference.from_series, axis='columns')
 
 
 	@classmethod
-	def strip_trailing_paren(cls, string):
-		""" If string ends with a parenthesized part, remove it, e.g. "foo (bar)" -> "foo" """
-		string = string.strip()
-		try:
-			paren = string.index(' (')
-			if string[-1] == ')' and cls._historical.search(string[paren + 2:-1]):
-				return string[:paren]
-		except ValueError:
-			pass
-		return string
+	def update_confs(cls) -> pd.DataFrame:
+		""" Refresh and make a generator of all conferences listed on the core site, as dicts """
+		conf_list = cls._fetch_confs()
+		cls._save_confs(conf_list)
+		return conf_list
+
+
+	@classmethod
+	def _fetch_confs(cls) -> pd.DataFrame:
+		raise NotImplementedError
+
+
+	@classmethod
+	def _save_confs(cls, confs: pd.DataFrame):
+		confs[cls._col_order].to_csv(cls._file, sep=';', index=False, quoting=csv.QUOTE_NONE)
+
+
+	@classmethod
+	def _load_confs(cls) -> pd.DataFrame:
+		f_age = datetime.datetime.fromtimestamp(os.stat(cls._file).st_mtime)
+		if datetime.datetime.today() - f_age > datetime.timedelta(days=365):
+			raise FileNotFoundError('Cached file too old')
+
+		confs = pd.read_csv(cls._file, sep=';')
+		assert confs.columns.symmetric_difference(cls._col_order).empty
+		return confs
+
+
+	@classmethod
+	def strip_trailing_paren(cls, series: pd.Series[str]) -> pd.Series[str]:
+		""" Strip parenthesized part at end of string, if it contains historical info (“was x”, ”pre 2019” etc.) """
+		series = series.str.strip()
+		split_paren = series.str.split(' (', n=1, expand=True, regex=False)
+		replace = series.str[-1].eq(')') & split_paren[1].str.contains(cls._historical, na=False)
+		return series.mask(replace, split_paren[0])
 
 
 	@classmethod
 	def merge(cls, confs_a, confs_b):
-		dict_a = {}
-		dict_b = {}
-		for conf in confs_a:
-			dict_a.setdefault(conf.acronym.upper(), []).append(conf)
-		for conf in confs_b:
-			dict_b.setdefault(conf.acronym.upper(), []).append(conf)
+		# Mapping match-acronym to conference-id
+		idx_a = pd.Series(confs_a.index, index=confs_a.map(operator.attrgetter('acronym')).str.upper(), name='id')
+		idx_b = pd.Series(confs_b.index, index=confs_b.map(operator.attrgetter('acronym')).str.upper(), name='id')
 
-		common = set(dict_a.keys()) & set(dict_b.keys())
-		merged = [conf for k in set(dict_a) - common for conf in dict_a[k]] \
-			   + [conf for k in set(dict_b) - common for conf in dict_b[k]]
-		for acronym in common:
-			list_a = dict_a.pop(acronym)
-			list_b = dict_b.pop(acronym)
-			cmp = [[1000 for _ in list_b] for _ in list_a]
-			for n, conf_a in enumerate(list_a):
-				for m, conf_b in enumerate(list_b):
-					cmp[n][m] = sum(conf_a._difference(conf_b))
-			while list_a and list_b and min(map(min, cmp)) < 1000:
-				rowmins = [min(row) for row in cmp]
-				match_a = rowmins.index(min(rowmins))
-				match_b = cmp[match_a].index(min(rowmins))
+		# Add for several words (possibly dash or slash-separated) the first-word variant and joined variants
+		# So for Euro-Par we’ll check EuroPar and Euro
+		multi_word_a = idx_a.index[idx_a.index.str.contains(ConfMetaData._sep)].to_series().str.split(ConfMetaData._sep)
+		idx_a = pd.concat([
+			idx_a,
+			idx_a.loc[multi_word_a.index].rename(index=multi_word_a.str.join('')),
+			idx_a.loc[multi_word_a.index].rename(index=multi_word_a.str[0]),
+		])
+		multi_word_b = idx_b.index[idx_b.index.str.contains(ConfMetaData._sep)].to_series().str.split(ConfMetaData._sep)
+		idx_b = pd.concat([
+			idx_b,
+			idx_b.loc[multi_word_b.index].rename(index=multi_word_b.str.join('')),
+			idx_b.loc[multi_word_b.index].rename(index=multi_word_b.str[0]),
+		])
 
-				merge_pair = [list_a[match_a], list_b[match_b]]
-				conf = merge_pair[0]
-				conf.rank = (*list_a[match_a].rank, *list_b[match_b].rank)
-				conf.ranksys = (*list_a[match_a].ranksys, *list_b[match_b].ranksys)
-				merged.append(conf)
+		common = idx_a.index.drop_duplicates().intersection(idx_b.index.drop_duplicates())
+		# Build all the pairs of elements we want to compare
+		compared_pairs = pd.concat(ignore_index=True, objs=[
+			pd.merge(idx_a[[acronym]], idx_b[[acronym]], how='cross', suffixes=('_a', '_b')) for acronym in common
+		])
+		# Compute the scores
+		compared_pairs['scores'] = compared_pairs.agg(
+			lambda row: sum(ConfMetaData._difference(confs_a[row['id_a']], confs_b[row['id_b']])),
+			axis='columns'
+		)
 
-				cmp = [row[:match_b] + row[match_b + 1:] for row in cmp]
-				del cmp[match_a], list_a[match_a], list_b[match_b]
+		merged_ids = []
+		unmerged_a, unmerged_b = confs_a, confs_b
+		while compared_pairs.size:
+			# Drop scores ≥ 1000
+			best_matches = compared_pairs[compared_pairs['scores'].lt(1000)]
+			# Best (a, b) pairs for each a
+			best_matches = best_matches.loc[best_matches.groupby('id_a')['scores'].idxmin()]
+			# Refine by best (a, b) pairs for each b; we don’t want to merge one b with several a
+			best_matches = best_matches.loc[best_matches.groupby('id_b')['scores'].idxmin()]
+			print('BEST MATCHES', len(best_matches))
 
-			merged.extend(list_a)
-			merged.extend(list_b)
+			if not best_matches.size:
+				break
 
-		print(f'Merged conferences {len(confs_a)} + {len(confs_b)} = {len(merged)} total + {len(confs_a) + len(confs_b) - len(merged)} in common')
+			# Drop the merged ids from conf lists and future comparisons
+			compared_pairs = compared_pairs[~compared_pairs['id_a'].isin(best_matches['id_a']) &
+											~compared_pairs['id_b'].isin(best_matches['id_b'])]
+			unmerged_a = unmerged_a.drop(index=best_matches['id_a'])
+			unmerged_b = unmerged_b.drop(index=best_matches['id_b'])
+
+			merged_ids.append(best_matches.drop(columns=['scores']))
+
+		merged_ids = pd.concat(merged_ids)
+		merged = pd.concat(ignore_index=True, objs=[unmerged_a, unmerged_b, merged_ids.agg(
+			lambda row: Conference.merge(confs_a[row['id_a']], confs_b[row['id_b']]),
+			axis='columns'
+		)])
+		print(f'Merged conferences {len(confs_a)} + {len(confs_b)} = {len(merged)} total'
+			  f' + {len(confs_a) + len(confs_b) - len(merged)} in common')
+
+		diff_acronyms = merged_ids.transform({
+			'id_a': lambda col: col.map(confs_a).map(operator.attrgetter('acronym')).str.upper(),
+			'id_b': lambda col: col.map(confs_b).map(operator.attrgetter('acronym')).str.upper(),
+		}).query('id_a != id_b')
+		print('Merges with differing acronyms:')
+		print(diff_acronyms)
+
 		return merged
 
 
 class GGSRanking(Ranking):
 	_url_ggsrank = 'https://scie.lcc.uma.es/gii-grin-scie-rating/conferenceRating.jsf'
-	_ggs_file = 'ggs.csv'
+	_file = 'ggs.csv'
+	_col_order = ['acronym', 'title', 'rank']
+
+
+	@classmethod
+	def _add_implicit_columns(cls, confs: pd.DataFrame) -> pd.DataFrame:
+		""" Data that is not saved in the csv """
+		confs['ranksys'] = 'GGS2021'
+		confs['field'] = None
+		return confs
+
 
 	@classmethod
 	def _load_confs(cls):
 		""" Load conferences from a file where we have the values cached cleanly.  """
-		f_age = datetime.datetime.fromtimestamp(os.stat(cls._ggs_file).st_mtime)
-		if datetime.datetime.today() - f_age > datetime.timedelta(days=365):
-			raise FileNotFoundError('Cached file too old')
+		return super()._load_confs().pipe(cls._add_implicit_columns)
 
-		with open(cls._ggs_file, 'r') as f:
-			assert 'acronym;title;rank' == next(f).strip()
-			confs = [l.strip().split(';') for l in f]
-
-		with click.progressbar(confs, label='loading GGS list…') as prog:
-			return [Conference(cls.strip_trailing_paren(tit), acr, rat, None, 'GGS2021') for acr, tit, rat in prog]
 
 	@classmethod
-	def update_confs(cls):
+	def _fetch_confs(cls) -> pd.DataFrame:
 		soup = RequestWrapper.get_soup(cls._url_ggsrank, 'cache/gii-grin-scie-rating_conferenceRating.html')
-		link = soup.find('a', attrs={'href': lambda dest: dest.split(';jsessionid=')[0].endswith('.xlsx')}).attrs['href']
+		link = soup.find('a', attrs={'href': lambda url: url.split(';jsessionid=')[0].endswith('.xlsx')}).attrs['href']
 		file_url = urljoin(cls._url_ggsrank, link)
 
-		import pandas as pd, csv
 		df = pd.read_excel(file_url, header=1, usecols=['Title', 'Acronym', 'GGS Rating'])\
 			   .rename(columns={'GGS Rating': 'rank', 'Title': 'title', 'Acronym': 'acronym'})
 
+		# Remove sponsor from acronym
+		df['acronym'] = df['acronym'].str.replace(r'^(IEEE|ACM)[-_/ ]', '', regex=True)
+
 		# Drop old stuff or no acronyms (as they are used for lookup)
-		df = df[~(df['rank'].str.contains('discontinued|now published as journal', case=False) | df['acronym'].isna() | df['acronym'].str.len().eq(0))]
+		df = df[~(df['rank'].str.contains('discontinued|now published as journal', case=False) |
+				  df['acronym'].isna() | df['acronym'].str.len().eq(0))]
 
 		ok_rank = df['rank'].str.match('^[A-Z][+-]*$')
 		print('Non-standard ratings:')
 		print(df['rank'].mask(ok_rank).value_counts().to_string())
 		df['rank'] = df['rank'].where(ok_rank)
-		df['title'] = df['title'].str.replace(';', ',').str.title().str.replace(r'\b(Acm|Ieee)\b', lambda m: m[1].upper(), regex=True)\
+		df['title'] = df['title'].str.replace(';', ',').str.title()\
+				.str.replace(r'\b(Acm|Ieee)\b', lambda m: m[1].upper(), regex=True)\
 				.str.replace(r'\b(On|And|In|Of|For|The|To|Its)\b', lambda m: m[1].lower(), regex=True)
 
-		sort_ranks = lambda ser: ser.map(Conference._ranks).fillna(len(Conference._ranks)) if ser.name == 'rank' else ser
-		col_order = ['acronym', 'title', 'rank']
-		df[col_order].sort_values(by=col_order, key=sort_ranks).to_csv(cls._ggs_file, sep=';', index=False, quoting=csv.QUOTE_NONE)
+		def sort_ranks(series):
+			return series.map(Conference._ranks).fillna(len(Conference._ranks)) if series.name == 'rank' else series
+
+		return df[cls._col_order].sort_values(by=cls._col_order, key=sort_ranks).pipe(cls._add_implicit_columns)
 
 
 class CoreRanking(Ranking):
 	""" Utility class to scrape CORE conference listings and generate `~Conference` objects.  """
-	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source=CORE{}&sort=arank&page={}'
-	_year = 2023
-	_core_file = 'core.csv'
+	_file = 'core.csv'
+	_col_order = ['acronym', 'title', 'ranksys', 'rank', 'field']
+	_url_corerank = 'http://portal.core.edu.au/conf-ranks/?search=&by=all&source={}&sort=arank&page={}'
+	_source = 'CORE2023'
 	_for_file = 'for_codes.json'
 
+
 	@classmethod
-	def _fetch_confs(cls):
+	def _fetch_confs(cls) -> pd.DataFrame:
 		""" Internal generator of all conferences listed on the core site, as dicts """
 		# fetch page 1 outside loop to get page/result counts, will be in cache for loop access
-		soup = RequestWrapper.get_soup(cls._url_corerank.format(cls._year, 1), 'cache/ranked_{1}.html')
-		ranking = f'CORE{cls._year}'
+		soup = RequestWrapper.get_soup(cls._url_corerank.format(cls._source, 1), 'cache/ranked_{1}.html')
 
 		result_count_re = re.compile('Showing results 1 - ([0-9]+) of ([0-9]+)')
 		result_count = soup.find(string=result_count_re)
 		per_page, n_results = map(int, result_count_re.search(result_count).groups())
 		pages = (n_results + per_page - 1) // per_page
 
-		with open(cls._for_file, 'r') as f:
-			forcodes = json.load(f)
-		non_standard_ranks = Counter()
-
+		cfps = []
 		with click.progressbar(label='fetching CORE list…', length=n_results) as prog:
 			for p in range(1, pages + 1):
-				soup = RequestWrapper.get_soup(cls._url_corerank.format(cls._year, p), f'cache/ranked_{p}.html')
+				soup = RequestWrapper.get_soup(cls._url_corerank.format(cls._source, p), f'cache/ranked_{p}.html')
 
 				table = soup.find('table')
 				rows = iter(table.find_all('tr'))
@@ -934,108 +1090,79 @@ class CoreRanking(Ranking):
 
 				for row in rows:
 					val = [' '.join(r.text.split()) for r in row.find_all('td')]
-					acronym, title, rank, code = val[apos], val[tpos], val[rpos], val[fpos]
-					# Some manual corrections applied to the CORE database:
-					# - ISC changed their acronym to "ISC HPC"
-					# - Searching cfps for Euro-Par finds EuroPar, but not the other way around
-					if acronym == 'ISC' and cls.strip_trailing_paren(title) == 'ISC High Performance':
-						acronym += ' HPC'
-					elif acronym == 'EuroPar' and (cls.strip_trailing_paren(title) ==
-									  'International European Conference on Parallel and Distributed Computing'):
-						acronym = 'Euro-Par'
-
-					# Also normalize rankings
-					if rank.startswith('National') or rank.startswith('Regional'):
-						place = rank[8:].strip("(): -").title()
-						rank = (f'{rank[:8]}{": " if place else ""}'
-									 f'{"USA" if place == "Usa" else "Korea" if place == "S. korea" else place}')
-					elif not re.match(r'^(Australasian )?[A-Z]\*?$', rank):
-						non_standard_ranks[rank] += 1
-						rank = None
-
-					yield Conference(cls.strip_trailing_paren(title), acronym, rank, forcodes.get(code, None), ranking)
+					cfps.append([val[apos], val[tpos], val[rpos], val[fpos]])
 					prog.update(1)
 
+		cfps = pd.DataFrame(cfps, columns=['acronym', 'title', 'rank', 'field'])
+		cfps.insert(3, 'ranksys', cls._source)
+
 		# Manually add some missing conferences from previous year data.
-		manual = [
-			('MICRO',     'International Symposium on Microarchitecture',                                           'A',  '4601', 'CORE2018'),
-			('VLSI',      'Symposia on VLSI Technology and Circuits',                                               'A',  '4009', 'CORE2018'),
-			('ICC',       'IEEE International Conference on Communications',                                        'B',  '4006', 'CORE2018'),
-			('IEEE RFID', 'IEEE International Conference on Radio Frequency Identification',                        'B',  '4006', 'CORE2018'),
-			('M2VIP',     'Mechatronics and Machine Vision in Practice',                                            'B',  '4611', 'CORE2018'),
-			('ICASSP',    'IEEE International Conference on Acoustics, Speech and Signal Processing',               'B',  '4006', 'CORE2018'),
-			('RSS',       'Robotics: Science and Systems',                                                          'A*', '4611', 'CORE2018'),
-			('BuildSys',  'ACM International Conference on Systems for Energy-Efficient Built Environments',        'A',  '4606', 'CORE2018'),
-			('DAC',       'Design Automation Conference',                                                           'A',  '4606', 'CORE2018'),
-			('FSR',       'International Conference on Field and Service Robotics',                                 'A',  '4602', 'CORE2018'),
-			('CDC',       'IEEE Conference on Decision and Control',                                                'A',  '4009', 'CORE2018'),
-			('ASAP',      'International Conference on Application-specific Systems, Architectures and Processors', 'A',  '4606', 'CORE2018'),
-			('ISR',       'International Symposium on Robotics',                                                    'A',  '4007', 'CORE2018'),
-			('ISSCC',     'IEEE International Solid-State Circuits Conference',                                     'A',  '4009', 'CORE2018'),
+		cfps = pd.concat(ignore_index=True, objs=[cfps, pd.DataFrame(columns=cfps.columns, data=[
+			('MICRO',		'International Symposium on Microarchitecture',					'A',  'CORE2018', '4601'),
+			('VLSI',		'Symposia on VLSI Technology and Circuits',						'A',  'CORE2018', '4009'),
+			('ICC',			'IEEE International Conference on Communications',				'B',  'CORE2018', '4006'),
+			('IEEE RFID',	'IEEE International Conference on Radio Frequency '
+							'Identification',												'B',  'CORE2018', '4006'),
+			('M2VIP',		'Mechatronics and Machine Vision in Practice',					'B',  'CORE2018', '4611'),
+			('ICASSP',		'IEEE International Conference on Acoustics, Speech '
+							'and Signal Processing',										'B',  'CORE2018', '4006'),
+			('RSS',			'Robotics: Science and Systems',								'A*', 'CORE2018', '4611'),
+			('BuildSys',	'ACM International Conference on Systems for Energy-Efficient '
+							'Built Environments',											'A',  'CORE2018', '4606'),
+			('DAC',			'Design Automation Conference',									'A',  'CORE2018', '4606'),
+			('FSR',			'International Conference on Field and Service Robotics',		'A',  'CORE2018', '4602'),
+			('CDC',			'IEEE Conference on Decision and Control',						'A',  'CORE2018', '4009'),
+			('ASAP',		'International Conference on Application-specific Systems, '
+							'Architectures and Processors',									'A',  'CORE2018', '4606'),
+			('ISR',			'International Symposium on Robotics',							'A',  'CORE2018', '4007'),
+			('ISSCC',		'IEEE International Solid-State Circuits Conference',			'A',  'CORE2018', '4009'),
 
-			('RANDOM',	   'International Workshop on Randomization and Computation',								'A',  '4613', 'CORE2021'),
-			('SIMULTECH',  'International Conference on Simulation and Modeling Methodologies, Technologies '
-						   'and Applications',																		'C',  '4606', 'CORE2021'),
-			('ICCS',       'International Conference on Conceptual Structures',										'B',  '4613', 'CORE2021'),
-		]
-		for acronym, name, rank, code, ranking in manual:
-			yield Conference(name, acronym, rank, forcodes.get(code, None), ranking)
+			('RANDOM',		'International Workshop on Randomization and Computation',		'A',  'CORE2021', '4613'),
+			('SIMULTECH',	'International Conference on Simulation and '
+							'Modeling Methodologies, Technologies and Applications',		'C',  'CORE2021', '4606'),
+			('ICCS',		'International Conference on Conceptual Structures',			'B',  'CORE2021', '4613'),
+		])])
 
-		if non_standard_ranks:
+		cfps['title'] = cfps['title'].transform(cls.strip_trailing_paren)
+
+		cfps['acronym'] = cfps['acronym'].str.replace(r'^(IEEE|ACM)[-_/ ]', '', regex=True)
+
+		with open(cls._for_file, 'r') as f:
+			forcodes = json.load(f)
+
+		cfps['field'] = cfps['field'].map(forcodes)
+
+		# Some manual corrections applied to the CORE database:
+		# - ISC changed their acronym to "ISC HPC"
+		# - Searching cfps for Euro-Par finds EuroPar, but not the other way around
+		cfps.loc[cfps['acronym'].eq('ISC') & cfps['title'].eq('ISC High Performance'), 'acronym'] += ' HPC'
+		cfps.loc[cfps['acronym'].eq('EuroPar') &
+				 cfps['title'].eq('International European Conference on Parallel and Distributed Computing'),
+				 'acronym'] = 'Euro-Par'
+
+		text_ranks = cfps['rank']
+		non_standard_ranks = cfps['rank'][text_ranks.isna() & cfps['rank'].notna()].value_counts()
+		cfps['rank'] = text_ranks
+
+		# Also normalize rankings
+		local_ranks = cfps['rank'].str.startswith('National') | cfps['rank'].str.startswith('Regional')
+		local_places = cfps['rank'].where(local_ranks).str[8:].str.strip('(): -').where(lambda s: s.str.len().gt(0))
+		local_places = local_places.str.title().replace({'Usa': 'USA', 'S. korea': 'Korea'})
+
+		cfps.loc[local_ranks, 'rank'] = cfps['rank'][local_ranks].str[:8]
+		cfps.loc[local_places.notna(), 'rank'] += ': ' + local_places.dropna()
+
+		standard_ranks = local_ranks | cfps['rank'].str.match(r'^(Australasian )?[A-Z]\*?$')
+		non_standard_ranks = cfps['rank'][~standard_ranks].value_counts()
+		cfps['rank'] = cfps['rank'].where(standard_ranks)
+
+		if len(non_standard_ranks):
 			print('Non-standard ratings:')
 			width = max(map(len, non_standard_ranks.keys())) + 3
-			for key, num in non_standard_ranks.most_common():
+			for key, num in non_standard_ranks.items():
 				print(f'{key:{width}} {num}')
 
-
-	@classmethod
-	def _save_confs(cls, conflist):
-		""" Save conferences to a file where to cache them.  """
-		with open(cls._core_file, 'w') as csv:
-			print('acronym;title;ranksys;rank;field', file=csv)
-			for conf in conflist:
-				try:
-					print(';'.join((conf.acronym, conf.title, conf.ranksys[0], conf.rank[0] or '', conf.field)), file=csv)
-				except TypeError:
-					print(conf.acronym, conf.title, conf.ranksys, conf.rank, conf.field, file=sys.stderr)
-					raise
-
-
-
-	@classmethod
-	def _load_confs(cls):
-		""" Load conferences from a file where we have the values cached cleanly.  """
-		f_age = datetime.datetime.fromtimestamp(os.stat(cls._core_file).st_mtime)
-		if datetime.datetime.today() - f_age > datetime.timedelta(days = 1):
-			raise FileNotFoundError('Cached file too old')
-
-		with open(cls._core_file, 'r') as f:
-			assert 'acronym;title;ranksys;rank;field' == next(f).strip()
-			confs = [l.strip().split(';') for l in f]
-
-		with click.progressbar(confs, label='loading CORE list…') as prog:
-			return [Conference(cls.strip_trailing_paren(tit), acr, rnk, fld, sys) for acr, tit, sys, rnk, fld in prog]
-
-
-	@classmethod
-	def update_confs(cls):
-		""" Refresh and make a generator of all conferences listed on the core site, as dicts """
-		conf_list = []
-		for conf in sorted(cls._fetch_confs()):
-			if not conf_list or conf != conf_list[-1]:
-				conf_list.append(conf)
-		cls._save_confs(conf_list)
-
-		return conf_list
-
-
-	@classmethod
-	def get_confs(cls):
-		""" Generator of all conferences listed on the core site, as dicts """
-		try:
-			return list(cls._load_confs())
-		except FileNotFoundError:
-			return cls.update_confs()
+		return cfps.sort_values(by=[*cfps.columns]).drop_duplicates()
 
 
 def json_encode_dates(obj):
@@ -1080,19 +1207,22 @@ def cfps(out, debug=False):
 	# use years from 6 months ago until next year
 	years = range((today - datetime.timedelta(days = 366 / 2)).year, (today + datetime.timedelta(days = 365)).year + 1)
 
-	print('{{"years": {}, "columns":'.format([y for y in years if y >= today.year]), file=out);
-	json.dump(sum(([col + ' ' + str(y) for col in CallForPapers.columns()] for y in years if y >= today.year), Conference.columns()), out)
+	print(f'{{"years": {[y for y in years if y >= today.year]}, "columns":', file=out)
+	json.dump(sum(([f'{col} {y}' for col in CallForPapers.columns()] for y in years if y >= today.year),
+				  Conference.columns()), out)
 	print(',\n"data": [', file=out)
 	writing_first_conf = True
 
-	confs = sorted(Ranking.merge(CoreRanking.get_confs(), GGSRanking.get_confs()))
+	core, ggs = CoreRanking.get_confs(), GGSRanking.get_confs()
+	confs = Ranking.merge(core, ggs).sort_values()
 
-	progressbar = click.progressbar(confs, label='fetching calls for papers…', update_min_steps=len(confs) // 1000 if not RequestWrapper.delay else 1,
-									item_show_func=lambda conf: f'{conf.acronym} {conf.title}' if conf is not None else '')
+	progressbar = click.progressbar(confs, label='fetching calls for papers…',
+									update_min_steps=len(confs) // 1000 if not RequestWrapper.delay else 1,
+									item_show_func=lambda conf: '' if conf is None else f'{conf.acronym} {conf.title}')
 
 	with open('parsing_errors.txt', 'w') as errlog, progressbar as conf_iterator:
 		for conf in conf_iterator:
-			values = conf.values()
+			values = list(conf.values())
 			cfps_found = 0
 			last_year = None
 			for y in years:
@@ -1118,20 +1248,23 @@ def cfps(out, debug=False):
 					if debug:
 						print(f'> {e}\n')
 					cfp = None
+
 				except CFPCheckError as e:
 					if debug:
 						print(f'> {e}\n')
 					else:
 						clean_print(e)
-					print(str(e).replace(':', ';', 1) + ': no satisfying correction heuristic;' + cfp.url_cfp + ';ignored', file=errlog)
+					print(f"{str(e).replace(':', ';', 1)}: no satisfying correction heuristic;{cfp.url_cfp};ignored",
+						 file=errlog)
 					cfp = None
+
 				else:
 					if debug:
 						print('> Found\n')
 
 				if not cfp:
 					if last_year:
-						cfp = CallForPapers(conf, y, desc = last_year.desc, link = last_year.link, url_cfp = last_year.url_cfp)
+						cfp = CallForPapers(conf, y, last_year.desc, last_year.url_cfp, last_year.link)
 					else:
 						cfp = CallForPapers(conf, y)
 
@@ -1142,8 +1275,10 @@ def cfps(out, debug=False):
 				last_year = cfp
 
 			if cfps_found:
-				if not writing_first_conf: print(',', file=out)
-				else: writing_first_conf = False
+				if not writing_first_conf:
+					print(',', file=out)
+				else:
+					writing_first_conf = False
 
 				# filter out empty values for non-date columns
 				json.dump(values, out, default = json_encode_dates)
@@ -1152,7 +1287,7 @@ def cfps(out, debug=False):
 		scrape_date = datetime.datetime.fromtimestamp(min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html')))
 	except ValueError:
 		scrape_date = datetime.datetime.now()
-	print(scrape_date.strftime('\n], "date":"%Y-%m-%d"}'), file=out)
+	print(f'\n], "date": "{scrape_date.strftime("%Y-%m-%d")}"}}', file=out)
 
 
 if __name__ == '__main__':
