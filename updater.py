@@ -237,7 +237,8 @@ class ConfMetaData:
 		'computati': 'computation', 'implementati': 'implementation', 'languag': 'language', 'traini': 'training',
 		'servic': 'services', 'intenational': 'international', 'complexi': 'complexity', 'storytelli': 'storytelling',
 		'measureme': 'measurement', 'comprehensi': 'comprehension', 'synthe': 'synthesis', 'evaluatin': 'evaluation',
-		'technologi': 'technology',
+		'intermational': 'international', 'internaltional': 'international', 'interational': 'international',
+		'technologi': 'technology', 'applciation': 'application',
 	}
 
 	# NB simple acronym management, only works while first word -> acronym mapping is unique
@@ -259,7 +260,7 @@ class ConfMetaData:
 	_acronym_start = {words[0]: acr for acr, words in _acronyms.items()}
 	_sig_start = {normalize(desc.split()[0]): group for group, desc in _sig.items() if group != 'ART'}
 
-	_dict = enchant.Dict('EN_US')
+	_dict = enchant.DictWithPWL('EN_US', 'dict.txt')
 	_misspelled: dict[str, list[tuple[str, ...]]] = {}
 
 	topic_keywords: list[str]
@@ -282,15 +283,17 @@ class ConfMetaData:
 
 	def classify_words(self, string: str, *ignored: str):
 		# lower case, replace characters in dict by whitepace, repeated spaces will be removed by split()
-		normalized = (normalize(w) for w in string.translate({ord(c): ' ' for c in "-/&,():_~'.[]"}).split())
+		normalized = (normalize(w) for w in string.translate({ord(c): ' ' for c in "-/&,():_~'\".[]|*@"}).split())
 		words = PeekIter(w for w in normalized
 						 if w not in {'', 'the', 'on', 'for', 'of', 'in', 'and', *ignored, ''.join(ignored)})
 
 		# semantically filter conference editors/organisations, special interest groups (sig...), etc.
 		for w in words:
+			# Only manually fix typos, afraid of over-correcting
 			try:
 				w = self._replace[w]
-			except KeyError: pass
+			except KeyError:
+				pass
 
 			if w in self._orgcmp:
 				self.organisers.add(self._orgcmp[w])
@@ -312,11 +315,12 @@ class ConfMetaData:
 
 				if words.peek(len(next_words)) == next_words:
 					self.topic_keywords.append(normalize(acronym))
-					for _ in next_words: next(words)
+					for _ in next_words:
+						next(words)
 					continue
 
 				# TODO some acronyms have special characters, e.g. A/V, which means they appear as 2 words
-			except KeyError:
+			except (KeyError, IndexError):
 				pass
 
 			# Some specific attention brought to ACM special interest groups
@@ -339,7 +343,8 @@ class ConfMetaData:
 							for _ in next_words: next(words)
 							continue
 
-				except (KeyError, IndexError): pass
+				except (KeyError, IndexError):
+					pass
 
 			# three-part management for ordinals, to handle joint/separate words: twenty-fourth, 10 th, etc.
 			if w in self._tens:
@@ -357,7 +362,8 @@ class ConfMetaData:
 					if words.peek() == inflection.ordinal(int(w)):
 						self.number.add(w + next(words))
 						continue
-				except IndexError:pass
+				except IndexError:
+					pass
 
 			m = ConfMetaData._ordinal.match(w)
 			if m:
@@ -369,7 +375,11 @@ class ConfMetaData:
 
 			# Log words marked as incorrect in misspellings - ad-hoc ignored words can be used as conf identifiers
 			if self._dict and not self._dict.check(w):
-				if w not in (normalize(s) for s in self._dict.suggest(w)):
+				if self._dict.check(w.capitalize()) or self._dict.check(w.title()):
+					pass
+				elif w.endswith('um') and self._dict.check(f'{w[:-2]}a'.capitalize()):
+					pass  # inflection overcorrects (often proper) nouns asia -> asium, malaysia -> malaysium, etc.
+				elif w not in (normalize(s).replace('-', '') for s in self._dict.suggest(w)):
 					self._misspelled.setdefault(w, []).append((*ignored, string))
 
 
@@ -1228,8 +1238,10 @@ def json_encode_dates(obj: datetime.date):
 @click.group(invoke_without_command=True, chain=True)
 @click.option('--cache/--no-cache', default=True, help='Cache files in ./cache')
 @click.option('--delay', type=float, default=0, help='Delay between requests to the same domain')
+@click.option('--report-spelling/--no-report-spelling', default=True,
+			  help='Whether to print a report on miss-spelled words')
 @click.pass_context
-def update(ctx: click.Context, cache: bool, delay: float):
+def update(ctx: click.Context, cache: bool, delay: float, report_spelling: bool):
 	""" Update the Core-CFP data. If no command is provided, update_confs is run.  """
 	RequestWrapper.set_delay(delay)
 	RequestWrapper.set_use_cache(cache)
@@ -1237,6 +1249,14 @@ def update(ctx: click.Context, cache: bool, delay: float):
 	if not ctx.invoked_subcommand:
 		# Default is to_update calls for papers
 		cfps()
+
+
+@update.result_callback()
+def process_result(*args, **kwargs):
+	print(f'Encountered {len(ConfMetaData._misspelled)} unrecognized miss-spelled words')
+	if kwargs.get('report_spelling') and ConfMetaData._misspelled:
+		ninfo = pd.Series(ConfMetaData._misspelled).str.len()
+		print(ninfo.sort_values(ascending=False).map(lambda n: f'×{n}' if n > 1 else '').to_string())
 
 
 @update.command()

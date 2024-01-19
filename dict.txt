@@ -1,0 +1,113 @@
+# mostly topics words that enchant doesn’t know about
+3D
+aeroacoustic
+ageing
+automata
+ASIC
+bioinformatics
+biomechatronic
+centric
+CFP
+combinatorial
+combinatoric
+computability
+cryptographic
+cryptology
+cyber
+cybersecurity
+cyberworld
+devops
+deontic
+DSP
+econference
+ehealth
+electro
+elsevier
+esystem
+geoscience
+geospatial
+IC
+ICT
+inclusivity
+IOT
+mechatronic
+methodolgy
+MPI
+multiculturality
+nanoelectronic
+nanoscience
+neuroradiology
+NLP
+OLAP
+P2P
+personalization
+photonic
+QOS
+RAS
+reproducibility
+RFID
+satisfiability
+scalable
+scopus
+SDN
+socio
+softwarization
+softwarized
+steganography
+survivability
+telematic
+teletraffic
+UAE
+variational
+VLSI
+WLAN
+Ibero-American
+
+# Unsure of those:
+# affective
+# aiaa
+# bd
+# cci
+# centric
+# coling
+# compendex
+# crc
+# cvf
+# cvpr
+# dasc
+# drife
+# eacsl
+# eai
+# emb
+# engenharium
+# esci
+# evo
+# fse
+# gamm
+# hammamet
+# hci
+# holonic
+# iat
+# icss
+# iet
+# imac
+# internacional
+# iske
+# itg
+# mtt
+# nom
+# pari
+# pes
+# petri
+#
+# sice
+# sige
+# symposion
+# ubt
+# ursi
+# wafe
+# waim
+# wg
+# wg8
+# wma
+
