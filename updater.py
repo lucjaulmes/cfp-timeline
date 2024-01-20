@@ -273,7 +273,7 @@ class ConfMetaData:
 	def __init__(self, title: str, conf_acronym: str, year: str | int = ''):
 		super().__init__()
 
-		self.acronym_words = self._sep.split(conf_acronym)
+		self.acronym_words = self._sep.split(conf_acronym.lower())
 		self.topic_keywords = []
 		self.organisers = set()
 		self.number = set()
@@ -441,6 +441,11 @@ class ConfMetaData:
 		if left == right:
 			return -40 * len(left) * len(right)
 
+		# Special case se we don’t match e.g. IFIP SEC with IFIP-DSS: ignore leading word if it’s an organizer
+        # Note that an organiser name can be a conference name, e.g. usenix
+		if left[1:] and right[1:] and left[0] == right[0] and left[0] in cls._orgcmp:
+			return cls._acronym_diff(left[1:], right[1:])
+
 		left_prefixes = {''.join(left[:n + 1]): n for n in range(len(left))}
 		right_prefixes = {''.join(right[:n + 1]): n for n in range(len(right))}
 
@@ -539,8 +544,11 @@ class Conference(ConfMetaData):
 
 
 	@classmethod
-	def merge(cls, left: Conference, right: Conference, copy=True) -> Conference:
-		new = copy_.copy(left) if copy else left
+	def merge(cls, left: Conference, right: Conference) -> Conference:
+		new = copy_.copy(left)
+		# In case we have matched different acronyms, keep the version with most separations/words
+		if len(left.acronym_words) < len(right.acronym_words):
+			new.acronym, new.acronym_words = right.acronym, right.acronym_words
 		new.rank = left.rank + right.rank
 		new.ranksys = left.ranksys + right.ranksys
 		return new
@@ -823,8 +831,8 @@ class CallForPapers(ConfMetaData):
 
 
 	def rating(self) -> tuple[float, int, int, float, float]:
-		""" Rate the (in)adequacy of the cfp with its conference: lower is better. """
-		return self._difference(self.conf)[:5]
+		""" Rate the (in)adequacy of the cfp with its conference: lower is better. Just drop year comparison. """
+		return self._difference(self.conf)[:-1]
 
 
 	def __str__(self) -> str:
@@ -1213,14 +1221,6 @@ class CoreRanking(Ranking):
 			forcodes = json.load(f)
 
 		cfps['field'] = cfps['field'].map(forcodes)
-
-		# Some manual corrections applied to the CORE database:
-		# - ISC changed their acronym to "ISC HPC"
-		# - Searching cfps for Euro-Par finds EuroPar, but not the other way around
-		cfps.loc[cfps['acronym'].eq('ISC') & cfps['title'].eq('ISC High Performance'), 'acronym'] += ' HPC'
-		cfps.loc[cfps['acronym'].eq('EuroPar') &
-				 cfps['title'].eq('International European Conference on Parallel and Distributed Computing'),
-				 'acronym'] = 'Euro-Par'
 
 		text_ranks = cfps['rank']
 		non_standard_ranks = cfps['rank'][text_ranks.isna() & cfps['rank'].notna()].value_counts()
