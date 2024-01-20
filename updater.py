@@ -26,6 +26,8 @@ import warnings
 
 from typing import cast, ClassVar, Generic, Iterator, Match, overload, TextIO, TypeVar
 
+_term_columns = shutil.get_terminal_size().columns
+
 # Annoying irrelevant pandas warning from .str.contains
 warnings.filterwarnings('ignore', 'This pattern is interpreted as a regular expression, and has match groups')
 # We’re parsing some xhtml
@@ -43,7 +45,7 @@ def clean_print(*args, **kwargs):
 	""" Line print(), but first erase anything on the current line (e.g. a progress bar) """
 	if args and kwargs.get('file', sys.stdout).isatty():
 		if not hasattr(clean_print, '_clear_line'):
-			clean_print._clear_line = f'\r{" " * shutil.get_terminal_size().columns}\r{{}}'
+			clean_print._clear_line = f'\r{" " * _term_columns}\r{{}}'
 		args = (clean_print._clear_line.format(args[0]), *args[1:])
 	print(*args, **kwargs)
 
@@ -614,7 +616,6 @@ class CallForPapers(ConfMetaData):
 			try:
 				self.dates[field] = prev_cfp.dates[field].replace(year = prev_cfp.dates[field].year + 1)
 			except ValueError:
-				print(prev_cfp.dates[field], prev_cfp.dates[field].month, prev_cfp.dates[field].day)
 				assert prev_cfp.dates[field].month == 2 and prev_cfp.dates[field].day == 29
 				self.dates[field] = prev_cfp.dates[field].replace(year = prev_cfp.dates[field].year + 1, day = 28)
 
@@ -1308,9 +1309,15 @@ def cfps(out: TextIO, debug: bool = False):
 	core, ggs = CoreRanking.get_confs(), GGSRanking.get_confs()
 	confs = Ranking.merge(core, ggs).sort_values()
 
-	progressbar = click.progressbar(confs, label='fetching calls for papers…',
-									update_min_steps=len(confs) // 1000 if not RequestWrapper.delay else 1,
-									item_show_func=lambda conf: '' if conf is None else f'{conf.acronym} {conf.title}')
+	def prog_show_conf(conf: Conference | None, width: int = _term_columns - 50 - 36) -> str:
+		if conf is None:
+			return ''
+		info = f'{conf.acronym} {conf.title}'
+		return f'{info[:width - 3]}...' if len(info) > width else info
+
+	progressbar = click.progressbar(confs, label='fetching calls for papers…', width=36,
+									item_show_func=prog_show_conf, length=len(confs),
+									update_min_steps=len(confs) // 1000 if not RequestWrapper.delay else 1)
 
 	with open('parsing_errors.txt', 'w') as errlog, progressbar as conf_iterator:
 		for conf in conf_iterator:
