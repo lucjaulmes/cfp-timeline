@@ -1022,7 +1022,18 @@ class Ranking:
 
 
 	@classmethod
-	def merge(cls, confs_a: pd.Series[Conference], confs_b: pd.Series[Conference]) -> pd.Series[Conference]:
+	def merge(cls, *confs: pd.Series[Conference]) -> pd.Series[Conference]:
+		merged_confs, *confs_to_merge = confs
+		for conf in confs_to_merge:
+			merged_confs = cls._merge(merged_confs, conf)
+
+		print(f'Merged conferences {" + ".join(str(len(series)) for series in confs)} = {len(merged_confs)} total'
+			  f' + {sum(map(len, confs)) - len(merged_confs)} in common')
+		return merged_confs
+
+
+	@classmethod
+	def _merge(cls, confs_a: pd.Series[Conference], confs_b: pd.Series[Conference]) -> pd.Series[Conference]:
 		""" Merge 2 sources of conferences into a single one, merging duplicate conferences and keeping unique ones. """
 		# Mapping match-acronym to conference-id
 		idx_a = pd.Series(confs_a.index, index=confs_a.map(operator.attrgetter('acronym')).str.upper(), name='id')
@@ -1033,8 +1044,8 @@ class Ranking:
 		multi_word_a = idx_a.index[idx_a.index.str.contains(ConfMetaData._sep)].to_series().str.split(ConfMetaData._sep)
 		idx_a = pd.concat([
 			idx_a,
-			idx_a.loc[multi_word_a.index].rename(index=multi_word_a.str.join('')),
-			idx_a.loc[multi_word_a.index].rename(index=multi_word_a.str[0]),
+			idx_a.loc[multi_word_a.index].rename(index=multi_word_a.str.join('').to_dict()),
+			idx_a.loc[multi_word_a.index].rename(index=multi_word_a.str[0].to_dict()),
 		])
 		multi_word_b = idx_b.index[idx_b.index.str.contains(ConfMetaData._sep)].to_series().str.split(ConfMetaData._sep)
 		idx_b = pd.concat([
@@ -1080,8 +1091,6 @@ class Ranking:
 			lambda row: Conference.merge(confs_a[row['id_a']], confs_b[row['id_b']]),
 			axis='columns'
 		)])
-		print(f'Merged conferences {len(confs_a)} + {len(confs_b)} = {len(merged)} total'
-			  f' + {len(confs_a) + len(confs_b) - len(merged)} in common')
 
 		diff_acronyms = merged_ids.transform({
 			'id_a': lambda col: col.map(confs_a).map(operator.attrgetter('acronym')).str.upper(),
@@ -1307,7 +1316,10 @@ def cfps(out: TextIO, debug: bool = False):
 	writing_first_conf = True
 
 	core, ggs = CoreRanking.get_confs(), GGSRanking.get_confs()
-	confs = Ranking.merge(core, ggs).sort_values()
+	manual = pd.Series([
+		Conference('USENIX ATC', 'Usenix Annual Technical Conference'),
+	])
+	confs = Ranking.merge(core, ggs, manual).sort_values()
 
 	def prog_show_conf(conf: Conference | None, width: int = _term_columns - 50 - 36) -> str:
 		if conf is None:
