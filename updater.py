@@ -263,6 +263,7 @@ class ConfMetaData:
 	_dict = enchant.DictWithPWL('EN_US', 'dict.txt')
 	_misspelled: dict[str, list[tuple[str, ...]]] = {}
 
+	acronym_words = list[str]
 	topic_keywords: list[str]
 	organisers: set[str]
 	number: set[str]
@@ -272,6 +273,7 @@ class ConfMetaData:
 	def __init__(self, title: str, conf_acronym: str, year: str | int = ''):
 		super().__init__()
 
+		self.acronym_words = self._sep.split(conf_acronym)
 		self.topic_keywords = []
 		self.organisers = set()
 		self.number = set()
@@ -406,7 +408,7 @@ class ConfMetaData:
 
 	@classmethod
 	def _list_diff(cls, left: list[str], right: list[str]) -> float:
-		""" Return an int quantifying the difference between the sets
+		""" Return a float quantifying the difference between the lists of words.
 
 		Uset the same as `~set_diff` and add penalties for dfferences in word order.
 		"""
@@ -429,13 +431,41 @@ class ConfMetaData:
 			return n_l + n_r + 10 * n_l * n_r - 4 * n_common + sort_diff
 
 
-	def _difference(self, other: ConfMetaData) -> tuple[int, int, float, float, int]:
+	@classmethod
+	def _acronym_diff(cls, left: list[str], right: list[str]) -> float:
+		""" Return a float quantifying the difference between lists of words in acronyms.
+
+		More specific than _list_diff as we always want the first word to be an exact match,
+		but we may reinterpret contiguous words as a single one.
+		"""
+		if left == right:
+			return -40 * len(left) * len(right)
+
+		left_prefixes = {''.join(left[:n + 1]): n for n in range(len(left))}
+		right_prefixes = {''.join(right[:n + 1]): n for n in range(len(right))}
+
+		common = left_prefixes.keys() & right_prefixes.keys()
+		if not common:
+			return 1000
+
+		prefix = max(common, key=len)
+		nsep_left_prefix = left_prefixes[prefix]
+		nsep_right_prefix = right_prefixes[prefix]
+
+		# penalty of 1 per ignored separator, 10 per ignored word
+		return nsep_left_prefix + nsep_right_prefix + 10 * cls._list_diff([prefix, *left[nsep_left_prefix + 1:]],
+																		  [prefix, *right[nsep_right_prefix + 1:]])
+
+
+	def _difference(self, other: ConfMetaData) -> tuple[float, int, int, float, float, int]:
 		""" Compare the two ConfMetaData instances and rate how similar they are.  """
-		return (self._set_diff(self.type_, other.type_),
-				self._set_diff(self.organisers, other.organisers),
-				self._list_diff(self.topic_keywords, other.topic_keywords),
-				self._list_diff(self.qualifiers, other.qualifiers),
-				self._set_diff(self.number, other.number)
+		return (
+			self._acronym_diff(self.acronym_words, other.acronym_words),
+			self._set_diff(self.type_, other.type_),
+			self._set_diff(self.organisers, other.organisers),
+			self._list_diff(self.topic_keywords, other.topic_keywords),
+			self._list_diff(self.qualifiers, other.qualifiers),
+			self._set_diff(self.number, other.number)
 		)
 
 
@@ -792,9 +822,9 @@ class CallForPapers(ConfMetaData):
 		return max(self.dates.values())
 
 
-	def rating(self) -> tuple[int, int, float, float]:
+	def rating(self) -> tuple[float, int, int, float, float]:
 		""" Rate the (in)adequacy of the cfp with its conference: lower is better. """
-		return self._difference(self.conf)[:4]
+		return self._difference(self.conf)[:5]
 
 
 	def __str__(self) -> str:
@@ -838,7 +868,6 @@ class WikicfpCFP(CallForPapers):
 		to correspond to the conference and year requested.
 		"""
 		test_words = ConfMetaData._sep.split(conf.acronym.lower())
-		first_test = {''.join(test_words[:n]): n for n in range(1, len(test_words) + 1)}
 		def match_acronym(text):
 			if text is None:
 				return False
@@ -849,16 +878,7 @@ class WikicfpCFP(CallForPapers):
 				return False
 			if year != cfp_year or not words:
 				return False
-			# We want the first word to match, but "foo-bar" could match "foo bar" and "foobar"
-			first_word = {''.join(words[:n]): n for n in range(1, len(words) + 1)}
-			intersect = first_test.keys() & first_word.keys()
-			if not intersect:
-				return False
-			# Get one of the common words
-			w = intersect.pop()
-			n, m = first_test[w], first_word[w]
-			return 0 > ConfMetaData._list_diff([''.join(words[:n]), *words[n:]],
-											   [''.join(test_words[:m]), *test_words[m:]])
+			return 100 > ConfMetaData._acronym_diff(test_words, words)
 
 		for conf_link in soup.find_all('a', href=True, string=match_acronym):
 			# find links name "acronym year" and got to first parent <tr>
@@ -1034,7 +1054,6 @@ class Ranking:
 			best_matches = best_matches.loc[best_matches.groupby('id_a')['scores'].idxmin()]
 			# Refine by best (a, b) pairs for each b; we don’t want to merge one b with several a
 			best_matches = best_matches.loc[best_matches.groupby('id_b')['scores'].idxmin()]
-			print('BEST MATCHES', len(best_matches))
 
 			if not best_matches.size:
 				break
