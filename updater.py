@@ -858,7 +858,6 @@ class CallForPapers(ConfMetaData):
 class WikicfpCFP(CallForPapers):
 	_base_url = 'http://www.wikicfp.com'
 	_url_cfpsearch = urljoin(_base_url, '/cfp/servlet/tool.search')
-	_url_cfpseries = urljoin(_base_url, '/cfp/series?t=c&i={initial}')
 	_url_cfpevent  = urljoin(_base_url, '/cfp/servlet/event.showcfp') #?eventid={cfpid}
 	_url_cfpevent_query = {'copyownerid': ['90704']} # override some parameters
 
@@ -867,15 +866,6 @@ class WikicfpCFP(CallForPapers):
 	def parse_date(cls, dt: str) -> datetime.date:
 		# some ISO 8601 or RFC 3339 format
 		return datetime.datetime.strptime(dt, '%Y-%m-%dT%H:%M:%S').date()
-
-
-	@classmethod
-	def parse_confseries(cls, soup: bs4.BeautifulSoup) -> list[tuple[str, ...]]:
-		""" Given the BeautifulSoup of a CFP series list page, generate all (acronym, description, url) tuples
-		for links that point to conference series.
-		"""
-		links = soup.find_all('a', {'href': lambda l: l.startswith('/cfp/program')})
-		return [l.parent.text.strip().split(' - ', 1) + tuple(urljoin(cls._base_url, l['href']),) for l in links]
 
 
 	@classmethod
