@@ -17,9 +17,8 @@ import inflection
 import requests
 import datetime
 import operator
+import functools
 import pandas as pd
-from functools import total_ordering
-from collections import Counter
 from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs, urlencode
 import bs4
 import warnings
@@ -265,7 +264,7 @@ class ConfMetaData:
 	_dict = enchant.DictWithPWL('EN_US', 'dict.txt')
 	_misspelled: dict[str, list[tuple[str, ...]]] = {}
 
-	acronym_words = list[str]
+	acronym_words: list[str]
 	topic_keywords: list[str]
 	organisers: set[str]
 	number: set[str]
@@ -495,7 +494,7 @@ class ConfMetaData:
 		return f'{type(self).__name__}({", ".join(self.str_info())})'
 
 
-@total_ordering
+@functools.total_ordering
 class Conference(ConfMetaData):
 	__slots__ = ('acronym', 'title', 'rank', 'ranksys', 'field')
 	# unified ranks from all used sources, lower is better
@@ -532,11 +531,6 @@ class Conference(ConfMetaData):
 	def values(self, sort: bool = False) -> tuple[str, str, int | tuple[str | None, ...], tuple[str | None, ...], str]:
 		""" What we'll show """
 		return (self.acronym, self.title, self.ranksort() if sort else self.rank, self.ranksys, self.field)
-
-
-	def to_series(self) -> pd.Series[str]:
-		""" Convert to a series, allows to convert a series of Conferences to a DataFrame of strings """
-		return pd.Series([self.acronym, self.title, self.rank[0], self.ranksys[0], self.field], index=self.__slots__)
 
 
 	@classmethod
@@ -584,6 +578,8 @@ class CallForPapers(ConfMetaData):
 	_url_cfpsearch: ClassVar[str]
 	_fill_id: ClassVar[int] = sys.maxsize
 
+	empty_series: ClassVar[pd.Series] = pd.Series(None, index=__slots__)
+
 	acronym: str
 	desc: str
 	year: int
@@ -595,7 +591,7 @@ class CallForPapers(ConfMetaData):
 	def __init__(self, acronym: str, year: int | str, id_: int | None = None, desc: str = '',
 				 url_cfp: str | None = None, link: str | None = None):
 		# Initialize parent parsing with the description
-		super(CallForPapers, self).__init__(desc, acronym, year)
+		super().__init__(desc, acronym, year)
 
 		self.acronym = acronym
 		self.id = self._fill_id if id_ is None else id_
@@ -607,22 +603,33 @@ class CallForPapers(ConfMetaData):
 		self.url_cfp = url_cfp
 
 		if id_ is None:
-			self._fill_id -= 1
+			CallForPapers._fill_id -= 1
 
 
-	def extrapolate_missing_dates(self, prev_cfp: CallForPapers):
+	def extrapolate_missing(self, prev_cfp: CallForPapers | None):
+		if pd.isna(prev_cfp) or prev_cfp is None:
+			return self
+
 		# NB: it isn't always year = this.year, e.g. the submission can be the year before the conference dates
+		year_shift = self.year - prev_cfp.year
+		assert year_shift > 0, 'Should only extrapolate from past conferences'
 
-		# direct extrapolations to previous year + 1
+		if self.link == '(missing)':
+			self.link = prev_cfp.link
+
+		if self.url_cfp is None:
+			self.url_cfp = prev_cfp.url_cfp
+
+		# direct extrapolations to previous cfp + year_shift
 		for field in ('conf_start', 'submission'):
 			if field in self.dates or field not in prev_cfp.dates:
 				continue
 			n = self._date_fields.index(field)
 			try:
-				self.dates[field] = prev_cfp.dates[field].replace(year = prev_cfp.dates[field].year + 1)
+				self.dates[field] = prev_cfp.dates[field].replace(year=prev_cfp.dates[field].year + year_shift)
 			except ValueError:
 				assert prev_cfp.dates[field].month == 2 and prev_cfp.dates[field].day == 29
-				self.dates[field] = prev_cfp.dates[field].replace(year = prev_cfp.dates[field].year + 1, day = 28)
+				self.dates[field] = prev_cfp.dates[field].replace(year=prev_cfp.dates[field].year + year_shift, day=28)
 
 			self.orig[field] = False
 
@@ -637,6 +644,8 @@ class CallForPapers(ConfMetaData):
 			for field in (fields - self.dates.keys()) & prev_cfp.dates.keys():
 				self.dates[field] = self.dates[orig] + (prev_cfp.dates[field] - prev_cfp.dates[orig])
 				self.orig[field] = False
+
+		return self
 
 
 	@classmethod
@@ -777,7 +786,7 @@ class CallForPapers(ConfMetaData):
 
 
 	@classmethod
-	def find_link(cls, conf: Conference, year: int | str, debug: bool = False) -> CallForPapers:
+	def find_link(cls, conf: Conference, year: int | str, debug: bool = False) -> tuple[CallForPapers, float, int]:
 		""" Find the link to the conference page in the search page
 
 		Have parse_search extract links from the page's soup, then compute a rating for each and keep the best (lowest).
@@ -805,16 +814,16 @@ class CallForPapers(ConfMetaData):
 		if not best_candidate:
 			raise CFPNotFoundError('No link with rating < 1000 for {} {}'.format(conf.acronym, year))
 		else:
-			return best_candidate
+			return best_candidate, *best_score
 
 
 	@classmethod
-	def get_cfp(cls, conf: Conference, year: int | str, debug: bool = False) -> CallForPapers:
+	def get_cfp(cls, conf: Conference, year: int | str, debug: bool = False) -> tuple[CallForPapers, float, int]:
 		""" Fetch the cfp from wiki-cfp for the given conference at the given year.  """
 		try:
-			cfp = cls.find_link(conf, year, debug=debug)
+			cfp, cmp, miss = cls.find_link(conf, year, debug=debug)
 			cfp.fetch_cfp_data()
-			return cfp
+			return cfp, cmp, miss
 
 		except requests.exceptions.ConnectionError:
 			raise CFPNotFoundError('Connection error when fetching CFP for {} {}'.format(conf.acronym, year))
@@ -843,16 +852,13 @@ class CallForPapers(ConfMetaData):
 		return self._difference(conf)[:-1]
 
 
-	def __str__(self) -> str:
+	def str_info(self) -> list[str]:
 		vals = ['{}={}'.format(attr, getattr(self, attr)) for attr in self.__slots__
 			    if attr not in {'dates', 'orig'} and (getattr(self, attr, None) or '(missing)') != '(missing)']
 		if self.dates:
 			vals.append('dates={' + ', '.join(f"{field}:{self.dates[field]}{'*' if not self.orig[field] else ''}"
 											  for field in self._date_fields if field in self.dates) + '}')
-		dat = super(CallForPapers, self).__str__()
-		if dat:
-			vals.append(dat)
-		return '{}({})'.format(type(self).__name__, ', '.join(vals))
+		return vals
 
 
 class WikicfpCFP(CallForPapers):
@@ -1071,6 +1077,9 @@ class Ranking:
 		])
 
 		common = idx_a.index.drop_duplicates().intersection(idx_b.index.drop_duplicates())
+		if not len(common):
+			return pd.concat([confs_a, confs_b], ignore_index=True)
+
 		# Build all the pairs of elements we want to compare
 		compared_pairs = pd.concat(ignore_index=True, objs=[
 			pd.merge(idx_a[[acronym]], idx_b[[acronym]], how='cross', suffixes=('_a', '_b')) for acronym in common
@@ -1317,19 +1326,13 @@ def ggs():
 
 
 @update.command()
-@click.option('--out', default='cfp.json', help='Output file for CFPs', type=click.File('w'))
+@click.option('--out', 'out_file', default='cfp.json', help='Output file for CFPs', type=click.Path(dir_okay=False))
 @click.option('--debug/--no-debug', default=False, help='Show debug output')
-def cfps(out: TextIO, debug: bool = False):
+def cfps(out_file: str, debug: bool = False):
 	""" Update the calls for papers from the conference lists  """
 	today = datetime.datetime.now().date()
 	# use years from 6 months ago until next year
-	years = range((today - datetime.timedelta(days = 366 / 2)).year, (today + datetime.timedelta(days = 365)).year + 1)
-
-	print(f'{{"years": {[y for y in years if y >= today.year]}, "columns":', file=out)
-	json.dump(sum(([f'{col} {y}' for col in CallForPapers.columns()] for y in years if y >= today.year),
-				  Conference.columns()), out)
-	print(',\n"data": [', file=out)
-	writing_first_conf = True
+	search_years = range((today - datetime.timedelta(days=183)).year, (today + datetime.timedelta(days=365)).year + 1)
 
 	core, ggs = CoreRanking.get_confs(), GGSRanking.get_confs()
 	manual = pd.Series([
@@ -1337,86 +1340,111 @@ def cfps(out: TextIO, debug: bool = False):
 	])
 	confs = Ranking.merge(core, ggs, manual).sort_values()
 
-	def prog_show_conf(conf: Conference | None, width: int = _term_columns - 50 - 36) -> str:
-		if conf is None:
+	def prog_show_conf(arg: tuple[int, Conference] | None, width: int = _term_columns - 50 - 36) -> str:
+		if arg is None:
 			return ''
-		info = f'{conf.acronym} {conf.title}'
+		info = f'{arg[1].acronym} {arg[1].title}'
 		return f'{info[:width - 3]}...' if len(info) > width else info
 
-	progressbar = click.progressbar(confs, label='fetching calls for papers…', width=36,
+	progressbar = click.progressbar(confs.items(), label='fetching calls for papers…', width=36,
 									item_show_func=prog_show_conf, length=len(confs),
 									update_min_steps=len(confs) // 1000 if not RequestWrapper.delay else 1)
 
+	conf_matching = []
+	cfps = {}
 	with open('parsing_errors.txt', 'w') as errlog, progressbar as conf_iterator:
-		for conf in conf_iterator:
-			values = list(conf.values())
-			cfps_found = 0
-			last_year = None
-			for y in years:
+		for conf_id, conf in conf_iterator:
+			for year in search_years:
 				if debug:
-					clean_print(f'Looking up CFP {conf} {y}')
+					clean_print(f'\nLooking up CFP {conf} {year}')
 				try:
-					cfp = WikicfpCFP.get_cfp(conf, y, debug=debug)
+					cfp, cmp, miss = WikicfpCFP.get_cfp(conf, year, debug=debug)
+
+					assert cfp.url_cfp is not None, 'By definition of a fetched CFP'
 
 					err = cfp.verify_conf_dates()
 					if err:
 						clean_print(err)
-						print(f"{err.replace(':', ';', 1)};{cfp.url_cfp};corrected", file=errlog)
+						print(';'.join([err.replace(':', ';', 1), cfp.url_cfp, 'corrected']), file=errlog)
 
 					err = cfp.verify_submission_dates()
 					if err:
 						clean_print(err)
-						print(f"{err.replace(':', ';', 1)};{cfp.url_cfp};corrected", file=errlog)
+						print(';'.join([err.replace(':', ';', 1), cfp.url_cfp, 'corrected']), file=errlog)
 
-					cfps_found += 1
-
-				except CFPNotFoundError as e:
+				except CFPNotFoundError as err:
 					if debug:
-						print(f'> {e}\n')
-					cfp = None
+						print(f'> {err}')
 
-				except CFPCheckError as e:
-					assert cfp is not None, 'By definition of a check'
+				except CFPCheckError as err:
+					assert cfp is not None and cfp.url_cfp is not None, 'By definition of a check and a fetched cfp'
 					if debug:
-						print(f'> {e}\n')
+						print(f'> {err}')
 					else:
-						clean_print(e)
-					print(f"{str(e).replace(':', ';', 1)}: no satisfying correction heuristic;{cfp.url_cfp};ignored",
-						  file=errlog)
-					cfp = None
+						clean_print(err)
+					print(';'.join([
+						f'{str(err).replace(":", ";", 1)}: no satisfying correction heuristic', cfp.url_cfp, 'ignored'
+					]), file=errlog)
 
 				else:
 					if debug:
-						print('> Found\n')
+						print('> Found')
+
+					cfps[cfp.id] = cfp
+					conf_matching.append((conf_id, cfp.id, year, cmp, miss))
+					continue
 
 				# possibly try other CFP providers?
 
-				if last_year and not cfp:
-					cfp = CallForPapers(conf.acronym, y, desc=last_year.desc, url_cfp=last_year.url_cfp,
-										link=last_year.link)
-				elif not cfp:
-					cfp = CallForPapers(conf.acronym, y)
+				if year < today.year:
+					continue
 
-				if last_year:
-					cfp.extrapolate_missing_dates(last_year)
-				if y >= today.year:
-					values += cfp.values()
-				last_year = cfp
+				# Use a fallback into which we can extrapolate
+				if debug:
+					print(f'> Adding empty cfp')
 
-			if cfps_found:
-				if not writing_first_conf:
-					print(',', file=out)
-				else:
-					writing_first_conf = False
+				cfp = CallForPapers(conf.acronym, year)
+				cfps[cfp.id] = cfp
+				conf_matching.append((conf_id, cfp.id, year, 999, len(cfp.__slots__)))
 
-				# filter out empty values for non-date columns
-				json.dump(values, out, default = json_encode_dates)
+	conf_matching_df = pd.DataFrame(
+		conf_matching, columns=['conf_id', 'cfp_id', 'year', 'score', 'missing']
+	).set_index(['conf_id', 'year'])
 
-	try:
-		scrape_date = datetime.datetime.fromtimestamp(min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html')))
-	except ValueError:
-		scrape_date = datetime.datetime.now()
-	print(f'\n], "date": "{scrape_date.strftime("%Y-%m-%d")}"}}', file=out)
+	# In some cases we have 2 related conferences that are thus close in terms of acronym, description, etc.
+	# E.g. “INFOCOM” and “INFOCOM WKSHPS“ or “USENIX ATC” and “USENIX-STX“ so ensure we only output each cfp once.
+	conf_matching_df = conf_matching_df.loc[conf_matching_df.groupby(['cfp_id'])['score'].idxmin()]
+
+	# Don’t output conferences if all (remaining) cfps are fallback (≥ 8 missing infos)
+	conf_matching_df = conf_matching_df[~conf_matching_df['missing'].ge(8).groupby(level='conf_id').transform('all')]
+
+	def extrapolate(cfps: pd.Series[CallForPapers], n: int) -> pd.Series[CallForPapers]:
+		prev_cfps = cfps.groupby(level=['conf_id']).shift(periods=n)
+		return cfps.combine(prev_cfps, CallForPapers.extrapolate_missing)
+
+	# Complete missing cfp info with previous iterations
+	full_cfps = conf_matching_df['cfp_id'].sort_index().map(cfps).pipe(extrapolate, n=1).pipe(extrapolate, n=2)
+
+	# Convert all cfps / confs to lists of data to be written out
+	cfp_data = full_cfps.map(CallForPapers.values).unstack('year', fill_value=[None] * len(CallForPapers.columns()))
+	conf_data = cfp_data.index.to_series(name='conf').map(confs.to_dict()).map(Conference.values).map(list)
+
+	# Combine all conference / cfp data and sort based on acronym
+	out_years = [year for year in search_years if year >= today.year]
+	all_data = conf_data.add(cfp_data[out_years].sum(axis='columns')).reindex_like(conf_data.str[0].sort_values())
+
+	with open(out_file, 'w') as out:
+		cols = [*Conference.columns(), *(f'{col} {y}' for y in out_years for col in CallForPapers.columns())]
+		print(f'{{"years": {json.dumps(out_years)}, "columns":\n{json.dumps(cols)},\n"data": [', file=out)
+
+		to_string = functools.partial(json.dumps, default=json_encode_dates)
+		print(all_data.map(to_string).str.cat(sep=',\n'), file=out)
+
+		try:
+			scrape_date = datetime.datetime.fromtimestamp(min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html')))
+		except ValueError:
+			scrape_date = datetime.datetime.now()
+		print(f'], "date": "{scrape_date.strftime("%Y-%m-%d")}"}}', file=out)
 
 
 if __name__ == '__main__':
