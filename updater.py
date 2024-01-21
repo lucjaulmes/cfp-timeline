@@ -793,8 +793,8 @@ class CallForPapers(ConfMetaData):
 		best_candidate = None
 		best_score = (1000., 1000)
 
-		for desc, id_, url, missing in cls.parse_search(conf, year, soup):
-			candidate = cls(conf.acronym, year, id_, desc, url)
+		for acronym, desc, id_, url, missing in cls.parse_search(conf, year, soup):
+			candidate = cls(acronym, year, id_, desc, url)
 			rating = candidate.rating(conf)
 			if debug:
 				print(f'[{rating}] {candidate}')
@@ -916,7 +916,7 @@ class WikicfpCFP(CallForPapers):
 
 			missing_info = [td.text for td in tr.find_all('td')].count('TBD')
 
-			yield (conf_name[0], id_, urlunsplit((scheme, netloc, path, query, fragment)), missing_info)
+			yield (acronym, conf_name[0], id_, urlunsplit((scheme, netloc, path, query, fragment)), missing_info)
 
 
 	@classmethod
