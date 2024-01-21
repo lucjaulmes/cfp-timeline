@@ -579,12 +579,12 @@ class CallForPapers(ConfMetaData):
 		'endDate',
 	)
 
-	__slots__ = ('conf', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link', 'id')
+	__slots__ = ('acronym', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link', 'id')
 
 	_url_cfpsearch: ClassVar[str]
 	_fill_id: ClassVar[int] = sys.maxsize
 
-	conf: Conference
+	acronym: str
 	desc: str
 	year: int
 	dates: dict[str, datetime.datetime]
@@ -592,12 +592,12 @@ class CallForPapers(ConfMetaData):
 	link: str
 	url_cfp: str | None
 
-	def __init__(self, conf: Conference, year: int | str, id_: int | None = None, desc: str = '',
+	def __init__(self, acronym: str, year: int | str, id_: int | None = None, desc: str = '',
 				 url_cfp: str | None = None, link: str | None = None):
 		# Initialize parent parsing with the description
-		super(CallForPapers, self).__init__(desc, conf.acronym, year)
+		super(CallForPapers, self).__init__(desc, acronym, year)
 
-		self.conf = conf
+		self.acronym = acronym
 		self.id = self._fill_id if id_ is None else id_
 		self.desc = desc
 		self.year = int(year)
@@ -657,7 +657,7 @@ class CallForPapers(ConfMetaData):
 
 	def fetch_cfp_data(self):
 		""" Parse a page from wiki-cfp. Return all useful data about the conference. """
-		f = 'cache/' + 'cfp_{}-{}_{}.html'.format(self.conf.acronym, self.year, self.conf.topic()).replace('/', '_')
+		f = f'cache/cfp_{self.acronym.replace("/", "_")}-{self.year}-{self.id}.html'
 		self.parse_cfp(RequestWrapper.get_soup(self.url_cfp, f))
 
 
@@ -710,7 +710,7 @@ class CallForPapers(ConfMetaData):
 					s, e = (self.dates['conf_start'], self.dates['conf_end'])
 
 			if err:
-				diag = f'{self.conf.acronym} {self.year}: Conferences dates {orig} are {" and ".join(err)}'
+				diag = f'{self.acronym} {self.year}: Conferences dates {orig} are {" and ".join(err)}'
 
 				if len(err) == fix:
 					# Use corrected dates, but take care to mark as guesses
@@ -767,7 +767,7 @@ class CallForPapers(ConfMetaData):
 						uncorrected.add(k)
 
 			if err:
-				diag = f'{self.conf.acronym} {self.year} ({self.dates["conf_start"]} -- {self.dates["conf_end"]}): '\
+				diag = f'{self.acronym} {self.year} ({self.dates["conf_start"]} -- {self.dates["conf_end"]}): '\
 					   f'Submission dates issues: {" and ".join(err)}'
 
 				if not uncorrected:
@@ -794,8 +794,8 @@ class CallForPapers(ConfMetaData):
 		best_score = (1000., 1000)
 
 		for desc, id_, url, missing in cls.parse_search(conf, year, soup):
-			candidate = cls(conf, year, id_, desc, url)
-			rating = candidate.rating()
+			candidate = cls(conf.acronym, year, id_, desc, url)
+			rating = candidate.rating(conf)
 			if debug:
 				print(f'[{rating}] {candidate}')
 			if max(rating) < 1000 and best_score > (sum(rating), missing):
@@ -837,9 +837,10 @@ class CallForPapers(ConfMetaData):
 		return max(self.dates.values())
 
 
-	def rating(self) -> tuple[float, int, int, float, float]:
-		""" Rate the (in)adequacy of the cfp with its conference: lower is better. Just drop year comparison. """
-		return self._difference(self.conf)[:-1]
+	def rating(self, conf: Conference) -> tuple[float, int, int, float, float]:
+		""" Rate the (in)adequacy of the cfp with the given conference: lower is better. """
+		# Just drop year/number (e.g. 34th intl conf...) comparison.
+		return self._difference(conf)[:-1]
 
 
 	def __str__(self) -> str:
@@ -1388,9 +1389,10 @@ def cfps(out: TextIO, debug: bool = False):
 				# possibly try other CFP providers?
 
 				if last_year and not cfp:
-					cfp = CallForPapers(conf, y, desc=last_year.desc, url_cfp=last_year.url_cfp, link=last_year.link)
+					cfp = CallForPapers(conf.acronym, y, desc=last_year.desc, url_cfp=last_year.url_cfp,
+										link=last_year.link)
 				elif not cfp:
-					cfp = CallForPapers(conf, y)
+					cfp = CallForPapers(conf.acronym, y)
 
 				if last_year:
 					cfp.extrapolate_missing_dates(last_year)
