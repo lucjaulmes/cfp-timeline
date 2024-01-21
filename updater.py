@@ -97,7 +97,7 @@ class PeekIter(Generic[T]):
 			The next element if n = 0, or the list of the up to n next elements if n > 0.
 
 		Raises:
-			IndexError: There are no further elements.
+			IndexError: There are no further elements (only if n = 0).
 		"""
 		if n < 0: raise ValueError('n < 0 but can not peek back, only ahead')
 
@@ -644,21 +644,25 @@ class CallForPapers(ConfMetaData):
 
 
 	@classmethod
-	def parse_search(cls, conf: Conference, year: int | str,
-				     soup: bs4.BeautifulSoup) -> Iterator[tuple[str, int, str, int]]:
-		""" Generate the list of conferences from a search page. """
+	def _parse_search(cls, conf: Conference, year: int | str,
+				     soup: bs4.BeautifulSoup) -> Iterator[tuple[str, str, int, str, int]]:
+		""" Generate the list of conferences from a search page.
+
+		Yields:
+			Info on the cfp from the search page: (acronym, name, unique id, url, number of missing dates/fields)
+		"""
 		raise NotImplementedError
 
 
-	def parse_cfp(self, soup: bs4.BeautifulSoup):
+	def _parse_cfp(self, soup: bs4.BeautifulSoup):
 		""" Load the cfp infos from the page soup """
 		raise NotImplementedError
 
 
 	def fetch_cfp_data(self):
-		""" Parse a page from wiki-cfp. Return all useful data about the conference. """
+		""" Parse a page from online source. Load all useful data about the conference. """
 		f = f'cache/cfp_{self.acronym.replace("/", "_")}-{self.year}-{self.id}.html'
-		self.parse_cfp(RequestWrapper.get_soup(self.url_cfp, f))
+		self._parse_cfp(RequestWrapper.get_soup(self.url_cfp, f))
 
 
 	def verify_conf_dates(self):
@@ -793,7 +797,7 @@ class CallForPapers(ConfMetaData):
 		best_candidate = None
 		best_score = (1000., 1000)
 
-		for acronym, desc, id_, url, missing in cls.parse_search(conf, year, soup):
+		for acronym, desc, id_, url, missing in cls._parse_search(conf, year, soup):
 			candidate = cls(acronym, year, id_, desc, url)
 			rating = candidate.rating(conf)
 			if debug:
@@ -863,16 +867,19 @@ class WikicfpCFP(CallForPapers):
 
 
 	@classmethod
-	def parse_date(cls, dt: str) -> datetime.date:
+	def _parse_date(cls, dt: str) -> datetime.date:
 		# some ISO 8601 or RFC 3339 format
 		return datetime.datetime.strptime(dt, '%Y-%m-%dT%H:%M:%S').date()
 
 
 	@classmethod
-	def parse_search(cls, conf: Conference, year: int | str,
-					 soup: bs4.BeautifulSoup) -> Iterator[tuple[str, int, str, int]]:
-		""" Given the BeautifulSoup of a CFP search page, generate all (description, url) tuples for links that seem
-		to correspond to the conference and year requested.
+	def _parse_search(cls, conf: Conference, year: int | str,
+					 soup: bs4.BeautifulSoup) -> Iterator[tuple[str, str, int, str, int]]:
+		""" Given the BeautifulSoup of a CFP search page, generate all infos for links that seem to correspond to the
+		conference and year requested.
+
+		Yields:
+			Info on the cfp from the search page: (acronym, name, unique id, url, number of missing dates/fields)
 		"""
 		test_words = ConfMetaData._sep.split(conf.acronym.lower())
 		def match_acronym(text):
@@ -889,20 +896,30 @@ class WikicfpCFP(CallForPapers):
 
 		for conf_link in soup.find_all('a', href=True, string=match_acronym):
 			# find links name "acronym year" and got to first parent <tr>
-			for tr in conf_link.parents:
-				if tr.name == 'tr':
+			for tag in conf_link.parents:
+				if tag.name == 'tr':
+					tr = tag
 					break
 			else:
 				raise ValueError('Cound not find parent row!')
 
+			acronym = ' '.join(conf_link.text.strip().split()[:-1])
+
 			# first row has 2 td tags, one contains the link, the other the description. Get the non-parent of the link.
-			conf_name = [td.text for td in tr.find_all('td') if td not in conf_link.parents]
+			for td in tr.find_all('td'):
+				if td not in conf_link.parents:
+					conf_name = td.text
+					break
+			else:
+				raise ValueError('Could not find conference name')
+
 			scheme, netloc, path, query, fragment = urlsplit(urljoin(cls._url_cfpevent, conf_link['href']))
 			query_dict = parse_qs(query)
 			try:
 				id_ = int(query_dict['eventid'][0])
 			except ValueError:
 				raise ValueError('Could not find valid identifier in url') from None
+
 			# update the query with cls._url_cfpevent_query. Sort the parameters to minimize changes across versions.
 			query = urlencode(sorted({**query_dict, **cls._url_cfpevent_query}.items()), doseq=True)
 
@@ -916,7 +933,7 @@ class WikicfpCFP(CallForPapers):
 
 			missing_info = [td.text for td in tr.find_all('td')].count('TBD')
 
-			yield (acronym, conf_name[0], id_, urlunsplit((scheme, netloc, path, query, fragment)), missing_info)
+			yield (acronym, conf_name, id_, urlunsplit((scheme, netloc, path, query, fragment)), missing_info)
 
 
 	@classmethod
@@ -924,7 +941,7 @@ class WikicfpCFP(CallForPapers):
 		return attr.startswith('xmlns:') and ('rdf.data-vocabulary.org' in tag[attr] or 'purl.org/dc/' in tag[attr])
 
 
-	def parse_cfp(self, soup: bs4.BeautifulSoup):
+	def _parse_cfp(self, soup: bs4.BeautifulSoup):
 		""" Given the BeautifulSoup of the CFP page, update self.dates and self.link
 
 		WikiCFP has all info nicely porcelain-ish formatted in some RDF and Dublin Core xmlns tags.
@@ -946,11 +963,11 @@ class WikicfpCFP(CallForPapers):
 
 			elif xt_data.keys() == {'summary', 'startDate'}:
 				# this is a pair of tags that contain just a date, use summary value as key
-				metadata[xt_data['summary']] = self.parse_date(xt_data['startDate'])
+				metadata[xt_data['summary']] = self._parse_date(xt_data['startDate'])
 
 			elif xt_data.get('eventType', None) == 'Conference':
 				# Remove any clashes with DC's values, which are cleaner
-				metadata.update({key: self.parse_date(val) if key.endswith('Date') else val
+				metadata.update({key: self._parse_date(val) if key.endswith('Date') else val
 								 for key, val in xt_data.items() if key not in metadata})
 
 			else:
