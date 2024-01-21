@@ -579,9 +579,10 @@ class CallForPapers(ConfMetaData):
 		'endDate',
 	)
 
-	__slots__ = ('conf', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link')
+	__slots__ = ('conf', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link', 'id')
 
 	_url_cfpsearch: ClassVar[str]
+	_fill_id: ClassVar[int] = sys.maxsize
 
 	conf: Conference
 	desc: str
@@ -591,18 +592,22 @@ class CallForPapers(ConfMetaData):
 	link: str
 	url_cfp: str | None
 
-	def __init__(self, conf: Conference, year: int | str, desc: str = '',
+	def __init__(self, conf: Conference, year: int | str, id_: int | None = None, desc: str = '',
 				 url_cfp: str | None = None, link: str | None = None):
 		# Initialize parent parsing with the description
 		super(CallForPapers, self).__init__(desc, conf.acronym, year)
 
 		self.conf = conf
+		self.id = self._fill_id if id_ is None else id_
 		self.desc = desc
 		self.year = int(year)
 		self.dates = {}
 		self.orig = {}
 		self.link = link or '(missing)'
 		self.url_cfp = url_cfp
+
+		if id_ is None:
+			self._fill_id -= 1
 
 
 	def extrapolate_missing_dates(self, prev_cfp: CallForPapers):
@@ -639,7 +644,8 @@ class CallForPapers(ConfMetaData):
 
 
 	@classmethod
-	def parse_search(cls, conf: Conference, year: int | str, soup: bs4.BeautifulSoup) -> Iterator[tuple[str, str, int]]:
+	def parse_search(cls, conf: Conference, year: int | str,
+				     soup: bs4.BeautifulSoup) -> Iterator[tuple[str, int, str, int]]:
 		""" Generate the list of conferences from a search page. """
 		raise NotImplementedError
 
@@ -787,8 +793,8 @@ class CallForPapers(ConfMetaData):
 		best_candidate = None
 		best_score = (1000., 1000)
 
-		for desc, url, missing in cls.parse_search(conf, year, soup):
-			candidate = cls(conf, year, desc, url)
+		for desc, id_, url, missing in cls.parse_search(conf, year, soup):
+			candidate = cls(conf, year, id_, desc, url)
 			rating = candidate.rating()
 			if debug:
 				print(f'[{rating}] {candidate}')
@@ -872,7 +878,8 @@ class WikicfpCFP(CallForPapers):
 
 
 	@classmethod
-	def parse_search(cls, conf: Conference, year: int | str, soup: bs4.BeautifulSoup) -> Iterator[tuple[str, str, int]]:
+	def parse_search(cls, conf: Conference, year: int | str,
+					 soup: bs4.BeautifulSoup) -> Iterator[tuple[str, int, str, int]]:
 		""" Given the BeautifulSoup of a CFP search page, generate all (description, url) tuples for links that seem
 		to correspond to the conference and year requested.
 		"""
@@ -900,8 +907,13 @@ class WikicfpCFP(CallForPapers):
 			# first row has 2 td tags, one contains the link, the other the description. Get the non-parent of the link.
 			conf_name = [td.text for td in tr.find_all('td') if td not in conf_link.parents]
 			scheme, netloc, path, query, fragment = urlsplit(urljoin(cls._url_cfpevent, conf_link['href']))
+			query_dict = parse_qs(query)
+			try:
+				id_ = int(query_dict['eventid'][0])
+			except ValueError:
+				raise ValueError('Could not find valid identifier in url') from None
 			# update the query with cls._url_cfpevent_query. Sort the parameters to minimize changes across versions.
-			query = urlencode(sorted({**parse_qs(query), **cls._url_cfpevent_query}.items()), doseq=True)
+			query = urlencode(sorted({**query_dict, **cls._url_cfpevent_query}.items()), doseq=True)
 
 			# next row has the dates and location, count how many of those are not defined yet
 			while tr:
@@ -913,7 +925,7 @@ class WikicfpCFP(CallForPapers):
 
 			missing_info = [td.text for td in tr.find_all('td')].count('TBD')
 
-			yield (conf_name[0], urlunsplit((scheme, netloc, path, query, fragment)), missing_info)
+			yield (conf_name[0], id_, urlunsplit((scheme, netloc, path, query, fragment)), missing_info)
 
 
 	@classmethod
@@ -1375,11 +1387,10 @@ def cfps(out: TextIO, debug: bool = False):
 
 				# possibly try other CFP providers?
 
-				if not cfp:
-					if last_year:
-						cfp = CallForPapers(conf, y, last_year.desc, last_year.url_cfp, last_year.link)
-					else:
-						cfp = CallForPapers(conf, y)
+				if last_year and not cfp:
+					cfp = CallForPapers(conf, y, desc=last_year.desc, url_cfp=last_year.url_cfp, link=last_year.link)
+				elif not cfp:
+					cfp = CallForPapers(conf, y)
 
 				if last_year:
 					cfp.extrapolate_missing_dates(last_year)
