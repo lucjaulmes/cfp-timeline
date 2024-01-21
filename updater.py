@@ -628,18 +628,14 @@ class CallForPapers(ConfMetaData):
 
 		# extrapolate by keeping offset with other date
 		extrapolate_from = {
-			'conf_end': 'conf_start', 'camera_ready': 'conf_start', 'abstract': 'submission',
-			'notification': 'submission',
+			'conf_start': {'conf_end', 'camera_ready'},
+			'submission': {'abstract', 'notification'},
 		}
-		for field, orig in extrapolate_from.items():
-			if field in self.dates:
+		for orig, fields in extrapolate_from.items():
+			if orig not in self.dates or orig not in prev_cfp.dates:
 				continue
-			try:
-				extrapolated_date = self.dates[orig] + (prev_cfp.dates[field] - prev_cfp.dates[orig])
-			except KeyError:
-				continue
-			else:
-				self.dates[field] = extrapolated_date
+			for field in (fields - self.dates.keys()) & prev_cfp.dates.keys():
+				self.dates[field] = self.dates[orig] + (prev_cfp.dates[field] - prev_cfp.dates[orig])
 				self.orig[field] = False
 
 
