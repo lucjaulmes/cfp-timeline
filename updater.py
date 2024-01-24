@@ -183,6 +183,7 @@ class ConfMetaData:
 		'IAPR': 'International Association for Pattern Recognition',
 		'IAVoSS': 'International Association for Voting Systems Sciences', 'ICSC': 'ICSC Interdisciplinary Research',
 		'IEEE': 'Institute of Electrical and Electronics Engineers',
+		'IET': 'Institution of Engineering and Technology',
 		'IFAC': 'International Federation of Automatic Control',
 		'IFIP': 'International Federation for Information Processing',
 		'IMA': 'Institute of Mathematics and its Applications', 'KES': 'KES International',
@@ -288,7 +289,7 @@ class ConfMetaData:
 		# lower case, replace characters in dict by whitepace, repeated spaces will be removed by split()
 		normalized = (normalize(w) for w in string.translate({ord(c): ' ' for c in "-/&,():_~'\".[]|*@"}).split())
 		words = PeekIter(w for w in normalized
-						 if w not in {'', 'the', 'on', 'for', 'of', 'in', 'and', *ignored, ''.join(ignored)})
+						 if w not in {'', 'the', 'on', 'for', 'of', 'in', 'and', 'its', *ignored, ''.join(ignored)})
 
 		# semantically filter conference editors/organisations, special interest groups (sig...), etc.
 		for w in words:
@@ -444,8 +445,17 @@ class ConfMetaData:
 
 		# Special case se we don’t match e.g. IFIP SEC with IFIP-DSS: ignore leading word if it’s an organizer
         # Note that an organiser name can be a conference name, e.g. usenix
-		if left[1:] and right[1:] and left[0] == right[0] and left[0] in cls._orgcmp:
-			return cls._acronym_diff(left[1:], right[1:])
+		left_org = len(left) > 1 and left[0] in cls._orgcmp
+		right_org = len(right) > 1 and right[0] in cls._orgcmp
+		# If both sides start with the same org name, compare ignoring it. Discount 2 (half a common word).
+		if left_org and right_org and left[0] == right[0]:
+			score = cls._acronym_diff(left[1:], right[1:])
+			return score - 2 if score < 1000 else score
+		# If only one side starts with an org name, compare ignoring it unless it matches the name on the other side
+		# Add 1 (penalty for a dissymetric word)
+		elif left_org or right_org and left[0] != right[0]:
+			score = cls._acronym_diff(left[int(left_org):], right[int(right_org):])
+			return score + 1 if score < 1000 else score
 
 		left_prefixes = {''.join(left[:n + 1]): n for n in range(len(left))}
 		right_prefixes = {''.join(right[:n + 1]): n for n in range(len(right))}
@@ -988,7 +998,7 @@ class WikicfpCFP(CallForPapers):
 
 
 class Ranking:
-	_historical = re.compile(r'\b(previous(ly)?|was|(from|pre) [0-9]{4}|merge[dr])\b', re.IGNORECASE)
+	_historical = re.compile(r'\b(previous(ly)?|was|(from|pre|in) [0-9]{4}|merge[dr])\b', re.IGNORECASE)
 	_col_order: ClassVar[list[str]]
 	_file: ClassVar[str]
 
@@ -1206,6 +1216,20 @@ class GGSRanking(Ranking):
 		df['title'] = df['title'].str.replace(';', ',').str.title()\
 				.str.replace(r'\b(Acm|Ieee)\b', lambda m: m[1].upper(), regex=True)\
 				.str.replace(r'\b(On|And|In|Of|For|The|To|Its)\b', lambda m: m[1].lower(), regex=True)
+
+		# A few ad-hoc fixes
+		# 1) Wrong language for our matching system
+		df.loc[df['acronym'].eq('CLEI') & df['title'].eq('Conferencia Latinoamericana De Informática'),
+			   'title'] = 'Latin American Conference on Informatics'
+
+		# 2) Renamed from workshop to conference
+		df.loc[df['acronym'].eq('EUMAS') & df['title'].eq('European Workshop on Multi-Agent Systems'),
+			   'title'] = 'European Conference on Multi-Agent Systems'
+
+		# 3) Alternate acronyms suffixed _A or -AUS (and 1 prefixed AUS-) mean worse results in wikicfp search
+		df.loc[df['acronym'].eq('AUS-AI') & df['title'].eq('Australian Joint Conference on Artificial Intelligence'),
+			   'acronym'] = 'AJCAI'
+		df['acronym'] = df['acronym'].str.replace('(_A|-AUS)$', '', regex=True)
 
 		def sort_ranks(series):
 			return series.map(Conference._ranks).fillna(len(Conference._ranks)) if series.name == 'rank' else series

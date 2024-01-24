@@ -20,7 +20,7 @@ ACCS;Conference Cognitive Science;
 ACCT;International Workshop on Algebraic and Combinatorial Coding Theory;
 ACCTT;International Conference on Advances in Computing, Control, and Telecommunication Technologies;
 ACCV;Asian Conference on Computer Vision;B
-ACE-AUS;Australasian Computing Education Conference (Ace);
+ACE;Australasian Computing Education Conference (Ace);
 ACHI;Advances in Computer-Human Interaction;
 ACII;Affective Computing and Intelligent Interaction;B-
 ACIIDS;Asian Conference on Intelligent Information and Database Systems;
@@ -59,7 +59,7 @@ AFRICACRYPT;International Conference on Cryptology in Africa;B-
 AFRICON;Africon;
 AFRIGRAPH;Computer Graphics, Virtual Reality, Visualisation and Interaction in Africa;
 AGI;Artificial General Intelligence;
-AGILE_A;Agile Conference on Geographic Information Science;
+AGILE;Agile Conference on Geographic Information Science;
 AH;Augmented Human International Conference;
 AH-UM;International Conference on Adaptive Hypermedia and Adaptive Web-Based Systems;
 AHS;Adaptive Hardware and Systems;
@@ -84,10 +84,11 @@ AIRS;Asia Information Retrieval Symposium;
 AIRWEB;Adversarial Information Retrieval on the Web;
 AISB;Artificial Intelligence and the Simulation of Behaviour;
 AISC;Artificial Intelligence and Symbolic Computation;
-AISC-AUS;Australasian Information Security Conference;
+AISC;Australasian Information Security Conference;
 AISEC;Ai & Security Workshop;
 AIST;International Conference on Analysis of Images, Social Networks and Texts;
 AISTATS;International Conference on Artificial Intelligence and Statistics;A+
+AJCAI;Australian Joint Conference on Artificial Intelligence;
 AJIM;Aslib Journal of Information Management;
 ALENEX;Workshop on Algorithm Engineering and Experiments;B
 ALG;Engg Workshop on Algorithm Engineering;
@@ -187,7 +188,6 @@ ATSIP;International Conference on Advanced Technologies for Signal & Image Proce
 ATVA;Automated Technology for Verification and Analysis;B-
 AUIC;Australasian User Interface Conference;
 AUPEC;Australasian Universities Power Engineering Conference;
-AUS-AI;Australian Joint Conference on Artificial Intelligence;
 AUSDM;Australasian Data Mining Conference;
 AUSPDC;Australasian Symposium on Parallel and Distributed Computing (Was Ausgrid);
 AUTOMATA;Cellular Automata Theory and Applicatins;
@@ -1414,9 +1414,9 @@ ISTMWCS;Ist Mobile and Wireless Communications Summit;
 ISUVR;International Symposium on Ubiquitous Virtual Reality;
 ISVC;International Symposium on Visual Computing;
 ISVLSI;IEEE Computer Society Annual Symposium on Vlsi;
+ISWC;IEEE International Symposium on Wearable Computers;
 ISWC;International Semantic Web Conference;A+
 ISWCS;International Symposium on Wireless Communication Systems;B
-ISWC_A;IEEE International Symposium on Wearable Computers;
 ISWPC;International Symposium on Wireless Pervasive Computing;
 ITA;International Conference on Internet Technologies and Applications;
 ITAT;Conference on Theory and Practice of Information Technologies;
@@ -1906,6 +1906,7 @@ SBMF;Simpósio Brasileiro De Métodos Formais;
 SBRC;Simpósio Brasileiro De Redes De Computadores E Sistemas Distribuídos;
 SBRN;Brazilian Symposium on Neural Networks;
 SC;ACM/IEEE Conference on High Performance Networking and Computing;A+
+SC;International Symposium on Software Composition;
 SCA;ACM Siggraph / Eurographics Symposium on Computer Animation;A
 SCAM;IEEE International Workshop on Source Code Analysis and Manipulation;B-
 SCAMC;Annual Symposium on Computer Application in Medical Care;
@@ -1923,7 +1924,6 @@ SCSC;Summer Computer Simulation Conference;
 SCT;IEEE Workshop on Speech Coding for Telecommunications;
 SCTAC;Structure in Complexity Theory Annual Conference;
 SCVT;Symposium on Communications and Vehicular Technology in the Benelux;
-SC_A;International Symposium on Software Composition;
 SDE;Software Engineering Symposium on Practical Software Development Environments;
 SDH;International Symposium on Spatial Data Handling;
 SDM;Siam International Conference on Data Mining;A
@@ -2003,7 +2003,7 @@ SMA;International Conference on Shape Modeling and Applications;
 SMAP;International Workshop on Semantic and Social Media Adaptation and Personalization;
 SMARTGRIDCOMM;International Conference on Smart Grid Communications;
 SMC;IEEE Conference on Systems, Man and Cybernetics;A-
-SMC_A;Sound and Music Computing Conference;
+SMC;Sound and Music Computing Conference;
 SMI;IEEE International Conference on Shape Modeling and Applications;
 SNA;Sensor Networks and Applications;
 SNAKDD;Social Network Mining and Analysis;
@@ -2063,8 +2063,8 @@ SSRR;IEEE International Workshop on Safety, Security, & Rescue Robots;
 SSS;International Symposium on Stabilization, Safety, and Security of Distributed Systems;
 SSSC;Ifac Conference on System Structure and Control;
 SSST;Southeastern Symposium on System Theory;
+SST;Australasian Speech Science and Technology;
 SST;IEEE International Symposium on Sustainable Systems and Technology;
-SST-AUS;Australasian Speech Science and Technology;
 SSTD;International Symposium on Spatial and Temporal Databases;B
 SSVM;International Conference on Scale Space and Variational Methods in Computer Vision;
 SSWMC;Conference on Security, Steganography, and Watermarking of Multimedia Contents;
