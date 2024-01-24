@@ -582,6 +582,12 @@ class CallForPapers(ConfMetaData):
 		'Abstract Registration Due', 'Submission Deadline', 'Notification Due', 'Final Version Due', 'startDate',
 		'endDate',
 	)
+	_typical_delays = {
+		'abstract': (95, 250),
+		'camera_ready': (0, 120),
+		'notification': (20, 150),
+		'submission': (40, 250),
+	}
 
 	__slots__ = ('acronym', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link', 'id')
 
@@ -680,119 +686,135 @@ class CallForPapers(ConfMetaData):
 		self._parse_cfp(RequestWrapper.get_soup(self.url_cfp, f))
 
 
-	def verify_conf_dates(self):
-		""" Check coherence of conference dates
+	@classmethod
+	def _flip_day_month(cls, start: datetime.date, end: datetime.date):
+		""" Fix a classic error of writing mm-dd-yyyy instead of dd-mm-yyyy by flipping day and month
+
+		raises:
+			ValueError: Invalid dates (typically a day was over 12), or resulting dates don’t make sense
+		"""
+		flip_start = start.replace(day=start.month, month=start.day)
+		flip_end = end.replace(day=end.month, month=end.day)
+
+		if flip_start > flip_end or flip_end >= flip_start + datetime.timedelta(days=10):
+			raise ValueError('Resulting dates not fitting for conference interval')
+
+		return flip_start, flip_end
+
+
+	def verify_conf_dates(self) -> str | None:
+		""" Check coherence of conference start and end dates
+
+		returns:
+			A message describing fixed issues, if any
 
 		raises:
 			CPFCheckError: An error with no satisfying correction heuristic was encountered
 		"""
-		dates_found = self.dates.keys()
+		if not {'conf_start', 'conf_end'} <= self.dates.keys():
+			return None
 
-		if {'conf_start', 'conf_end'} <= dates_found:
-			err = []
-			fix = 0
-			s, e = (self.dates['conf_start'], self.dates['conf_end'])
-			orig = '{} -- {}'.format(self.dates['conf_start'], self.dates['conf_end'])
+		err = []
+		nfixes = 0
+		start, end = self.dates['conf_start'], self.dates['conf_end']
 
-			if s.year != self.year or e.year != self.year: # no conference over new year's eve, right?
-				err.append('not in correct year')
-				s, e = (s.replace(year = self.year), e.replace(year = self.year))
-				fix += 1
+		# Assuming no conference over new year's eve, so year should match with both dates
+		if start.year != self.year or end.year != self.year:
+			err.append('not in correct year')
+			start, end = start.replace(year=self.year), end.replace(year=self.year)
+			nfixes += 1
 
-			if e < s:
-				err.append('end before start')
-				try: # try flipping day and month
-					flip = (s.replace(day = s.month, month = s.day), e.replace(day = e.month, month = e.day))
-				except ValueError:
-					flip = (0, 0)
+		if end < start:
+			err.append('end before start')
+			try:
+				start, end = self._flip_day_month(start, end)
+			except ValueError:
+				# if that'start no good, just swap start and end
+				end, start = start, end
+			nfixes += 1
 
-				if flip[1] > flip[0] and flip[1] - flip[0] < datetime.timedelta(days = 10):
-					s, e = flip
-					fix += 1
-				else:
-					# if that's no good, just swap start and end
-					s, e = (e, s)
-					fix += 1
+		if end - start > datetime.timedelta(days=20):
+			err.append('too far apart')
+			try:
+				start, end = self._flip_day_month(start, end)
+			except ValueError:
+				pass  # Don’t increment nfixes
+			else:
+				nfixes += 1
 
-			if e - s > datetime.timedelta(days = 20):
-				err.append('too far apart')
-				try: # try flipping day and month
-					flip = (s.replace(day = s.month, month = s.day), e.replace(day = e.month, month = e.day))
-				except ValueError:
-					flip = (0, 0)
+		if not err:
+			return None
 
-				if flip[1] > flip[0] and flip[1] - flip[0] < datetime.timedelta(days = 10):
-					s, e = flip
-					fix += 1
-				else:
-					# cancel suggestion if at this stage it still is no good
-					s, e = (self.dates['conf_start'], self.dates['conf_end'])
+		diag = (f'{self.acronym} {self.year} ({self.dates["conf_start"]} -- {self.dates["conf_end"]}): '
+				f'Conferences dates are {" and ".join(err)}')
 
-			if err:
-				diag = f'{self.acronym} {self.year}: Conferences dates {orig} are {" and ".join(err)}'
+		if nfixes < len(err):
+			raise CFPCheckError(diag)
 
-				if len(err) == fix:
-					# Use corrected dates, but take care to mark as guesses
-					self.dates['conf_start'], self.dates['conf_end'] = (s, e)
-					self.orig['conf_start'], self.orig['conf_end'] = (False, False)
-					return f'{diag}: using {s} -- {e} instead'
-				else:
-					raise CFPCheckError(diag)
+		# Use corrected dates, taking care to mark as guesses
+		self.dates.update({'conf_start': start, 'conf_end': end})
+		self.orig['conf_start'] = self.orig['conf_end'] = False
+		return f'{diag}: using {start} -- {end} instead'
 
 
-	def verify_submission_dates(self):
-		""" Check coherence of submission dates
+	def verify_submission_dates(self, delete_on_err: set[str] = {'camera_ready'}) -> str | None:
+		""" Check coherence of submission dates, in terms of delay from a deadline to conference start
+
+		returns:
+			A message describing fixed issues, if any
 
 		raises:
 			CPFCheckError: An error with no satisfying correction heuristic was encountered
 		"""
-		pre_dates = {'submission', 'abstract', 'notification', 'camera_ready'} & set(self.dates.keys())
-		typical_delays = {key: (datetime.timedelta(lo), datetime.timedelta(hi)) for key, (lo, hi) in {
-			'abstract': (95, 250),
-			'camera_ready': (0, 120),
-			'notification': (20, 150),
-			'submission': (40, 250),
-		}.items()}
+		if 'conf_start' not in self.dates or not self._typical_delays.keys() & self.dates.keys():
+			return None
 
-		if 'conf_start' in self.dates and pre_dates:
-			err = []
-			uncorrected = set()
-			corrected = set()
+		err = []
+		uncorrected = set()
+		corrected = dict()
 
-			for k, d in [(k, self.dates[k]) for k in pre_dates]:
-				delay = self.dates['conf_start'] - d
-				if delay < datetime.timedelta(0):
-					err.append('{} ({}) after conference'.format(k, d))
-				elif delay > datetime.timedelta(days=365):
-					err.append('{} ({}) too long before conference'.format(k, d))
-				else:
-					continue
+		start = self.dates['conf_start']
 
-				# If shifting the year gets us into the “typical” delay, use that date and mark as a guess
-				# Typically for conf at year Y, all dates are set at year Y even if they should be previous year.
-				shifted = d.replace(year=d.year + int(delay.days // 365.2425))
-				lo, hi = typical_delays.get(k)
-				if hi >= self.dates['conf_start'] - shifted >= lo:
-					self.dates[k] = shifted
-					self.orig[k] = False
-					corrected.add(k)
-				else:
-					err[-1] += f' (shifted: {(self.dates["conf_start"] - shifted).days}d)'
-					# delete uncorrectable camera ready dates to avoid raising an error
-					if k == 'camera_ready':
-						self.dates.pop('camera_ready')
-						corrected.add(k)
-					else:
-						uncorrected.add(k)
+		for name, deadline in ((name, date) for name, date in self.dates.items() if name in self._typical_delays):
+			# Only check that deadlines happen in the year before the conference start
+			delay = (start - deadline).days
+			if delay < 0:
+				err.append(f'{name} ({deadline}) after conference start')
+			elif delay > 365:
+				err.append(f'{name} ({deadline}) too long before conference')
+			else:
+				continue
 
-			if err:
-				diag = f'{self.acronym} {self.year} ({self.dates["conf_start"]} -- {self.dates["conf_end"]}): '\
-					   f'Submission dates issues: {" and ".join(err)}'
+			# If shifting the year gets us into the “typical” delay, use that date and mark as a guess
+			# Typically for conf at year Y, all dates are set at year Y even if they should be previous year.
+			shifted = deadline.replace(year=deadline.year + int(delay // 365.2425))
+			shifted_delay = start - shifted
 
-				if not uncorrected:
-					return f'{diag}: using {", ".join(f"{k}={self.dates.get(k)}" for k in corrected)} instead'
-				else:
-					raise CFPCheckError(diag)
+			lo, hi = self._typical_delays[name]
+			if hi >= shifted_delay.days >= lo:
+				corrected[name] = shifted
+			else:
+				err.append(f'{err.pop()} (shifted: {shifted_delay.days}d)')
+				uncorrected.add(name)
+
+		if not err:
+			return None
+
+		diag = (f'{self.acronym} {self.year} ({self.dates["conf_start"]} -- {self.dates["conf_end"]}): '
+			    f'Submission dates issues: {" and ".join(err)}')
+
+		if uncorrected - delete_on_err:
+			raise CFPCheckError(diag)
+
+		# update with shifted dates and delete uncorrectable camera ready dates to avoid raising an error
+		self.dates.update(corrected)
+		self.orig.update({name: False for name in corrected})
+		delete_keys = uncorrected & delete_on_err
+		for key in delete_keys:
+			del self.dates[key]
+
+		fixes = [*(f'{name}={date}' for name, date in corrected.items()), *(f'no {name}' for name in delete_keys)]
+		return f'{diag}: using {", ".join(fixes)} instead'
 
 
 	@classmethod
