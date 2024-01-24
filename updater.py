@@ -18,6 +18,7 @@ import requests
 import datetime
 import operator
 import functools
+import numpy as np
 import pandas as pd
 from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs, urlencode
 import bs4
@@ -392,7 +393,7 @@ class ConfMetaData:
 
 
 	@classmethod
-	def _set_diff(cls, left: set[str], right: set[str], require_common: bool = True) -> int:
+	def _set_diff(cls, left: set[str], right: set[str], require_common: bool = True) -> float:
 		""" Return an int quantifying the difference between the sets. Lower is better.
 
 		Penalize a bit for difference on a single side, more for differences on both sides, under the assumption that
@@ -403,7 +404,7 @@ class ConfMetaData:
 		r = len(right) - n_common
 
 		if require_common and l and r and not n_common:
-			return 1000
+			return np.inf
 		else:
 			return  l + r + 10 * l * r - 2 * n_common
 
@@ -428,7 +429,7 @@ class ConfMetaData:
 
 		# disqualify if there is nothing in common
 		if require_common and left and right and not common:
-			return 1000
+			return np.inf
 		else:
 			return n_l + n_r + 10 * n_l * n_r - 4 * n_common + sort_diff
 
@@ -449,20 +450,18 @@ class ConfMetaData:
 		right_org = len(right) > 1 and right[0] in cls._orgcmp
 		# If both sides start with the same org name, compare ignoring it. Discount 2 (half a common word).
 		if left_org and right_org and left[0] == right[0]:
-			score = cls._acronym_diff(left[1:], right[1:])
-			return score - 2 if score < 1000 else score
+			return cls._acronym_diff(left[1:], right[1:]) - 2
 		# If only one side starts with an org name, compare ignoring it unless it matches the name on the other side
 		# Add 1 (penalty for a dissymetric word)
 		elif left_org or right_org and left[0] != right[0]:
-			score = cls._acronym_diff(left[int(left_org):], right[int(right_org):])
-			return score + 1 if score < 1000 else score
+			return cls._acronym_diff(left[int(left_org):], right[int(right_org):]) + 1
 
 		left_prefixes = {''.join(left[:n + 1]): n for n in range(len(left))}
 		right_prefixes = {''.join(right[:n + 1]): n for n in range(len(right))}
 
 		common = left_prefixes.keys() & right_prefixes.keys()
 		if not common:
-			return 1000
+			return np.inf
 
 		prefix = max(common, key=len)
 		nsep_left_prefix = left_prefixes[prefix]
@@ -473,7 +472,7 @@ class ConfMetaData:
 																		  [prefix, *right[nsep_right_prefix + 1:]])
 
 
-	def _difference(self, other: ConfMetaData) -> tuple[float, int, int, float, float, int]:
+	def _difference(self, other: ConfMetaData) -> tuple[float, float, float, float, float, float]:
 		""" Compare the two ConfMetaData instances and rate how similar they are.  """
 		return (
 			self._acronym_diff(self.acronym_words, other.acronym_words),
@@ -830,21 +829,20 @@ class CallForPapers(ConfMetaData):
 		search_f = f'cache/search_cfp_{conf.acronym.replace("/", "_")}-{year}.html'
 		soup = RequestWrapper.get_soup(cls._url_cfpsearch, search_f, params = {'q': conf.acronym, 'year': year})
 
-		# Rating of 1000 disqualifies.
 		best_candidate = None
-		best_score = (1000., 1000)
+		best_score = (np.inf, sys.maxsize)
 
 		for acronym, desc, id_, url, missing in cls._parse_search(conf, year, soup):
 			candidate = cls(acronym, year, id_, desc, url)
-			rating = candidate.rating(conf)
 			if debug:
-				print(f'[{rating}] {candidate}')
-			if max(rating) < 1000 and best_score > (sum(rating), missing):
+				print(f'[{candidate.rating(conf)}] {candidate}')
+			rating = sum(candidate.rating(conf))
+			if np.isfinite(rating) and best_score > (rating, missing):
 				best_candidate = candidate
-				best_score = (sum(rating), missing)
+				best_score = (rating, missing)
 
 		if not best_candidate:
-			raise CFPNotFoundError('No link with rating < 1000 for {} {}'.format(conf.acronym, year))
+			raise CFPNotFoundError('No link with acceptable rating for {} {}'.format(conf.acronym, year))
 		else:
 			return best_candidate, *best_score
 
@@ -878,9 +876,9 @@ class CallForPapers(ConfMetaData):
 		return max(self.dates.values())
 
 
-	def rating(self, conf: Conference) -> tuple[float, int, int, float, float]:
+	def rating(self, conf: Conference) -> tuple[float, float, float, float, float]:
 		""" Rate the (in)adequacy of the cfp with the given conference: lower is better. """
-		# Just drop year/number (e.g. 34th intl conf...) comparison.
+		# Just drop number (e.g. 34th intl conf...) comparison.
 		return self._difference(conf)[:-1]
 
 
@@ -1118,22 +1116,20 @@ class Ranking:
 			pd.merge(idx_a[[acronym]], idx_b[[acronym]], how='cross', suffixes=('_a', '_b')) for acronym in common
 		])
 		# Compute the scores
-		score_columns = ['acronym', 'type', 'organiser', 'topic', 'qualifiers', 'number']
-		compared_pairs[score_columns] = compared_pairs.apply(
-			lambda row: pd.Series(ConfMetaData._difference(confs_a[row['id_a']], confs_b[row['id_b']])),
+		compared_pairs['score'] = compared_pairs.agg(
+			lambda row: sum(ConfMetaData._difference(confs_a[row['id_a']], confs_b[row['id_b']])),
 			axis='columns'
-		).rename(columns=dict(enumerate(score_columns)))
-		compared_pairs['total_score'] = compared_pairs[score_columns].sum(axis='columns')
+		)
 
 		merged_id_dfs = []
 		unmerged_a, unmerged_b, all_compared_pairs = confs_a, confs_b, compared_pairs
 		while compared_pairs.size:
-			# Drop scores ≥ 1000
-			best_matches = compared_pairs[compared_pairs[score_columns].lt(1000).all(axis='columns')]
+			# Drop scores marked as invalid
+			best_matches = compared_pairs[~compared_pairs['score'].transform(np.isinf)]
 			# Best (a, b) pairs for each a
-			best_matches = best_matches.loc[best_matches.groupby('id_a')['total_score'].idxmin()]
+			best_matches = best_matches.loc[best_matches.groupby('id_a')['score'].idxmin()]
 			# Refine by best (a, b) pairs for each b; we don’t want to merge one b with several a
-			best_matches = best_matches.loc[best_matches.groupby('id_b')['total_score'].idxmin()]
+			best_matches = best_matches.loc[best_matches.groupby('id_b')['score'].idxmin()]
 
 			if not best_matches.size:
 				break
@@ -1144,7 +1140,7 @@ class Ranking:
 			unmerged_a = unmerged_a.drop(index=best_matches['id_a'])
 			unmerged_b = unmerged_b.drop(index=best_matches['id_b'])
 
-			merged_id_dfs.append(best_matches.drop(columns=[*score_columns, 'total_score']))
+			merged_id_dfs.append(best_matches.drop(columns=['score']))
 
 		if not len(merged_id_dfs):
 			return pd.concat([confs_a, confs_b], ignore_index=True)
@@ -1169,16 +1165,20 @@ class Ranking:
 			else:
 				debug_confs_a = idx_a.loc[idx_a.index.intersection(debug)].to_list()
 				debug_confs_b = idx_b.loc[idx_b.index.intersection(debug)].to_list()
+
 			relevant_pairs = all_compared_pairs.query(f"id_a in {debug_confs_a} or id_b in {debug_confs_b}")
-			relevant_pairs = relevant_pairs[['id_a', 'id_b']].transform({
+			detailed_scores = relevant_pairs.apply(
+				lambda row: pd.Series(ConfMetaData._difference(confs_a[row['id_a']], confs_b[row['id_b']])),
+				axis='columns'
+			).rename(columns=dict(enumerate(['acronym', 'type', 'org', 'topic', 'qualif', 'num'])))
+			acronyms = relevant_pairs[['id_a', 'id_b']].transform({
 				'id_a': lambda col: col.map(confs_a).map(operator.attrgetter('acronym')).str.upper(),
 				'id_b': lambda col: col.map(confs_b).map(operator.attrgetter('acronym')).str.upper(),
-			}).rename(columns=lambda name: f'acronym_{name[-1]}').join([
-				relevant_pairs,
-				relevant_pairs.index.to_series(name='merged').isin(merged_ids.index).map({True: '*', False: ''})
-			])
+			}).rename(columns=lambda name: f'acronym_{name[-1]}').sort_values(['acronym_a', 'acronym_b'])
+			selected = relevant_pairs.index.to_series(name='merged').isin(merged_ids.index).map({True: '*', False: ''})
+
 			print()
-			print(relevant_pairs.sort_values(['id_a', 'id_b']))
+			print(acronyms.join([relevant_pairs, selected, detailed_scores]))
 			print()
 			print('\nconfs_a:')
 			print(('- ' + confs_a[debug_confs_a].map(str)).str.cat(sep='\n'))
