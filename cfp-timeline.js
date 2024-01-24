@@ -95,7 +95,7 @@ function parseFragment()
 function updateFragment()
 {
 	var params = Array.from(form.querySelectorAll('select')).reduce(
-		(params, sel) => params.concat(Array.from(sel.selectedOptions).map(opt => sel.name + '=' + opt.value))
+		(params, sel) => params.concat(Array.from(sel.selectedOptions).map(opt => sel.name + '=' + encodeURIComponent(opt.value)))
 	, []).sort().filter((it, pos, arr) => pos === 0 || it !== arr[pos - 1]);
 
 	/* get last part of &-separated fragment that contains no '=' */
