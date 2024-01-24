@@ -1044,10 +1044,10 @@ class Ranking:
 
 
 	@classmethod
-	def merge(cls, *confs: pd.Series[Conference]) -> pd.Series[Conference]:
+	def merge(cls, *confs: pd.Series[Conference], debug: bool = False) -> pd.Series[Conference]:
 		merged_confs, *confs_to_merge = confs
 		for conf in confs_to_merge:
-			merged_confs = cls._merge(merged_confs, conf)
+			merged_confs = cls._merge(merged_confs, conf, debug=debug)
 
 		print(f'Merged conferences {" + ".join(str(len(series)) for series in confs)} = {len(merged_confs)} total'
 			  f' + {sum(map(len, confs)) - len(merged_confs)} in common')
@@ -1055,7 +1055,8 @@ class Ranking:
 
 
 	@classmethod
-	def _merge(cls, confs_a: pd.Series[Conference], confs_b: pd.Series[Conference]) -> pd.Series[Conference]:
+	def _merge(cls, confs_a: pd.Series[Conference], confs_b: pd.Series[Conference],
+			   debug: bool = False) -> pd.Series[Conference]:
 		""" Merge 2 sources of conferences into a single one, merging duplicate conferences and keeping unique ones. """
 		# Mapping match-acronym to conference-id
 		idx_a = pd.Series(confs_a.index, index=confs_a.map(operator.attrgetter('acronym')).str.upper(), name='id')
@@ -1085,20 +1086,22 @@ class Ranking:
 			pd.merge(idx_a[[acronym]], idx_b[[acronym]], how='cross', suffixes=('_a', '_b')) for acronym in common
 		])
 		# Compute the scores
-		compared_pairs['scores'] = compared_pairs.agg(
-			lambda row: sum(ConfMetaData._difference(confs_a[row['id_a']], confs_b[row['id_b']])),
+		score_columns = ['acronym', 'type', 'organiser', 'topic', 'qualifiers', 'number']
+		compared_pairs[score_columns] = compared_pairs.apply(
+			lambda row: pd.Series(ConfMetaData._difference(confs_a[row['id_a']], confs_b[row['id_b']])),
 			axis='columns'
-		)
+		).rename(columns=dict(enumerate(score_columns)))
+		compared_pairs['total_score'] = compared_pairs[score_columns].sum(axis='columns')
 
 		merged_id_dfs = []
-		unmerged_a, unmerged_b = confs_a, confs_b
+		unmerged_a, unmerged_b, all_compared_pairs = confs_a, confs_b, compared_pairs
 		while compared_pairs.size:
 			# Drop scores ≥ 1000
-			best_matches = compared_pairs[compared_pairs['scores'].lt(1000)]
+			best_matches = compared_pairs[compared_pairs[score_columns].lt(1000).all(axis='columns')]
 			# Best (a, b) pairs for each a
-			best_matches = best_matches.loc[best_matches.groupby('id_a')['scores'].idxmin()]
+			best_matches = best_matches.loc[best_matches.groupby('id_a')['total_score'].idxmin()]
 			# Refine by best (a, b) pairs for each b; we don’t want to merge one b with several a
-			best_matches = best_matches.loc[best_matches.groupby('id_b')['scores'].idxmin()]
+			best_matches = best_matches.loc[best_matches.groupby('id_b')['total_score'].idxmin()]
 
 			if not best_matches.size:
 				break
@@ -1109,7 +1112,10 @@ class Ranking:
 			unmerged_a = unmerged_a.drop(index=best_matches['id_a'])
 			unmerged_b = unmerged_b.drop(index=best_matches['id_b'])
 
-			merged_id_dfs.append(best_matches.drop(columns=['scores']))
+			merged_id_dfs.append(best_matches.drop(columns=[*score_columns, 'total_score']))
+
+		if not len(merged_id_dfs):
+			return pd.concat([confs_a, confs_b], ignore_index=True)
 
 		merged_ids = pd.concat(merged_id_dfs)
 		merged = pd.concat(ignore_index=True, objs=[unmerged_a, unmerged_b, merged_ids.agg(
@@ -1121,8 +1127,37 @@ class Ranking:
 			'id_a': lambda col: col.map(confs_a).map(operator.attrgetter('acronym')).str.upper(),
 			'id_b': lambda col: col.map(confs_b).map(operator.attrgetter('acronym')).str.upper(),
 		}).query('id_a != id_b')
+
 		print('Merges with differing acronyms:')
-		print(diff_acronyms)
+		if debug:
+			# Print pair info and conf info for all candidates in merges with different acronyms
+			debug_confs_a = merged_ids.loc[[*diff_acronyms.index], 'id_a'].to_list()
+			debug_confs_b = merged_ids.loc[[*diff_acronyms.index], 'id_b'].to_list()
+			relevant_pairs = all_compared_pairs.query(f"id_a in {debug_confs_a} or id_b in {debug_confs_b}").transform({
+				'id_a': lambda col: col.map(confs_a).map(operator.attrgetter('acronym')).str.upper(),
+				'id_b': lambda col: col.map(confs_b).map(operator.attrgetter('acronym')).str.upper(),
+				**{col: (lambda ser: ser) for col in ['total_score', *score_columns]}
+			})
+			relevant_pairs['merged'] = pd.Series('*', index=merged_ids.index).reindex(relevant_pairs.index,
+																						fill_value='')
+			print()
+			print(relevant_pairs)
+			print()
+			print('\nconfs_a:')
+			print(('- ' + confs_a[debug_confs_a].map(str)).str.cat(sep='\n'))
+			print('\nconfs_b:')
+			print(('- ' + confs_b[debug_confs_b].map(str)).str.cat(sep='\n'))
+			print()
+		else:
+			# Print pair info for all merged conferences with different acronyms
+			full_scores = merged_ids.loc[diff_acronyms.index].apply(
+				lambda row: pd.Series(ConfMetaData._difference(confs_a[row['id_a']], confs_b[row['id_b']])),
+				axis='columns'
+			).rename(columns=dict(enumerate(['acronym', 'type', 'org', 'topic', 'qualif', 'num'])))
+
+			print(diff_acronyms.join(full_scores))
+			print()
+
 
 		return merged
 
@@ -1334,11 +1369,7 @@ def cfps(out_file: str, debug: bool = False):
 	# use years from 6 months ago until next year
 	search_years = range((today - datetime.timedelta(days=183)).year, (today + datetime.timedelta(days=365)).year + 1)
 
-	core, ggs = CoreRanking.get_confs(), GGSRanking.get_confs()
-	manual = pd.Series([
-		Conference('USENIX ATC', 'Usenix Annual Technical Conference'),
-	])
-	confs = Ranking.merge(core, ggs, manual).sort_values()
+	confs = Ranking.merge(CoreRanking.get_confs(), GGSRanking.get_confs(), debug=debug).sort_values()
 
 	def prog_show_conf(arg: tuple[int, Conference] | None, width: int = _term_columns - 50 - 36) -> str:
 		if arg is None:
