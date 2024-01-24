@@ -391,7 +391,7 @@ class ConfMetaData:
 
 
 	@classmethod
-	def _set_diff(cls, left: set[str], right: set[str]) -> int:
+	def _set_diff(cls, left: set[str], right: set[str], require_common: bool = True) -> int:
 		""" Return an int quantifying the difference between the sets. Lower is better.
 
 		Penalize a bit for difference on a single side, more for differences on both sides, under the assumption that
@@ -401,14 +401,14 @@ class ConfMetaData:
 		l = len(left) - n_common
 		r = len(right) - n_common
 
-		if len(left) > 0 and len(right) > 0 and n_common == 0:
+		if require_common and l and r and not n_common:
 			return 1000
 		else:
 			return  l + r + 10 * l * r - 2 * n_common
 
 
 	@classmethod
-	def _list_diff(cls, left: list[str], right: list[str]) -> float:
+	def _list_diff(cls, left: list[str], right: list[str], require_common: bool = True) -> float:
 		""" Return a float quantifying the difference between the lists of words.
 
 		Uset the same as `~set_diff` and add penalties for dfferences in word order.
@@ -426,7 +426,7 @@ class ConfMetaData:
 			sort_diff = 0
 
 		# disqualify if there is nothing in common
-		if left and right and not common:
+		if require_common and left and right and not common:
 			return 1000
 		else:
 			return n_l + n_r + 10 * n_l * n_r - 4 * n_common + sort_diff
@@ -470,7 +470,7 @@ class ConfMetaData:
 			self._set_diff(self.type_, other.type_),
 			self._set_diff(self.organisers, other.organisers),
 			self._list_diff(self.topic_keywords, other.topic_keywords),
-			self._list_diff(self.qualifiers, other.qualifiers),
+			self._list_diff(self.qualifiers, other.qualifiers, require_common=False) / 2,
 			self._set_diff(self.number, other.number)
 		)
 
