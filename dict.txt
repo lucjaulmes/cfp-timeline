@@ -22,6 +22,7 @@ DSP
 econference
 ehealth
 electro
+electrotechnical
 elsevier
 esystem
 geoscience

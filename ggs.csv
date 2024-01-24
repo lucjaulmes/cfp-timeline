@@ -358,7 +358,7 @@ CITA;International Conference on It in Asia;
 CIVR;Conference on Image and Video Retrieval;A-
 CLA;Concept Lattices and Their Applications;
 CLEF;Cross Language Evaluation Forum Workshop;B
-CLEI;Conferencia Latinoamericana De Informática;
+CLEI;Latin American Conference on Informatics;
 CLEO;Conference on Lasers and Electro-Optics;
 CLIHC;Latin American Conference on Human-Computer Interaction;
 CLIMA;International Workshop on Computational Logic in Multi-Agent Systems;
@@ -684,7 +684,7 @@ ETX;Eclipse Technology Exchange;
 EUC;Embedded and Ubiquitous Computing;
 EUCAP;European Conference on Antennas and Propagation;
 EUCNC;European Conference on Networks and Communications;
-EUMAS;European Workshop on Multi-Agent Systems;
+EUMAS;European Conference on Multi-Agent Systems;
 EUMC;European Microwave Conference;
 EURAD;European Radar Conference;
 EURO;European Conference on Operations Research;
@@ -970,6 +970,7 @@ ICCN;IEEE International Conference on Cloud Networking;
 ICCP;IEEE International Conference on Intelligent Computer Communication and Processing;
 ICCPS;International Conference on Cyber-Physical Systems;
 ICCS;International Conference on Computational Science;B
+ICCS;International Conference on Conceptual Structures;B
 ICCSA;International Conference on Computational Science and its Applications;
 ICCSCE;IEEE International Conference on Control System, Computing and Engineering;
 ICCSE;International Conference on Computer Science and Education;
@@ -977,7 +978,6 @@ ICCSIT;International Conference on Computer Science and Information Technology;
 ICCSNT;International Conference on Computer Science and Network Technology;
 ICCSP;International Conference on Communication and Signal Processing;
 ICCST;International Carnahan Conference on Security Technology;
-ICCS_A;International Conference on Conceptual Structures;B
 ICCT;International Conference on Communication Technology;
 ICCTA;International Conference on Computing: Theory and Applications;
 ICCV;IEEE International Conference on Computer Vision;A++
