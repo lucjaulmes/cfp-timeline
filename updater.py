@@ -1054,7 +1054,7 @@ class Ranking:
 
 
 	@classmethod
-	def merge(cls, *confs: pd.Series[Conference], debug: bool = False) -> pd.Series[Conference]:
+	def merge(cls, *confs: pd.Series[Conference], debug: list[str] | bool = False) -> pd.Series[Conference]:
 		merged_confs, *confs_to_merge = confs
 		for conf in confs_to_merge:
 			merged_confs = cls._merge(merged_confs, conf, debug=debug)
@@ -1066,7 +1066,7 @@ class Ranking:
 
 	@classmethod
 	def _merge(cls, confs_a: pd.Series[Conference], confs_b: pd.Series[Conference],
-			   debug: bool = False) -> pd.Series[Conference]:
+			   debug: list[str] | bool = False) -> pd.Series[Conference]:
 		""" Merge 2 sources of conferences into a single one, merging duplicate conferences and keeping unique ones. """
 		# Mapping match-acronym to conference-id
 		idx_a = pd.Series(confs_a.index, index=confs_a.map(operator.attrgetter('acronym')).str.upper(), name='id')
@@ -1141,17 +1141,22 @@ class Ranking:
 		print('Merges with differing acronyms:')
 		if debug:
 			# Print pair info and conf info for all candidates in merges with different acronyms
-			debug_confs_a = merged_ids.loc[[*diff_acronyms.index], 'id_a'].to_list()
-			debug_confs_b = merged_ids.loc[[*diff_acronyms.index], 'id_b'].to_list()
-			relevant_pairs = all_compared_pairs.query(f"id_a in {debug_confs_a} or id_b in {debug_confs_b}").transform({
+			if debug is True:
+				debug_confs_a = merged_ids.loc[[*diff_acronyms.index], 'id_a'].to_list()
+				debug_confs_b = merged_ids.loc[[*diff_acronyms.index], 'id_b'].to_list()
+			else:
+				debug_confs_a = idx_a.loc[idx_a.index.intersection(debug)].to_list()
+				debug_confs_b = idx_b.loc[idx_b.index.intersection(debug)].to_list()
+			relevant_pairs = all_compared_pairs.query(f"id_a in {debug_confs_a} or id_b in {debug_confs_b}")
+			relevant_pairs = relevant_pairs[['id_a', 'id_b']].transform({
 				'id_a': lambda col: col.map(confs_a).map(operator.attrgetter('acronym')).str.upper(),
 				'id_b': lambda col: col.map(confs_b).map(operator.attrgetter('acronym')).str.upper(),
-				**{col: (lambda ser: ser) for col in ['total_score', *score_columns]}
-			})
-			relevant_pairs['merged'] = pd.Series('*', index=merged_ids.index).reindex(relevant_pairs.index,
-																						fill_value='')
+			}).rename(columns=lambda name: f'acronym_{name[-1]}').join([
+				relevant_pairs,
+				relevant_pairs.index.to_series(name='merged').isin(merged_ids.index).map({True: '*', False: ''})
+			])
 			print()
-			print(relevant_pairs)
+			print(relevant_pairs.sort_values(['id_a', 'id_b']))
 			print()
 			print('\nconfs_a:')
 			print(('- ' + confs_a[debug_confs_a].map(str)).str.cat(sep='\n'))
@@ -1382,6 +1387,19 @@ def core():
 def ggs():
 	""" Update the cached list of GII-GRIN-SCIE (GGS) conferences """
 	GGSRanking.update_confs()
+
+
+@update.command(hidden=True)
+@click.option('--debug/--no-debug', default=False, help='Show debug output for differing acronyms (if no acronyms are selected)')
+@click.option('--debug-acronym', default=[], multiple=True, help='Select debug output for selected acronyms')
+def load_confs(debug: bool = False, debug_acronym: list[str] = []):
+	""" Load and merge the the conference lists. """
+	confs = Ranking.merge(CoreRanking.get_confs(), GGSRanking.get_confs(), debug=debug_acronym or debug).sort_values()
+
+	if debug_acronym:
+		show = confs.map(operator.attrgetter('acronym')).str.upper().str.match('|'.join(debug_acronym))
+		print('\nResulting confs:')
+		print(('- ' + confs[show].map(str)).str.cat(sep='\n'))
 
 
 @update.command()
