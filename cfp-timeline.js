@@ -1,77 +1,94 @@
 const ranks = ['E', 'D', 'C', 'B-', 'B', 'A-', 'A', 'A+', 'A*', 'A++'];
-let confIdx = 0, titleIdx = 1, rankIdx = 2, rankingIdx = 3, fieldIdx = 4, linkIdx = 17, cfpIdx = 18;
-let abstIdx = 5, subIdx = 6, notifIdx = 7, camIdx = 8, startIdx = 9, endIdx = 10;
-let yearIdx = 5, yearOffset = 14, origOffset = 6;
-const today = new Date(), year = today.getFullYear();
+// Indexes in a row of data
+let confIdx = 0, titleIdx = 1, rankIdx = 2, rankingIdx = 3, fieldIdx = 4, cfpIdx = 5;
+// Indexes in a cfp list
+let abstIdx = 0, subIdx = 1, notifIdx = 2, camIdx = 3, startIdx = 4, endIdx = 5, origOffset = 6;
+	linkIdx = 12, cfpLinkIdx = 13;
+
+const today = new Date();
+let year = today.getFullYear(), n_years = 1;
 
 const month_name = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const timeline_zero = Date.UTC(today.getFullYear(), today.getMonth() - 6, 1);
+const date_zero = new Date(timeline_zero);
 
 // some global variables
-var timeline_max = Date.UTC(today.getFullYear(), today.getMonth() + 18, 0);
+let timeline_max = Date.UTC(today.getFullYear(), today.getMonth() + 18, 0);
+let date_max = new Date(timeline_max);
 // % per month: 50px / duration of 1 month
-var timeline_scale = 100 / (timeline_max - timeline_zero);
+let timeline_scale = 100 / (timeline_max - timeline_zero);
 
-var timeline = document.getElementById('timeline'), n_years = 1;
-var suggestions = document.querySelector('#suggestions');
-var timeline_conf_lookup = {};
-var form = document.querySelector('form');
-var data = [], filters = {};
+const timeline = document.getElementById('timeline');
+const suggestions = document.querySelector('#suggestions');
+const form = document.querySelector('form');
+const filters = {};
+let data = [];
 
-var filtered_confs; // #search p.filter_conf
+let filtered_confs; // #search p.filter_conf
 
 // the value we push into the hash
-var sethash = '';
+let sethash = '';
 
 // Escape data to pass as regexp
 RegExp.escape = s => s.replace(/[\\^$*+?.()|[\]{}]/g, '\\$&')
 
+// timeout id to delay search update
+let updateSearchTimeoutId = 0;
 
-/* Template elements that we can clone() */
-var marker = document.createElement('sup');
+
+// Template elements that we can clone()
+const marker = document.createElement('sup');
 marker.className = 'est';
 marker.textContent = '†';
 
-var line = document.createElement('p');
+const line = document.createElement('p');
 line.appendChild(document.createElement('span')).className = 'acronyms';
 line.appendChild(document.createElement('span')).className = 'timeblocks';
 line.style.display = 'none';
 
-var wikicfp = document.createElement('img');
-wikicfp.src = 'wikicfplogo.png';
-wikicfp.alt = 'Wiki CFP logo';
-wikicfp.className += 'cfpurl';
-wikicfp = document.createElement('a').appendChild(wikicfp).parentNode;
+const wikicfp = document.createElement('a').appendChild(document.createElement('img')).parentNode;
+wikicfp.firstChild.src = 'wikicfplogo.png';
+wikicfp.firstChild.alt = 'Wiki CFP logo';
+wikicfp.firstChild.className += 'cfpurl';
 
-var suggestion = document.createElement('li');
+const suggestion = document.createElement('li');
 suggestion.appendChild(document.createElement('span')).className += 'conf';
 suggestion.appendChild(document.createElement('span')).className += 'rank';
 suggestion.appendChild(document.createElement('span')).className += 'field';
 suggestion.appendChild(document.createElement('span')).className += 'title';
 suggestion.style.display = 'none';
 
+// Formatter for dates
+const dateFormat = new Intl.DateTimeFormat('en', {
+	weekday: 'short',
+	year: 'numeric',
+	month: 'short',
+	day: 'numeric',
+});
 
 function ranksort(a, b)
 {
-	var ra = ranks.indexOf(a), rb = ranks.indexOf(b);
+	const rank_a = ranks.indexOf(a), rank_b = ranks.indexOf(b);
 	// compare using positions
-	if (ra >= 0 && rb >= 0) return rb - ra;
+	if (rank_a >= 0 && rank_b >= 0)
+		return rank_b - rank_a;
 	// compare as strings
-	else if(ra < 0 && rb < 0) return a > b;
+	else if(rank_a < 0 && rank_b < 0)
+		return a > b;
 	// return 1 for the element not negative
 	else
-		return ra < 0 ? 1 : -1;
+		return rank_a < 0 ? 1 : -1;
 }
 
 function parseFragment()
 {
-	var hash = window.location.hash.substr(1).split('&');
-	var goto = undefined;
+	const hash_parts = window.location.hash.substr(1).split('&');
+	let anchorYOffset = undefined;
 
-	var result = hash.reduce(function (result, item)
+	const result = hash_parts.reduce(function (result, item)
 	{
-		var parts = item.split('=', 2);
+		const parts = item.split('=', 2);
 
 		if (parts.length > 1)
 		{
@@ -81,87 +98,88 @@ function parseFragment()
 			result[parts[0]].push(decodeURIComponent(parts[1]));
 		}
 		else if (item && document.getElementById(item))
-			goto = window.pageYOffset + document.getElementById(item).getBoundingClientRect().top;
+			anchorYOffset = window.pageYOffset + document.getElementById(item).getBoundingClientRect().top;
 
 		return result;
 	}, {});
 
-	if (result.length && goto !== undefined)
-		window.scroll(window.pageXOffset, goto);
+	if (result.length && anchorYOffset !== undefined)
+		window.scroll(window.pageXOffset, anchorYOffset);
 
 	return result;
 }
 
 function updateFragment()
 {
-	var params = Array.from(form.querySelectorAll('select')).reduce(
-		(params, sel) => params.concat(Array.from(sel.selectedOptions).map(opt => sel.name + '=' + encodeURIComponent(opt.value)))
+	const params = Array.from(form.querySelectorAll('select')).reduce((params, sel) =>
+		params.concat(Array.from(sel.selectedOptions).map(opt => `${sel.name}=${encodeURIComponent(opt.value)}`))
 	, []).sort().filter((it, pos, arr) => pos === 0 || it !== arr[pos - 1]);
 
 	/* get last part of &-separated fragment that contains no '=' */
-	var goto = window.location.hash.substr(1).split('&').reduce(function (prev, item)
+	const anchor = window.location.hash.substr(1).split('&').reduce(function (prev, item)
 	{
 		return item.indexOf('=') < 0 ? item : prev;
 	}, null);
 
-	if (goto)
-		params.push(goto);
+	if (anchor)
+		params.push(anchor);
 
 	sethash = '#' + params.join('&');
-	if (window.location.hash != sethash)
+	if (window.location.hash !== sethash)
 		window.location.hash = sethash;
 }
 
 function makeTimelineLegend()
 {
-	var box = document.getElementById('timeline_header');
+	const box = document.getElementById('timeline_header');
 	while (box.hasChildNodes())
 		box.firstChild.remove();
 
-	var startDate = new Date(timeline_zero),
-		endDate = new Date(timeline_max);
-
-	var months = document.createElement('p');
+	const months = document.createElement('p');
 	months.id = 'months';
 	months.appendChild(document.createElement('span')).className += 'acronyms';
 	months.appendChild(document.createElement('span')).className += 'timeblocks';
 
-	for (var m = startDate.getMonth(); m <= endDate.getMonth() + 12 * (endDate.getFullYear() - startDate.getFullYear()); m++)
+	const year_from = date_zero.getFullYear(), year_diff = date_max.getFullYear() - year_from;
+
+	for (let m = date_zero.getMonth(); m <= date_max.getMonth() + 12 * year_diff; m++)
 	{
-		var from = Date.UTC(startDate.getFullYear(), m, 1);
-		var until = Date.UTC(startDate.getFullYear(), m + 1, 0);
+		const from = Date.UTC(year_from, m, 1);
+		const until = Date.UTC(year_from, m + 1, 0);
 
-		var month = months.lastChild.appendChild(document.createElement('span'));
+		const month = months.lastChild.appendChild(document.createElement('span'));
 		month.textContent = month_name[m % 12];
-		month.style.width = (until - from) * timeline_scale + '%'
-		month.style.left = (from - timeline_zero) * timeline_scale + '%'
-		if (m == startDate.getMonth() || m % 12 == 0) month.className += 'first';
+		month.style.width = `${(until - from) * timeline_scale}%`
+		month.style.left = `${(from - date_zero) * timeline_scale}%`
+		if (m % 12 === 0)
+			month.className += 'first';
 	}
+	months.lastChild.firstChild.className += 'first';
 
-	var years = document.createElement('p');
+	const years = document.createElement('p');
 	years.id = 'years';
 	years.appendChild(document.createElement('span')).className += 'acronyms';
 	years.appendChild(document.createElement('span')).className += 'timeblocks';
 
-	for (var y = startDate.getFullYear(); y <= endDate.getFullYear(); y++)
+	for (let y = year_from; y <= year_from + year_diff; y++)
 	{
-		var from = Math.max(timeline_zero, Date.UTC(y, 0, 1));
-		var until = Math.min(timeline_max, Date.UTC(y + 1, 0, 0));
+		const from = Math.max(date_zero, Date.UTC(y, 0, 1));
+		const until = Math.min(date_max, Date.UTC(y + 1, 0, 0));
 
-		var year = years.lastChild.appendChild(document.createElement('span'));
+		const year = years.lastChild.appendChild(document.createElement('span'));
 		year.textContent = y;
-		year.style.width = 'calc(' + (until - from) * timeline_scale + '% - 1px)';
-		year.style.left = (from - timeline_zero) * timeline_scale + '%';
+		year.style.width = `calc(${(until - from) * timeline_scale}% - 1px)`;
+		year.style.left = `${(from - date_zero) * timeline_scale}%`;
 	}
 
-	var now = document.createElement('p');
+	const now = document.createElement('p');
 	now.id = 'now';
 	now.appendChild(document.createElement('span')).className += 'acronyms';
 	now.appendChild(document.createElement('span')).className += 'timeblocks';
 
-	var day = now.lastChild.appendChild(document.createElement('span'));
+	const day = now.lastChild.appendChild(document.createElement('span'));
 	day.className += 'today';
-	day.style.left = ((today.valueOf() - timeline_zero) * timeline_scale) + '%';
+	day.style.left = `${(today.valueOf() - date_zero) * timeline_scale}%`;
 
 	box.appendChild(years);
 	box.appendChild(months);
@@ -170,20 +188,21 @@ function makeTimelineLegend()
 
 function parseDate(str)
 {
-	if (!str) return null;
+	if (!str)
+		return null;
 
-	tok = str.split('-');
-	return Math.max(timeline_zero, Date.UTC(tok[0], tok[1] - 1, tok[2]));
+	const date = Date.UTC(str.substring(0, 4), str.substring(4, 6) - 1, str.substring(6, 8));
+	return Math.min(timeline_max, Math.max(timeline_zero, date));
 }
 
 function makeTimelineDuration(cls, from, until, tooltip_text, from_orig, until_orig)
 {
-	var span = document.createElement('span');
+	const span = document.createElement('span');
 	span.className = cls;
 	span.style.width = (until - from) * timeline_scale + '%';
 	span.style.left = (from - timeline_zero) * timeline_scale + '%';
 
-	var tooltip = span.appendChild(document.createElement('span'));
+	const tooltip = span.appendChild(document.createElement('span'));
 	tooltip.className = 'tooltip';
 	tooltip.innerHTML = tooltip_text; /* to put html tags in tooltip_text */
 
@@ -192,8 +211,10 @@ function makeTimelineDuration(cls, from, until, tooltip_text, from_orig, until_o
 	else
 		tooltip.style.right = '0';
 
-	if (from_orig === false) span.appendChild(marker.cloneNode(true)).style.left = '0';
-	if (until_orig === false) span.appendChild(marker.cloneNode(true)).style.left = '100%';
+	if (from_orig === false)
+		span.appendChild(marker.cloneNode(true)).style.left = '0';
+	if (until_orig === false)
+		span.appendChild(marker.cloneNode(true)).style.left = '100%';
 
 	return span;
 }
@@ -201,13 +222,13 @@ function makeTimelineDuration(cls, from, until, tooltip_text, from_orig, until_o
 
 function makeTimelinePunctual(cls, date, content, tooltip_text, date_orig)
 {
-	var span = document.createElement('span');
+	const span = document.createElement('span');
 	span.className = cls;
 	span.style.width = '.5em';
 	span.innerHTML = content;
 	span.style.left = 'calc(' + (date - timeline_zero) * timeline_scale + '% - .25em)';
 
-	var tooltip = span.appendChild(document.createElement('span'));
+	const tooltip = span.appendChild(document.createElement('span'));
 	tooltip.className = 'tooltip';
 	tooltip.innerHTML = tooltip_text; /* to put html tags in tooltip_text */
 
@@ -216,59 +237,73 @@ function makeTimelinePunctual(cls, date, content, tooltip_text, date_orig)
 	else
 		tooltip.style.right = '0';
 
-	if (date_orig === false) span.appendChild(marker.cloneNode(true)).style.left = '.75em';
+	if (date_orig === false)
+		span.appendChild(marker.cloneNode(true)).style.left = '.75em';
 
 	return span;
 }
 
+function est(isOrig) {
+	return isOrig === false ? 'Estimated ' : '';
+}
+
+function objMap(obj, func) {
+	return Object.fromEntries(
+		Object.entries(obj).map(([key, val], idx) => [key, func(val, key, idx)])
+	)
+}
 
 function makeTimelineItem(row)
 {
-	var p = line.cloneNode(true);
+	const p = line.cloneNode(true);
 	renderAcronym(p.firstChild, row);
 
-	var blocks = p.lastChild;
-	for (var y = 0; y < n_years; y++)
+	const dateIdx = {abst: abstIdx, sub: subIdx, notif: notifIdx, cam: camIdx, start: startIdx, end: endIdx};
+	const blocks = p.lastChild;
+	for (let y = 0; y < n_years; y++)
 	{
-		// get the row for this year, with friendl names
-		var acronym = row[confIdx] + ' ' + (year + y), tooltip;
-		var [abst, sub, notif, cam, start, end] = row.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1).map(parseDate);
-		var [abstText, subText, notifText, camText, startText, endText] = row.slice(abstIdx + y * yearOffset, endIdx + y * yearOffset + 1);
-		var [abstOrig, subOrig, notifOrig, camOrig, startOrig, endOrig] = row.slice(abstIdx + y * yearOffset + origOffset, endIdx + y * yearOffset + origOffset + 1);
+		// get the row for this year, with friendly names
+		const acronym = `${row[confIdx]} ${year + y}`;
+		const cfp = row[cfpIdx + y];
+		const date = objMap(dateIdx, idx => parseDate(cfp[idx]));
+		const orig = objMap(dateIdx, idx => cfp[idx + origOffset]);
+		const text = objMap(date, dt => dt && dateFormat.format(dt));
 
-		if (!abst) abst = sub;
-		else if (!sub) sub = abst;
+		if (!date.abst)
+			date.abst = date.sub;
+		else if (!date.sub)
+			date.sub = date.abst;
 
-		if (sub && notif && notif >= sub)
+		if (date.sub && date.notif && date.notif >= date.sub)
 		{
-			if (sub > abst)
+			if (date.sub > date.abst)
 			{
-				tooltip = (abstOrig === false ? 'Estimated ' : '') + acronym + ' registration ' + abstText;
-				blocks.appendChild(makeTimelineDuration('abstract', abst, sub, tooltip, abstOrig));
+				const tooltip = `${est(orig.abst)}${acronym} registration ${text.abst}`;
+				blocks.appendChild(makeTimelineDuration('abstract', date.abst, date.sub, tooltip, orig.abst));
 			}
 
-			tooltip = (subOrig === false ? 'Estimated ' : '') +  acronym + ' submission ' + subText +
-				',<br />' + (notifOrig === false ? 'estimated ' : '') + 'notification ' + notifText
-
-			blocks.appendChild(makeTimelineDuration('review', sub, notif, tooltip, subOrig, notifOrig));
+			const tooltip = [
+				`${est(orig.sub)}${acronym} submission ${text.sub},`,
+				`${est(orig.notif).toLowerCase()}notification ${text.notif}`,
+			].join('<br />');
+			blocks.appendChild(makeTimelineDuration('review', date.sub, date.notif, tooltip, orig.sub, orig.notif));
 		}
-		else if (sub)
+		else if (date.sub)
 		{
-			tooltip = (subOrig === false ? 'Estimated ' : '') + acronym + ' submission ' + subText;
-			blocks.appendChild(makeTimelinePunctual('sub', sub, '<sup>◆</sup>', tooltip, subOrig));
-		}
-
-		if (cam)
-		{
-			tooltip = (camOrig === false ? 'Estimated ' : '' ) + acronym + ' final version ' + camText;
-			blocks.appendChild(makeTimelinePunctual('cam', cam, '<sup>∎</sup>', tooltip, camOrig));
+			const tooltip = `${est(orig.sub)}${acronym} submission ${text.sub}`;
+			blocks.appendChild(makeTimelinePunctual('date.sub', date.sub, '<sup>◆</sup>', tooltip, orig.sub));
 		}
 
-		if (start && end && end >= start)
+		if (date.cam)
 		{
-			tooltip = acronym + (startOrig === false || endOrig === false ? ' estimated from ' : ' from ')
-						+ startText + ' to ' + endText;
-			blocks.appendChild(makeTimelineDuration('conf', start, end, tooltip, undefined, endOrig));
+			const tooltip = `${est(orig.cam)}${acronym} final version ${text.cam}`;
+			blocks.appendChild(makeTimelinePunctual('date.cam', date.cam, '<sup>∎</sup>', tooltip, orig.cam));
+		}
+
+		if (date.start && date.end && date.end >= date.start)
+		{
+			const tooltip = `${acronym} ${est(orig.start && orig.end).toLowerCase()}from ${text.start} to ${text.end}`;
+			blocks.appendChild(makeTimelineDuration('conf', date.start, date.end, tooltip, undefined, orig.end));
 		}
 	}
 
@@ -278,14 +313,16 @@ function makeTimelineItem(row)
 
 function makeSuggestionItem(row)
 {
-	var item = suggestion.cloneNode(true);
+	const item = suggestion.cloneNode(true);
 
 	item.children[0].textContent = row[confIdx];
-	item.children[1].textContent = row[rankIdx].map((val, idx) => `${val || 'unrated'} (${row[rankingIdx][idx]})`).join(', ');;
+	item.children[1].textContent = row[rankIdx].map(
+		(val, idx) => `${val || 'unrated'} (${row[rankingIdx][idx]})`
+	).join(', ');
 	item.children[2].textContent = row[fieldIdx] == '(missing)' ? '': row[fieldIdx];
 	item.children[3].textContent = row[titleIdx];
 
-	var opt = Array.from(form.querySelector('select[name="conf"]').options).find(opt => opt.value === row[confIdx]);
+	const opt = Array.from(form.querySelector('select[name="conf"]').options).find(opt => opt.value === row[confIdx]);
 	item.onclick = () =>
 	{
 		opt.selected = true;
@@ -299,11 +336,11 @@ function makeSuggestionItem(row)
 
 function makeSelectedItem(row)
 {
-	var item = document.createElement('span');
+	const item = document.createElement('span');
 	item.textContent = row[confIdx];
 	item.title = row[titleIdx];
 
-	var opt = Array.from(form.querySelector('select[name="conf"]').options).find(opt => opt.value === row[confIdx]);
+	const opt = Array.from(form.querySelector('select[name="conf"]').options).find(opt => opt.value === row[confIdx]);
 	item.onclick = () => { opt.selected = false; opt.parentNode.onchange(); }
 
 	// insert at N-2
@@ -314,24 +351,23 @@ function makeSelectedItem(row)
 function hideSuggestions()
 {
 	Array.from(suggestions.children).filter(conf => conf.style.display !== 'none')
-									.forEach(conf => conf.style.display = 'none');
+									.forEach(conf => { conf.style.display = 'none' });
 }
 
 
-let updateSearchTimeoutId = 0;
-
 function delayedUpdateSearch(value)
 {
-	var search = value.split(/[ ;:,.]/).filter(val => val && val.length >= 2).map(val => new RegExp(RegExp.escape(val), 'iu'))
+	const terms = value.split(/[ ;:,.]/).filter(val => val && val.length >= 2);
+	const search = terms.map(val => new RegExp(RegExp.escape(val), 'iu'));
 
 	hideSuggestions();
 
 	// -> all(words) -> any(columns)
 	if (search.length)
-		data.filter(row => search.every(r => r.test(row[confIdx]) || r.test(row[titleIdx]))).forEach(row =>
+		data.forEach((row, idx) =>
 		{
-			var idx = timeline_conf_lookup[row[confIdx]];
-			suggestions.children[idx].style.display = 'block';
+			if (search.every(r => r.test(row[confIdx]) || r.test(row[titleIdx])))
+				suggestions.children[idx].style.display = 'block';
 		});
 
 	updateSearchTimeoutId = 0;
@@ -348,8 +384,8 @@ function updateSearch()
 
 function setColumnFilter(select, col_id)
 {
-	var val = Array.from(select.selectedOptions).map(opt => RegExp.escape(opt.value));
-	var regex = val.length ? ('^(' + val.join('|') + ')$') : '';
+	const val = Array.from(select.selectedOptions).map(opt => RegExp.escape(opt.value));
+	const regex = val.length ? `^(${val.join('|')})$` : '';
 
 	if (regex)
 		filters[col_id] = new RegExp(regex);
@@ -360,7 +396,7 @@ function setColumnFilter(select, col_id)
 // this is the select
 function updateFilter()
 {
-	var column_id = this.getAttribute('column_id');
+	const column_id = this.getAttribute('column_id');
 	setColumnFilter(this, column_id);
 
 	filterUpdated().then(updateFragment);
@@ -368,14 +404,17 @@ function updateFilter()
 
 async function filterUpdated(search)
 {
-	Array.from(timeline.children).filter(conf => conf.style.display !== 'none').forEach(conf => conf.style.display = 'none');
+	Array.from(timeline.children).filter(conf => conf.style.display !== 'none').forEach(conf => {
+		conf.style.display = 'none'
+	});
 	Array.from(filtered_confs.children).slice(0, timeline.children.length)
 		.filter(conf => conf.style.display !== 'none').forEach(conf => conf.style.display = 'none');
 
 	// Every filter needs to match at least one of its values
-	data.map(row => Object.entries(filters).reduce(
-		(ret, [col, regex]) => Object.assign(ret, {[col]: Array.isArray(row[col]) ? row[col].some(entry => regex.test(entry)) : regex.test(row[col])}),
-		{index: timeline_conf_lookup[row[confIdx]]}
+	data.map((row, idx) =>
+		Object.entries(filters).reduce((ret, [col, regex]) => Object.assign(ret,
+			{[col]: Array.isArray(row[col]) ? row[col].some(entry => regex.test(entry)) : regex.test(row[col])}
+		), {index: idx}
 	)).forEach(({ index, ...row_filters }) =>
 	{
 		const show = Object.values(row_filters).every(val => val);
@@ -403,21 +442,21 @@ function makeFilter(colIdx, name, sortfunction)
 		values = [].concat(...values).map(rank => rank || '(unranked)');
 	values = values.sort(sortfunction).filter((val, idx, arr) => idx === 0 || val !== arr[idx - 1]);
 
-	var p = document.createElement('p');
+	const p = document.createElement('p');
 	p.className += 'filter_' + name
 
-	var select = p.appendChild(document.createElement('select'));
+	const select = p.appendChild(document.createElement('select'));
 	select.multiple = true;
 	select.name = name;
 	select.size = values.length;
 	select.setAttribute('column_id', colIdx);
 
-	var clear = p.appendChild(document.createElement('button'));
+	const clear = p.appendChild(document.createElement('button'));
 	clear.textContent = 'clear';
 
 	values.forEach(t =>
 	{
-		var option = select.appendChild(document.createElement('option'));
+		const option = select.appendChild(document.createElement('option'));
 		option.textContent = t;
 		option.value = t === '(unranked)' ? null : t;
 	});
@@ -435,14 +474,15 @@ function makeFilter(colIdx, name, sortfunction)
 
 function filterFromFragment()
 {
-	var selects = Array.from(form.querySelectorAll('select'));
-	var selectedValues = parseFragment();
+	const selects = Array.from(form.querySelectorAll('select'));
+	const selectedValues = parseFragment();
 
 	selects.forEach(sel =>
 	{
 		sel.selectedIndex = -1;
-		var values = selectedValues[sel.name] || (sel.name == 'scope' ? ['0'] : []);
-		if (!values.length) return;
+		const values = selectedValues[sel.name] || (sel.name == 'scope' ? ['0'] : []);
+		if (!values.length)
+			return;
 		Array.from(sel.options).forEach(opt => { opt.selected = values.indexOf(opt.value) >= 0 });
 	});
 
@@ -454,10 +494,10 @@ function renderAcronym(p, row)
 	let conf = document.createElement('span');
 
 	for (let y = n_years - 1; y >= 0; y--)
-		if (row[linkIdx + y * yearOffset] && row[linkIdx + y * yearOffset] != '(missing)')
+		if (row[cfpIdx + y][linkIdx] && row[cfpIdx + y][linkIdx] != '(missing)')
 		{
 			conf = document.createElement('a');
-			conf.href = row[linkIdx + y * yearOffset]
+			conf.href = row[cfpIdx + y][linkIdx]
 			break;
 		}
 
@@ -476,11 +516,11 @@ function renderAcronym(p, row)
 	p.innerHTML += '&nbsp;'
 
 	for (let y = n_years - 1; y >= 0; y--)
-		if (row[cfpIdx + y * yearOffset] && row[cfpIdx + y * yearOffset] != '(missing)')
+		if (row[cfpIdx + y][cfpLinkIdx] && row[cfpIdx + y][cfpLinkIdx] != '(missing)')
 		{
-			cfp = p.appendChild(wikicfp.cloneNode(true));
-			cfp.href = row[cfpIdx + y * yearOffset];
-			cfp.title = row[confIdx] + ' CFP on WikiCFP';
+			const cfp = p.appendChild(wikicfp.cloneNode(true));
+			cfp.href = row[cfpIdx + y][cfpLinkIdx];
+			cfp.title = `${row[confIdx]} ${year + y} CFP on WikiCFP`;
 			break;
 		}
 
@@ -500,78 +540,68 @@ function notNull(val, idx)
 
 function populatePage(json)
 {
+	// First update global variables from fetched data
 	data = json['data'];
+	n_years = json['years'].length
+	year = json['years'][0];
 
-	var datesIdx = [], origIdx = [], urlIdx = [];
-	let year = json['years'][0];
 	confIdx    = json['columns'].indexOf('Acronym')
 	titleIdx   = json['columns'].indexOf('Title')
 	rankingIdx = json['columns'].indexOf('Rank system')
 	rankIdx    = json['columns'].indexOf('Rank')
 	fieldIdx   = json['columns'].indexOf('Field')
-	linkIdx    = json['columns'].indexOf(`Link ${year}`)
-	cfpIdx     = json['columns'].indexOf(`CFP url ${year}`)
-	abstIdx    = json['columns'].indexOf(`Abstract Registration Due ${year}`)
-	subIdx     = json['columns'].indexOf(`Submission Deadline ${year}`)
-	notifIdx   = json['columns'].indexOf(`Notification Due ${year}`)
-	camIdx     = json['columns'].indexOf(`Final Version Due ${year}`)
-	startIdx   = json['columns'].indexOf(`startDate ${year}`)
-	endIdx     = json['columns'].indexOf(`endDate ${year}`)
+	cfpIdx     = json['columns'].indexOf(`${year}`)
 
-	yearIdx    = json['columns'].indexOf(`Abstract Registration Due ${year}`)
-	yearOffset = json['columns'].indexOf(`Abstract Registration Due ${json['years'][1]}`) - yearIdx
-	origOffset = json['columns'].indexOf(`orig_abstract ${year}`) - yearIdx
+	abstIdx    = json['cfp_columns'].indexOf('Abstract Registration Due')
+	subIdx     = json['cfp_columns'].indexOf('Submission Deadline')
+	notifIdx   = json['cfp_columns'].indexOf('Notification Due')
+	camIdx     = json['cfp_columns'].indexOf('Final Version Due')
+	startIdx   = json['cfp_columns'].indexOf('startDate')
+	endIdx     = json['cfp_columns'].indexOf('endDate')
+	linkIdx    = json['cfp_columns'].indexOf('Link')
+	cfpLinkIdx = json['cfp_columns'].indexOf('CFP url')
 
-	n_years = (json['columns'].length - yearIdx) / yearOffset
+	origOffset = json['cfp_columns'].indexOf('orig_abstract')
 
-	for (var y = 0; y < n_years; y++)
-	{
-		for (var d of [abstIdx, subIdx, notifIdx, camIdx, startIdx, endIdx])
-		{
-			datesIdx.push(d + y * yearOffset);
-			origIdx.push(d + origOffset + y * yearOffset);
-		}
+	// Use lexicographic sort for dates, in format YYYYMMDD. NB: some dates are null.
+	const mindate = [
+		date_zero.getFullYear(),
+		date_zero.getMonth() + 1,
+		date_zero.getDate(),
+	].map(num => String(num).padStart(2, '0')).join('');
 
-		for (var u of [linkIdx, cfpIdx])
-			urlIdx.push(u + y * yearOffset)
-	}
-
-	// Use lexicographic sort with cast to numbers for dates, i.e. parseInt(YYYYMMDD). NB: some dates are null.
-	var mindate = new Date(timeline_zero);
-	mindate = (mindate.getUTCFullYear() * 100 + (mindate.getUTCMonth() + 1)) * 100 + mindate.getUTCDate();
-
-	var maxdate = data.reduce((curmax, row) =>
-		Math.max.apply(null, datesIdx.map(col => (row[col] || '0').replace(/-/g, '')).concat([curmax]))
-	, mindate);
+	const maxdate = data.reduce((curmax, row) => Math.max(
+		curmax,
+		...row.slice(cfpIdx, cfpIdx + n_years).map(cfp => cfp[endIdx] || cfp[startIdx] || cfp[subIdx])
+	), mindate);
 
 	// get last day of month
 	timeline_max = Date.UTC(Math.floor(maxdate / 10000), Math.floor(maxdate / 100) % 100, 0);
 	timeline_scale = 100 / (timeline_max - timeline_zero);
+	date_max = new Date(timeline_max);
 
 	makeTimelineLegend();
 
 	// sort the data per date
-	const sortIdx = [
-		  subIdx + (n_years - 1) * yearOffset,
-		 abstIdx + (n_years - 1) * yearOffset,
-		startIdx + (n_years - 1) * yearOffset,
-		  endIdx + (n_years - 1) * yearOffset
-	]
+	const sortIdx = [subIdx, abstIdx, startIdx, endIdx]
 
 	// get sort-column subtractions, return first non-zero, or zero
-	data.sort((rowA, rowB) => sortIdx.map(col => (rowA[col] || '').replace(/-/g, '') - (rowB[col] || '').replace(/-/g, ''))
-									.find(diff => diff !== 0) || 0);
+	// < -1M / > 1M are differences with missing date on a single side
+	data.sort((rowA, rowB) => sortIdx.map(col => rowA[cfpIdx][col] - rowB[cfpIdx][col])
+									 .find(diff => -1000000 < diff && diff < 1000000 && diff !== 0) || 0);
 
-	document.getElementById('head').appendChild(document.createTextNode(' The last scraping took place on ' + json['date'] + '.'));
+	document.getElementById('head').appendChild(
+		document.createTextNode(` The last scraping took place on ${json['date']}.`)
+	);
 
 	document.getElementById('search').appendChild(makeFilter(confIdx, "conf"));
 	filtered_confs = form.querySelector('p.filter_conf');
 
-	var filters = document.getElementById('filters');
+	const filters = document.getElementById('filters');
 	filters.appendChild(makeFilter(rankIdx, "rank", ranksort));
 	filters.appendChild(makeFilter(fieldIdx, "field"));
 
-	var search = form.querySelector('input[name="search"]');
+	const search = form.querySelector('input[name="search"]');
 	search.onkeypress = updateSearch
 	search.onkeyup = updateSearch
 	search.onfocus = updateSearch
@@ -579,7 +609,6 @@ function populatePage(json)
 
 	data.forEach((row, idx) =>
 	{
-		timeline_conf_lookup[row[confIdx]] = idx;
 		makeTimelineItem(row);
 		makeSuggestionItem(row);
 		makeSelectedItem(row);
@@ -598,14 +627,15 @@ function populatePage(json)
 
 function parsingErrors(content)
 {
-	var table = document.getElementById('error_log');
-	for (let error of content.split('\n'))
+	const table = document.getElementById('error_log');
+	for (const error of content.split('\n'))
 	{
-		if (!error.trim().length) continue;
+		if (!error.trim().length)
+			continue;
 
-		var [conf, errmsg, url, fixed] = error.replace(/ -- /g, ' − ').split(';');
-		var err = document.createElement('tr');
-		var link = err.appendChild(document.createElement('td')).appendChild(document.createElement('a'));
+		const [conf, errmsg, url, fixed] = error.replace(/ -- /g, ' – ').split(';');
+		const err = document.createElement('tr');
+		const link = err.appendChild(document.createElement('td')).appendChild(document.createElement('a'));
 		link.textContent = conf;
 		link.href = url;
 		err.appendChild(document.createElement('td')).textContent = errmsg;
@@ -613,7 +643,7 @@ function parsingErrors(content)
 		table.appendChild(err).className = fixed;
 	}
 
-	var label = document.querySelector('label[for=collapse_errors]');
+	const label = document.querySelector('label[for=collapse_errors]');
 	label.textContent = (table.children.length - 1) + ' ' + label.textContent;
 }
 

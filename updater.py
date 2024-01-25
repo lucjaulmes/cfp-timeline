@@ -1370,7 +1370,7 @@ class CoreRanking(Ranking):
 
 def json_encode_dates(obj: datetime.date):
 	if isinstance(obj, datetime.date):
-		return str(obj)
+		return obj.strftime(r'%Y%m%d')
 	else:
 		raise TypeError('{} not encodable'.format(obj))
 
@@ -1526,11 +1526,13 @@ def cfps(out_file: str, debug: bool = False):
 
 	# Combine all conference / cfp data and sort based on acronym
 	out_years = [year for year in search_years if year >= today.year]
-	all_data = conf_data.add(cfp_data[out_years].sum(axis='columns')).reindex_like(conf_data.str[0].sort_values())
+	all_data = conf_data.add(cfp_data[out_years].agg(list, axis='columns')).reindex_like(conf_data.str[0].sort_values())
 
 	with open(out_file, 'w') as out:
-		cols = [*Conference.columns(), *(f'{col} {y}' for y in out_years for col in CallForPapers.columns())]
-		print(f'{{"years": {json.dumps(out_years)}, "columns":\n{json.dumps(cols)},\n"data": [', file=out)
+		cols = [*Conference.columns(), *map(str, out_years)]
+		print(f'{{"years": {json.dumps(out_years)}, "columns":\n{json.dumps(cols)},', file=out)
+		print(f'"cfp_columns":\n{json.dumps(CallForPapers.columns())},', file=out)
+		print('"data": [', file=out)
 
 		to_string = functools.partial(json.dumps, default=json_encode_dates)
 		print(all_data.map(to_string).str.cat(sep=',\n'), file=out)
