@@ -6,7 +6,6 @@ let abstIdx = 0, subIdx = 1, notifIdx = 2, camIdx = 3, startIdx = 4, endIdx = 5,
 	linkIdx = 12, cfpLinkIdx = 13;
 
 const today = new Date();
-let year = today.getFullYear(), n_years = 1;
 
 const month_name = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -260,14 +259,13 @@ function makeTimelineItem(row)
 
 	const dateIdx = {abst: abstIdx, sub: subIdx, notif: notifIdx, cam: camIdx, start: startIdx, end: endIdx};
 	const blocks = p.lastChild;
-	for (let y = 0; y < n_years; y++)
+	for (const cfp of row.slice(cfpIdx))
 	{
 		// get the row for this year, with friendly names
-		const acronym = `${row[confIdx]} ${year + y}`;
-		const cfp = row[cfpIdx + y];
 		const date = objMap(dateIdx, idx => parseDate(cfp[idx]));
 		const orig = objMap(dateIdx, idx => cfp[idx + origOffset]);
 		const text = objMap(date, dt => dt && dateFormat.format(dt));
+		const acronym = `${row[confIdx]} ${(cfp[startIdx] || cfp[endIdx] || 'last').slice(0, 4)}`;
 
 		if (!date.abst)
 			date.abst = date.sub;
@@ -493,11 +491,11 @@ function renderAcronym(p, row)
 {
 	let conf = document.createElement('span');
 
-	for (let y = n_years - 1; y >= 0; y--)
-		if (row[cfpIdx + y][linkIdx] && row[cfpIdx + y][linkIdx] != '(missing)')
+	for (const cfp of row.slice(cfpIdx).toReversed())
+		if (cfp[linkIdx] && cfp[linkIdx] != '(missing)')
 		{
 			conf = document.createElement('a');
-			conf.href = row[cfpIdx + y][linkIdx]
+			conf.href = cfp[linkIdx]
 			break;
 		}
 
@@ -515,12 +513,12 @@ function renderAcronym(p, row)
 	p.appendChild(rating);
 	p.innerHTML += '&nbsp;'
 
-	for (let y = n_years - 1; y >= 0; y--)
-		if (row[cfpIdx + y][cfpLinkIdx] && row[cfpIdx + y][cfpLinkIdx] != '(missing)')
+	for (const cfp of row.slice(cfpIdx).toReversed())
+		if (cfp[cfpLinkIdx] && cfp[cfpLinkIdx] != '(missing)')
 		{
-			const cfp = p.appendChild(wikicfp.cloneNode(true));
-			cfp.href = row[cfpIdx + y][cfpLinkIdx];
-			cfp.title = `${row[confIdx]} ${year + y} CFP on WikiCFP`;
+			const cfpLink = p.appendChild(wikicfp.cloneNode(true));
+			cfpLink.href = cfp[cfpLinkIdx];
+			cfpLink.title = `Latest ${row[confIdx]} CFP on WikiCFP`;
 			break;
 		}
 
@@ -542,15 +540,13 @@ function populatePage(json)
 {
 	// First update global variables from fetched data
 	data = json['data'];
-	n_years = json['years'].length
-	year = json['years'][0];
 
 	confIdx    = json['columns'].indexOf('Acronym')
 	titleIdx   = json['columns'].indexOf('Title')
 	rankingIdx = json['columns'].indexOf('Rank system')
 	rankIdx    = json['columns'].indexOf('Rank')
 	fieldIdx   = json['columns'].indexOf('Field')
-	cfpIdx     = json['columns'].indexOf(`${year}`)
+	cfpIdx     = json['columns'].length
 
 	abstIdx    = json['cfp_columns'].indexOf('Abstract Registration Due')
 	subIdx     = json['cfp_columns'].indexOf('Submission Deadline')
@@ -572,7 +568,7 @@ function populatePage(json)
 
 	const maxdate = data.reduce((curmax, row) => Math.max(
 		curmax,
-		...row.slice(cfpIdx, cfpIdx + n_years).map(cfp => cfp[endIdx] || cfp[startIdx] || cfp[subIdx])
+		...row.slice(cfpIdx).map(cfp => cfp[endIdx] || cfp[startIdx] || cfp[subIdx])
 	), mindate);
 
 	// get last day of month

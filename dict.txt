@@ -25,6 +25,7 @@ electro
 electrotechnical
 elsevier
 esystem
+exascale
 geoscience
 geospatial
 IC
@@ -41,6 +42,7 @@ neuroradiology
 NLP
 OLAP
 P2P
+petascale
 personalization
 photonic
 QOS

@@ -1529,8 +1529,7 @@ def cfps(out_file: str, debug: bool = False):
 	all_data = conf_data.add(cfp_data[out_years].agg(list, axis='columns')).reindex_like(conf_data.str[0].sort_values())
 
 	with open(out_file, 'w') as out:
-		cols = [*Conference.columns(), *map(str, out_years)]
-		print(f'{{"years": {json.dumps(out_years)}, "columns":\n{json.dumps(cols)},', file=out)
+		print(f'{{"years": {json.dumps(out_years)}, "columns":\n{json.dumps(Conference.columns())},', file=out)
 		print(f'"cfp_columns":\n{json.dumps(CallForPapers.columns())},', file=out)
 		print('"data": [', file=out)
 

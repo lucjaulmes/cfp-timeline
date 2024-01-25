@@ -395,6 +395,10 @@ span.acronyms {
 	background-color: #d00;
 }
 
+/* Handle overlap between a conference and a following review cycle */
+#timeline span.conf {
+	z-index: 1;
+}
 #timeline span.conf,
 #legend span.conf {
 	background-color: #00f;
