@@ -1177,6 +1177,10 @@ class Ranking:
 			}).rename(columns=lambda name: f'acronym_{name[-1]}').sort_values(['acronym_a', 'acronym_b'])
 			selected = relevant_pairs.index.to_series(name='merged').isin(merged_ids.index).map({True: '*', False: ''})
 
+			if not len(debug_confs_a) and not len(debug_confs_b):
+				print('None\n')
+				return merged
+
 			print()
 			print(acronyms.join([relevant_pairs, selected, detailed_scores]))
 			print()
@@ -1191,6 +1195,10 @@ class Ranking:
 				lambda row: pd.Series(ConfMetaData._difference(confs_a[row['id_a']], confs_b[row['id_b']])),
 				axis='columns'
 			).rename(columns=dict(enumerate(['acronym', 'type', 'org', 'topic', 'qualif', 'num'])))
+
+			if not diff_acronyms.size:
+				print('None\n')
+				return merged
 
 			print(diff_acronyms.join(full_scores))
 			print()
