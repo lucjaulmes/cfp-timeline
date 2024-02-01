@@ -578,13 +578,22 @@ function populatePage(json)
 
 	makeTimelineLegend();
 
-	// sort the data per date
-	const sortIdx = [subIdx, abstIdx, startIdx, endIdx]
+	// sort the data per upcoming deadline date
+	const sortIdx = [subIdx, abstIdx, startIdx, endIdx];
+	const nowdate = [
+		today.getFullYear(),
+		today.getMonth() + 1,
+		today.getDate(),
+	].map(num => String(num).padStart(2, '0')).join('');
+	const sortdates = data.map(row => row.slice(cfpIdx)
+		// Find one non-null date per cfp using sortIdx preference
+		.map(cfp => sortIdx.map(idx => cfp[idx]).find(date => date !== null))
+		// Find the best cfp: first after today, or first if all are after today
+		.map(cfpdate => [cfpdate <= nowdate, cfpdate]).sort()[0]
+	)
 
-	// get sort-column subtractions, return first non-zero, or zero
-	// < -1M / > 1M are differences with missing date on a single side
-	data.sort((rowA, rowB) => sortIdx.map(col => rowA[cfpIdx][col] - rowB[cfpIdx][col])
-									 .find(diff => -1000000 < diff && diff < 1000000 && diff !== 0) || 0);
+	// Now sort resulting dates and apply sort to data
+	data = sortdates.map((date, idx) => [date, idx]).sort().map(([date, idx]) => data[idx]);
 
 	document.getElementById('head').appendChild(
 		document.createTextNode(` The last scraping took place on ${json['date']}.`)
