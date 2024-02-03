@@ -536,6 +536,38 @@ function notNull(val, idx)
 	return val != null
 }
 
+function sortConferences(sortIdx = [subIdx, abstIdx, startIdx, endIdx], after = today)
+{
+	// sort the data per upcoming deadline date
+	if (after) {
+		const refdate = [
+			after.getFullYear(),
+			after.getMonth() + 1,
+			after.getDate(),
+		].map(num => String(num).padStart(2, '0')).join('');
+		// Find the best cfp: first after ref date (usually today)
+		date2sortInfo = cfpdate => [cfpdate <= refdate, cfpdate]
+	} else {
+		// Just sort on date
+		date2sortInfo = cfpdate => cfpdate
+	}
+
+	const sortdates = data.map(row => row.slice(cfpIdx)
+		// Find one non-null date per cfp using sortIdx preference
+		.map(cfp => sortIdx.map(idx => cfp[idx]).find(date => date !== null))
+		// Find the cfp we want to consider
+		.map(date2sortInfo).sort()[0]
+	// Now sort and keep original indexes
+	).map((info, idx) => [info, idx]).sort().map(([date, idx]) => idx);
+
+	// Apply sort to data array
+	data = sortdates.map(idx => data[idx]);
+
+	// Apply sort to timeline rows
+	const rowList = [...timeline.children];
+	sortdates.map(idx => rowList[idx]).forEach(row => timeline.appendChild(row));
+}
+
 function populatePage(json)
 {
 	// First update global variables from fetched data
@@ -578,23 +610,6 @@ function populatePage(json)
 
 	makeTimelineLegend();
 
-	// sort the data per upcoming deadline date
-	const sortIdx = [subIdx, abstIdx, startIdx, endIdx];
-	const nowdate = [
-		today.getFullYear(),
-		today.getMonth() + 1,
-		today.getDate(),
-	].map(num => String(num).padStart(2, '0')).join('');
-	const sortdates = data.map(row => row.slice(cfpIdx)
-		// Find one non-null date per cfp using sortIdx preference
-		.map(cfp => sortIdx.map(idx => cfp[idx]).find(date => date !== null))
-		// Find the best cfp: first after today, or first if all are after today
-		.map(cfpdate => [cfpdate <= nowdate, cfpdate]).sort()[0]
-	)
-
-	// Now sort resulting dates and apply sort to data
-	data = sortdates.map((date, idx) => [date, idx]).sort().map(([date, idx]) => data[idx]);
-
 	document.getElementById('head').appendChild(
 		document.createTextNode(` The last scraping took place on ${json['date']}.`)
 	);
@@ -618,6 +633,8 @@ function populatePage(json)
 		makeSuggestionItem(row);
 		makeSelectedItem(row);
 	});
+
+	sortConferences();
 
 	// Initial fragment
 	filterFromFragment();
