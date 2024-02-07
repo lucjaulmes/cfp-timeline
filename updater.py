@@ -1420,7 +1420,8 @@ def ggs():
 
 
 @update.command(hidden=True)
-@click.option('--debug/--no-debug', default=False, help='Show debug output for differing acronyms (if no acronyms are selected)')
+@click.option('--debug/--no-debug', default=False,
+			  help='Show debug output for differing acronyms (if no acronyms are selected)')
 @click.option('--debug-acronym', default=[], multiple=True, help='Select debug output for selected acronyms')
 def load_confs(debug: bool = False, debug_acronym: list[str] = []):
 	""" Load and merge the the conference lists. """
@@ -1536,6 +1537,13 @@ def cfps(out_file: str, debug: bool = False):
 	out_years = [year for year in search_years if year >= today.year]
 	all_data = conf_data.add(cfp_data[out_years].agg(list, axis='columns')).reindex_like(conf_data.str[0].sort_values())
 
+	try:
+		min_ctime = min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html'))
+	except ValueError:
+		scrape_date = datetime.datetime.now()
+	else:
+		scrape_date = datetime.datetime.fromtimestamp(min_ctime)
+
 	with open(out_file, 'w') as out:
 		print(f'{{"years": {json.dumps(out_years)}, "columns":\n{json.dumps(Conference.columns())},', file=out)
 		print(f'"cfp_columns":\n{json.dumps(CallForPapers.columns())},', file=out)
@@ -1544,10 +1552,6 @@ def cfps(out_file: str, debug: bool = False):
 		to_string = functools.partial(json.dumps, default=json_encode_dates)
 		print(all_data.map(to_string).str.cat(sep=',\n'), file=out)
 
-		try:
-			scrape_date = datetime.datetime.fromtimestamp(min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html')))
-		except ValueError:
-			scrape_date = datetime.datetime.now()
 		print(f'], "date": "{scrape_date.strftime("%Y-%m-%d")}"}}', file=out)
 
 
