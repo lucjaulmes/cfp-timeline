@@ -829,22 +829,22 @@ class CallForPapers(ConfMetaData):
 		search_f = f'cache/search_cfp_{conf.acronym.replace("/", "_")}-{year}.html'
 		soup = RequestWrapper.get_soup(cls._url_cfpsearch, search_f, params = {'q': conf.acronym, 'year': year})
 
-		best_candidate = None
-		best_score = (np.inf, sys.maxsize)
+		cfp_list = []
 
 		for acronym, desc, id_, url, missing in cls._parse_search(conf, year, soup):
 			candidate = cls(acronym, year, id_, desc, url)
+			rating = candidate.rating(conf)
 			if debug:
-				print(f'[{candidate.rating(conf)}] {candidate}')
-			rating = sum(candidate.rating(conf))
-			if np.isfinite(rating) and best_score > (rating, missing):
-				best_candidate = candidate
-				best_score = (rating, missing)
+				print(f'[{rating}] {candidate}')
+			total_rating = sum(rating)
+			if np.isfinite(total_rating):
+				cfp_list.append([total_rating, *rating, missing, candidate])
 
-		if not best_candidate:
+		if not cfp_list:
 			raise CFPNotFoundError('No link with acceptable rating for {} {}'.format(conf.acronym, year))
-		else:
-			return best_candidate, *best_score
+
+		cfps = pd.DataFrame(cfp_list, columns=['rating', 'acronym', 'type', 'org', 'topic', 'qualif', 'missing', 'cfp'])
+		return tuple(cfps.loc[cfps['rating'].idxmin(), ['cfp', 'rating', 'missing']])
 
 
 	@classmethod
