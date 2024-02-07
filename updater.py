@@ -940,7 +940,7 @@ class WikicfpCFP(CallForPapers):
 			# first row has 2 td tags, one contains the link, the other the description. Get the non-parent of the link.
 			for td in tr.find_all('td'):
 				if td not in conf_link.parents:
-					conf_name = td.text
+					conf_name = td.text.strip()
 					break
 			else:
 				raise ValueError('Could not find conference name')
