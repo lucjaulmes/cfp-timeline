@@ -20,7 +20,7 @@ import operator
 import functools
 import numpy as np
 import pandas as pd
-from urllib.parse import urljoin, urlsplit, urlunsplit, parse_qs, urlencode
+from urllib import parse
 import bs4
 import warnings
 
@@ -129,11 +129,11 @@ class RequestWrapper:
 	@classmethod
 	def wait(cls, url: str):
 		""" Wait until at least :attr:`~delay` seconds for the next same-domain request """
-		key = urlsplit(url).netloc
+		key = parse.urlsplit(url).netloc
 		now = time.time()
 
-		wait = cls.last_req_times.get(urlsplit(url).netloc, 0) + cls.delay - now
-		cls.last_req_times[urlsplit(url).netloc] = now + max(0, wait)
+		wait = cls.last_req_times.get(parse.urlsplit(url).netloc, 0) + cls.delay - now
+		cls.last_req_times[parse.urlsplit(url).netloc] = now + max(0, wait)
 
 		if wait >= 0:
 			time.sleep(wait)
@@ -893,8 +893,8 @@ class CallForPapers(ConfMetaData):
 
 class WikicfpCFP(CallForPapers):
 	_base_url = 'http://www.wikicfp.com'
-	_url_cfpsearch = urljoin(_base_url, '/cfp/servlet/tool.search')
-	_url_cfpevent  = urljoin(_base_url, '/cfp/servlet/event.showcfp') #?eventid={cfpid}
+	_url_cfpsearch = parse.urljoin(_base_url, '/cfp/servlet/tool.search')
+	_url_cfpevent  = parse.urljoin(_base_url, '/cfp/servlet/event.showcfp') #?eventid={cfpid}
 	_url_cfpevent_query = {'copyownerid': ['90704']} # override some parameters
 
 
@@ -945,15 +945,15 @@ class WikicfpCFP(CallForPapers):
 			else:
 				raise ValueError('Could not find conference name')
 
-			scheme, netloc, path, query, fragment = urlsplit(urljoin(cls._url_cfpevent, conf_link['href']))
-			query_dict = parse_qs(query)
+			scheme, netloc, path, query, fragment = parse.urlsplit(parse.urljoin(cls._url_cfpevent, conf_link['href']))
+			query_dict = parse.parse_qs(query)
 			try:
 				id_ = int(query_dict['eventid'][0])
 			except ValueError:
 				raise ValueError('Could not find valid identifier in url') from None
 
 			# update the query with cls._url_cfpevent_query. Sort the parameters to minimize changes across versions.
-			query = urlencode(sorted({**query_dict, **cls._url_cfpevent_query}.items()), doseq=True)
+			query = parse.urlencode(sorted({**query_dict, **cls._url_cfpevent_query}.items()), doseq=True)
 
 			# next row has the dates and location, count how many of those are not defined yet
 			while tr:
@@ -965,7 +965,7 @@ class WikicfpCFP(CallForPapers):
 
 			missing_info = [td.text for td in tr.find_all('td')].count('TBD')
 
-			yield (acronym, conf_name, id_, urlunsplit((scheme, netloc, path, query, fragment)), missing_info)
+			yield (acronym, conf_name, id_, parse.urlunsplit((scheme, netloc, path, query, fragment)), missing_info)
 
 
 	@classmethod
@@ -1232,7 +1232,7 @@ class GGSRanking(Ranking):
 		""" Fetch unparsed conference info from the GGS website """
 		soup = RequestWrapper.get_soup(cls._url_ggsrank, 'cache/gii-grin-scie-rating_conferenceRating.html')
 		link = cast(bs4.Tag, soup.find('a', attrs={'href': lambda url: url.split(';jsessionid=')[0].endswith('.xlsx')}))
-		file_url = urljoin(cls._url_ggsrank, link.attrs['href'])
+		file_url = parse.urljoin(cls._url_ggsrank, link.attrs['href'])
 
 		df = pd.read_excel(file_url, header=1, usecols=['Title', 'Acronym', 'GGS Rating'])\
 			   .rename(columns={'GGS Rating': 'rank', 'Title': 'title', 'Acronym': 'acronym'})
