@@ -24,7 +24,8 @@ from urllib import parse
 import bs4
 import warnings
 
-from typing import cast, ClassVar, Generic, Iterator, Match, overload, TextIO, TypeVar
+from typing import cast, ClassVar, Generic, Match, Mapping, overload, TextIO, TypeVar
+from collections.abc import ItemsView, Iterable, Iterator, Generator, MutableMapping
 
 _term_columns = shutil.get_terminal_size().columns
 
@@ -578,8 +579,38 @@ class Conference(ConfMetaData):
 		return vals
 
 
+class Dates(MutableMapping[str, T]):
+	__slots__ = ('abstract', 'submission', 'notification', 'camera_ready', 'conf_start', 'conf_end')
+
+	def __getitem__(self, key: str) -> T:
+		try:
+			return getattr(self, key)
+		except AttributeError:
+			raise KeyError(key) from None
+
+	def __setitem__(self, key: str, value: T):
+		setattr(self, key, value)
+
+	def __delitem__(self, key: str):
+		delattr(self, key)
+
+	def __len__(self) -> int:
+		return sum(hasattr(self, attr) for attr in self.__slots__)
+
+	def __iter__(self) -> Iterator[str]:
+		return iter(attr for attr in self.__slots__ if hasattr(self, attr))
+
+	def items(self) -> ItemsView[str, T]:
+		for attr in self.__slots__:
+			try:
+				val = getattr(self, attr)
+			except AttributeError:
+				pass
+			else:
+				yield attr, val
+
+
 class CallForPapers(ConfMetaData):
-	_date_fields = ('abstract', 'submission', 'notification', 'camera_ready', 'conf_start', 'conf_end')
 	_date_names = (
 		'Abstract Registration Due', 'Submission Deadline', 'Notification Due', 'Final Version Due', 'startDate',
 		'endDate',
@@ -595,14 +626,17 @@ class CallForPapers(ConfMetaData):
 
 	_url_cfpsearch: ClassVar[str]
 	_fill_id: ClassVar[int] = sys.maxsize
+	_cache: ClassVar[dict[int, CallForPapers]] = {}
+	_errors: ClassVar[list] = []
 
 	empty_series: ClassVar[pd.Series] = pd.Series(None, index=__slots__)
 
 	acronym: str
+	id: int
 	desc: str
 	year: int
-	dates: dict[str, datetime.datetime]
-	orig: dict[str, bool]
+	dates: Dates[datetime.datetime]
+	orig: Dates[bool]
 	link: str
 	url_cfp: str | None
 
@@ -615,10 +649,12 @@ class CallForPapers(ConfMetaData):
 		self.id = self._fill_id if id_ is None else id_
 		self.desc = desc
 		self.year = int(year)
-		self.dates = {}
-		self.orig = {}
+		self.dates = Dates()
+		self.orig = Dates()
 		self.link = link or '(missing)'
 		self.url_cfp = url_cfp
+		self.date_errors = None
+
 
 		if id_ is None:
 			CallForPapers._fill_id -= 1
@@ -642,7 +678,7 @@ class CallForPapers(ConfMetaData):
 		for field in ('conf_start', 'submission'):
 			if field in self.dates or field not in prev_cfp.dates:
 				continue
-			n = self._date_fields.index(field)
+			n = Dates.__slots__.index(field)
 			try:
 				self.dates[field] = prev_cfp.dates[field].replace(year=prev_cfp.dates[field].year + year_shift)
 			except ValueError:
@@ -836,7 +872,7 @@ class CallForPapers(ConfMetaData):
 		cfp_list = []
 
 		for acronym, desc, id_, url, missing in cls._parse_search(conf, year, soup):
-			candidate = cls(acronym, year, id_, desc, url)
+			candidate = cls.build(acronym, year, id_, desc, url)
 			rating = candidate.rating(conf)
 			if debug:
 				print(f'[{rating}] {candidate}')
@@ -866,13 +902,13 @@ class CallForPapers(ConfMetaData):
 	@classmethod
 	def columns(cls) -> list[str]:
 		""" Return column titles for cfp data.  """
-		return list(cls._date_names) + ['orig_' + d for d in cls._date_fields] + ['Link', 'CFP url']
+		return list(cls._date_names) + ['orig_' + d for d in Dates.__slots__] + ['Link', 'CFP url']
 
 
 	def values(self) -> list[datetime.datetime | bool | str | None]:
 		""" Return values of cfp data, in column order.  """
-		return [*(self.dates.get(f, None) for f in self._date_fields),
-				*(self.orig.get(f, None) for f in self._date_fields), self.link, self.url_cfp]
+		return [*(self.dates.get(f, None) for f in Dates.__slots__),
+				*(self.orig.get(f, None) for f in Dates.__slots__), self.link, self.url_cfp]
 
 
 	def max_date(self) -> datetime.datetime:
@@ -891,7 +927,7 @@ class CallForPapers(ConfMetaData):
 			    if attr not in {'dates', 'orig'} and (getattr(self, attr, None) or '(missing)') != '(missing)']
 		if self.dates:
 			vals.append('dates={' + ', '.join(f"{field}:{self.dates[field]}{'*' if not self.orig[field] else ''}"
-											  for field in self._date_fields if field in self.dates) + '}')
+											  for field in Dates.__slots__ if field in self.dates) + '}')
 		return vals
 
 
@@ -992,7 +1028,7 @@ class WikicfpCFP(CallForPapers):
 			xmlns_pfx = xmlns_attr[len('xmlns:'):] + ':'
 
 			xt_data = {xt['property'][len(xmlns_pfx):]: xt['content'] if xt.has_attr('content') else xt.text
-					   for xt in xt.find_all(property = lambda val: type(val) is str and val.startswith(xmlns_pfx))}
+					   for xt in xt.find_all(property=lambda val: type(val) is str and val.startswith(xmlns_pfx))}
 
 			if 'purl.org/dc/' in xt[xmlns_attr]:
 				metadata.update(xt_data)
@@ -1009,16 +1045,16 @@ class WikicfpCFP(CallForPapers):
 			else:
 				print('Error: unexpected RDF or DC data: {}'.format(xt_data))
 
-		for f, name in zip(self._date_fields, self._date_names):
+		for f, name in zip(Dates.__slots__, self._date_names):
 			try:
 				self.dates[f] = metadata[name]
 				self.orig[f] = True
 			except KeyError:
-				pass # Missing date in data
+				pass  # Missing date in data
 
 		# source is the URL, it's sometimes empty
 		if 'source' in metadata and metadata['source']:
-			self.link = metadata['source']
+			self.link = metadata['source'].strip()
 
 
 class Ranking:
