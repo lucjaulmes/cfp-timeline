@@ -217,7 +217,7 @@ class ConfMetaData:
 		'ART': 'Artificial Intelligence', # NB ART was renamed AI
 	}
 
-	_meeting_types = {'congress', 'conference', 'seminar', 'symposium', 'workshop', 'tutorial'}
+	_meeting_types = {'congress', 'conference', 'consortium', 'seminar', 'symposium', 'workshop', 'tutorial'}
 	_qualifiers = {
 		'american', 'asian', 'australasian', 'australian', 'annual', 'biennial', 'european', 'iberoamerican',
 		'international', 'joint', 'national',
@@ -307,6 +307,9 @@ class ConfMetaData:
 			if w in self._meeting_types:
 				self.type_.add(w)
 				continue
+
+			# TODO: match call types, possibly using peekiter to distinguish between multi-word expressions
+			# call for posters, call for [full] papers, phd symposium, etc.
 
 			# Also seen but risk colliding with topic words: Mini Conference, Working Conference
 			if w in self._qualifiers:
@@ -507,7 +510,7 @@ class ConfMetaData:
 class Conference(ConfMetaData):
 	__slots__ = ('acronym', 'title', 'rank', 'ranksys', 'field')
 	# unified ranks from all used sources, lower is better
-	_ranks: dict[str, int] = {rk: num for num, rk in enumerate('A++ A* A+ A A- B B- C D E'.split())}
+	_ranks: ClassVar[dict[str, int]] = {rk: num for num, rk in enumerate('A++ A* A+ A A- B B- C D E'.split())}
 
 	title: str
 	acronym: str
@@ -785,7 +788,8 @@ class CallForPapers(ConfMetaData):
 				continue
 
 			# If shifting the year gets us into the “typical” delay, use that date and mark as a guess
-			# Typically for conf at year Y, all dates are set at year Y even if they should be previous year.
+			# Typical mistake for a conf in the first half of year Y, all dates are reported as year Y
+			# even if they should be previous year.
 			shifted = deadline.replace(year=deadline.year + int(delay // 365.2425))
 			shifted_delay = start - shifted
 
@@ -841,7 +845,7 @@ class CallForPapers(ConfMetaData):
 				cfp_list.append([total_rating, *rating, missing, candidate])
 
 		if not cfp_list:
-			raise CFPNotFoundError('No link with acceptable rating for {} {}'.format(conf.acronym, year))
+			raise CFPNotFoundError(f'No link with acceptable rating for {conf.acronym} {year}')
 
 		cfps = pd.DataFrame(cfp_list, columns=['rating', 'acronym', 'type', 'org', 'topic', 'qualif', 'missing', 'cfp'])
 		return tuple(cfps.loc[cfps['rating'].idxmin(), ['cfp', 'rating', 'missing']])
