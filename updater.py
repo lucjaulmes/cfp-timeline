@@ -622,7 +622,7 @@ class CallForPapers(ConfMetaData):
 		'submission': (40, 250),
 	}
 
-	__slots__ = ('acronym', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link', 'id')
+	__slots__ = ('acronym', 'desc', 'dates', 'orig', 'url_cfp', 'year', 'link', 'id', 'date_errors')
 
 	_url_cfpsearch: ClassVar[str]
 	_fill_id: ClassVar[int] = sys.maxsize
@@ -639,6 +639,7 @@ class CallForPapers(ConfMetaData):
 	orig: Dates[bool]
 	link: str
 	url_cfp: str | None
+	date_errors: bool | None
 
 	def __init__(self, acronym: str, year: int | str, id_: int, desc: str = '',
 				 url_cfp: str | None = None, link: str | None = None):
@@ -737,10 +738,42 @@ class CallForPapers(ConfMetaData):
 		raise NotImplementedError
 
 
-	def fetch_cfp_data(self):
+	def fetch_cfp_data(self, debug: bool = False):
 		""" Parse a page from online source. Load all useful data about the conference. """
+		if self.date_errors is not None:
+			return self
+		self.date_errors = False
+
+		assert self.url_cfp is not None, 'By definition of a check and a fetched cfp'
+
 		f = f'cache/cfp_{self.acronym.replace("/", "_")}-{self.year}-{self.id}.html'
 		self._parse_cfp(RequestWrapper.get_soup(self.url_cfp, f))
+
+		try:
+			if warn := self.verify_conf_dates():
+				clean_print(warn)
+				CallForPapers._errors.append(f'{warn.replace(":", ";", 1)};{self.url_cfp};corrected')
+
+		except CFPCheckError as err:
+			clean_print(f'> {err}' if debug else err)
+			CallForPapers._errors.append(
+				f'{str(err).replace(":", ";", 1)}: no satisfying correction heuristic;{self.url_cfp};ignored'
+			)
+			self.date_errors = True
+
+		try:
+			if warn := self.verify_submission_dates():
+				clean_print(warn)
+				CallForPapers._errors.append(f'{warn.replace(":", ";", 1)};{self.url_cfp};corrected')
+
+		except CFPCheckError as err:
+			clean_print(f'> {err}' if debug else err)
+			CallForPapers._errors.append(
+				f'{str(err).replace(":", ";", 1)}: no satisfying correction heuristic;{self.url_cfp};ignored'
+			)
+			self.date_errors = True
+
+		return self
 
 
 	@classmethod
@@ -911,7 +944,7 @@ class CallForPapers(ConfMetaData):
 		""" Fetch the cfp from wiki-cfp for the given conference at the given year.  """
 		try:
 			cfp, cmp, miss = cls.find_link(conf, year, debug=debug)
-			cfp.fetch_cfp_data()
+			cfp.fetch_cfp_data(debug=debug)
 			return cfp, cmp, miss
 
 		except requests.exceptions.ConnectionError:
@@ -1514,7 +1547,7 @@ def cfps(out_file: str, debug: bool = False):
 									update_min_steps=len(confs) // 1000 if not RequestWrapper.delay else 1)
 
 	conf_matching = []
-	with open('parsing_errors.txt', 'w') as errlog, progressbar as conf_iterator:
+	with progressbar as conf_iterator:
 		for conf_id, conf in conf_iterator:
 			for year in search_years:
 				if debug:
@@ -1524,29 +1557,9 @@ def cfps(out_file: str, debug: bool = False):
 
 					assert cfp.url_cfp is not None, 'By definition of a fetched CFP'
 
-					err = cfp.verify_conf_dates()
-					if err:
-						clean_print(err)
-						print(';'.join([err.replace(':', ';', 1), cfp.url_cfp, 'corrected']), file=errlog)
-
-					err = cfp.verify_submission_dates()
-					if err:
-						clean_print(err)
-						print(';'.join([err.replace(':', ';', 1), cfp.url_cfp, 'corrected']), file=errlog)
-
 				except CFPNotFoundError as err:
 					if debug:
 						print(f'> {err}')
-
-				except CFPCheckError as err:
-					assert cfp is not None and cfp.url_cfp is not None, 'By definition of a check and a fetched cfp'
-					if debug:
-						print(f'> {err}')
-					else:
-						clean_print(err)
-					print(';'.join([
-						f'{str(err).replace(":", ";", 1)}: no satisfying correction heuristic', cfp.url_cfp, 'ignored'
-					]), file=errlog)
 
 				else:
 					if debug:
@@ -1567,6 +1580,9 @@ def cfps(out_file: str, debug: bool = False):
 				cfp = CallForPapers.build(conf.acronym, year)
 				print(year, cfp)
 				conf_matching.append((conf_id, cfp.id, year, 999, len(cfp.__slots__)))
+
+	with open('parsing_errors.txt', 'w') as errlog:
+		print(*CallForPapers._errors, sep='\n', file=errlog)
 
 	conf_matching_df = pd.DataFrame(
 		conf_matching, columns=['conf_id', 'cfp_id', 'year', 'score', 'missing']
