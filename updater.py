@@ -640,13 +640,13 @@ class CallForPapers(ConfMetaData):
 	link: str
 	url_cfp: str | None
 
-	def __init__(self, acronym: str, year: int | str, id_: int | None = None, desc: str = '',
+	def __init__(self, acronym: str, year: int | str, id_: int, desc: str = '',
 				 url_cfp: str | None = None, link: str | None = None):
 		# Initialize parent parsing with the description
 		super().__init__(desc, acronym, year)
 
 		self.acronym = acronym
-		self.id = self._fill_id if id_ is None else id_
+		self.id = id_
 		self.desc = desc
 		self.year = int(year)
 		self.dates = Dates()
@@ -656,8 +656,27 @@ class CallForPapers(ConfMetaData):
 		self.date_errors = None
 
 
+	@classmethod
+	def build(cls, acronym: str, year: int | str, id_: int | None = None, desc: str = '',
+			   url_cfp: str | None = None, link: str | None = None):
+		cfp_id = CallForPapers._fill_id if id_ is None else id_
+		try:
+			return CallForPapers._cache[cfp_id]
+		except KeyError:
+			pass
+
+		cfp = cls(acronym, year, cfp_id, desc, url_cfp, link)
+		CallForPapers._cache.update({cfp_id: cfp})
+
 		if id_ is None:
 			CallForPapers._fill_id -= 1
+
+		return cfp
+
+
+	@classmethod
+	def all_built_cfps(cls) -> Mapping[int, CallForPapers]:
+		return cls._cache
 
 
 	def extrapolate_missing(self, prev_cfp: CallForPapers | None):
@@ -1495,7 +1514,6 @@ def cfps(out_file: str, debug: bool = False):
 									update_min_steps=len(confs) // 1000 if not RequestWrapper.delay else 1)
 
 	conf_matching = []
-	cfps = {}
 	with open('parsing_errors.txt', 'w') as errlog, progressbar as conf_iterator:
 		for conf_id, conf in conf_iterator:
 			for year in search_years:
@@ -1534,7 +1552,6 @@ def cfps(out_file: str, debug: bool = False):
 					if debug:
 						print('> Found')
 
-					cfps[cfp.id] = cfp
 					conf_matching.append((conf_id, cfp.id, year, cmp, miss))
 					continue
 
@@ -1547,8 +1564,8 @@ def cfps(out_file: str, debug: bool = False):
 				if debug:
 					print(f'> Adding empty cfp')
 
-				cfp = CallForPapers(conf.acronym, year)
-				cfps[cfp.id] = cfp
+				cfp = CallForPapers.build(conf.acronym, year)
+				print(year, cfp)
 				conf_matching.append((conf_id, cfp.id, year, 999, len(cfp.__slots__)))
 
 	conf_matching_df = pd.DataFrame(
@@ -1567,6 +1584,7 @@ def cfps(out_file: str, debug: bool = False):
 		return cfps.combine(prev_cfps, CallForPapers.extrapolate_missing)
 
 	# Complete missing cfp info with previous iterations
+	cfps = CallForPapers.all_built_cfps()
 	full_cfps = conf_matching_df['cfp_id'].sort_index().map(cfps).pipe(extrapolate, n=1).pipe(extrapolate, n=2)
 
 	# Convert all cfps / confs to lists of data to be written out
