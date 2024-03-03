@@ -13,6 +13,7 @@ import time
 import click
 import shutil
 import enchant
+import itertools
 import inflection
 import requests
 import datetime
@@ -258,6 +259,7 @@ class ConfMetaData:
 	_ordinal = re.compile(r'[0-9]+(st|nd|rd|th)|(({tens})?(first|second|third|(four|fif|six|seven|eigh|nine?)th))|'
 					      r'(ten|eleven|twelf|(thir|fourt|fif|six|seven|eigh|nine?)teen)th'
 						  .format(tens = '|'.join(_tens)))
+	_ordinal_list = ('first', 'second', 'third', 'fourth', 'fifth', 'sixth')
 
 	_sigcmp = {normalize(f'SIG{group}'): group for group in _sig}
 	_orgcmp = {normalize(entity): entity for entity in _org}
@@ -953,7 +955,7 @@ class CallForPapers(ConfMetaData):
 			delay = (start - deadline).days
 			if delay < 0:
 				err.append(f'{name} ({deadline}) after conference start')
-			elif delay > 365:
+			elif delay > 396:  # Accept deadlines up to 1 year and 1 month before conference
 				err.append(f'{name} ({deadline}) too long before conference')
 			else:
 				continue
@@ -1019,16 +1021,130 @@ class CallForPapers(ConfMetaData):
 			raise CFPNotFoundError(f'No link with acceptable rating for {conf.acronym} {year}')
 
 		cfps = pd.DataFrame(cfp_list, columns=['rating', 'acronym', 'type', 'org', 'topic', 'qualif', 'missing', 'cfp'])
-		return tuple(cfps.loc[cfps['rating'].idxmin(), ['cfp', 'rating', 'missing']])
+		cfps = cfps.set_index(cfps['cfp'].map(operator.attrgetter('id')))
+
+		cfp_call_types = cfps['cfp'].map(operator.attrgetter('call_type'))
+		cfps = cfps[cfp_call_types.isna() | cfp_call_types.eq('paper')]
+
+		if not len(cfps):
+			raise CFPNotFoundError(f'No full paper call for {conf.acronym} {year}')
+
+		# We expect multiple-deadline conferences to have all their calls score (a) best and (b) close to each other
+		delta = 5
+		cfps = cfps[cfps['rating'].le(cfps['rating'].min() + delta)]
+		# Fetch detailed call infos for comparison, remove cfps with uncorrectable date errors
+		cfps['cfp'] = cfps['cfp'].map(functools.partial(cls.fetch_cfp_data, debug=debug))
+		cfps = cfps[cfps['cfp'].map(operator.attrgetter('date_errors')).eq(False)]
+
+		if len(cfps) < 1:
+			raise CFPNotFoundError(f'No link with valid dates for {conf.acronym} {year}')
+
+		if len(cfps) > 1:
+			matched_deadlines = cls.detect_multiple_deadlines(cfps)
+			if matched_deadlines is None:
+				matched_deadlines = [cfps['rating'].idxmin()]
+		else:
+			matched_deadlines = cfps.index
+
+		for idx in matched_deadlines:
+			yield cast(tuple[CallForPapers, float, int], tuple(cfps.loc[idx, ['cfp', 'rating', 'missing']]))
+
+
+	@classmethod
+	def detect_multiple_deadlines(cls, cfps: pd.DataFrame):
+		# Disqualify (as legit full paper deadline) if submission ≤ 2 months to conf start.
+		# Likely to be another type of submission.
+		dates = cfps['cfp'].apply(lambda cfp: pd.Series(cfp.dates, index=Dates.__slots__, dtype='datetime64[ns]'))
+
+		delay = pd.Timedelta(days=61)
+		compat_deadlines = (dates['submission'].notna() & dates['conf_start'].notna() &
+							dates['conf_start'].sub(dates['submission']).gt(delay))
+
+		if compat_deadlines.sum() <= 1:
+			return None
+
+		# Remove entries with all info (dates etc.) redundant with another call
+		for a, b in zip(*(cfps.index[compat_deadlines][idx] for idx in np.triu_indices(compat_deadlines.sum(), k=1))):
+			if not compat_deadlines[a] or not compat_deadlines[b]:
+				continue
+			same_dates, na_a, na_b = dates.loc[a].eq(dates.loc[b]), dates.loc[a].isna(), dates.loc[b].isna()
+			if all(same_dates | na_a | na_b):
+				compat_deadlines[b if na_a.sum() < na_b.sum() else b] = False
+
+		if compat_deadlines.sum() <= 1:
+			return None
+
+		deadline = dates['submission'][compat_deadlines].sort_values().to_frame()
+		conf_start = dates.loc[cfps['rating'].idxmin(), 'conf_start']
+
+		# Use our best guess for end of call if not provided. Typical duration is 4 weeks to 3 months.
+		deadline['notif'] = dates['notification'].fillna(dates['submission'] + pd.Timedelta(days=42))
+
+		# Split into deadline-compatible groups. E.g., 2 cfp (A, B) + 1 student competition call (C), with B and C overlapping:
+		# We need to be able to pick between [A, B] and [A, C]
+		# TODO: is this still a thing now we only look at papers?
+		# –> generate all inter-compatible sub-sequences (of max length, with length > 2) & keep valid ones
+		# NB. This step removes most (all?) duplicate postings of the same call with extended/updated dates.
+		for n in range(len(deadline), 1, -1):
+			maxlen_candidates = []
+			for subset in map(list, itertools.combinations(deadline.index, n)):
+				if all(deadline.loc[subset, 'notif'] <= deadline.loc[subset, 'submission'].shift(-1, fill_value=conf_start)):
+					maxlen_candidates.append(subset)
+
+			if maxlen_candidates:
+				break
+		else:
+			# No length > subset 1 with all-compatible deadlines
+			return None
+		assert maxlen_candidates
+
+		# Now we need to pick one of maxlen_candidates
+		for subset in maxlen_candidates:
+			sorted_dates = dates.loc[subset, 'submission'].sort_values()
+
+			topic = cfps.loc[subset, 'cfp'].map(operator.attrgetter('topic_keywords')).explode()
+
+			# Get words that appear uniquely in each cfp, and check if there is a season in each
+			topic_diff = topic.replace({'autumn': 'fall'}).drop_duplicates(keep=False).rename('topic_unique')
+			topic_season = topic_diff.isin({'fall', 'winter', 'spring', 'summer'}).groupby(level=0).any()
+			if all(topic_season.reindex(subset, fill_value=False)):
+				return sorted_dates.index
+
+			# Expected ordinals
+			exp = pd.DataFrame({
+				'ordinal': cls._ordinal_list[:len(subset)],
+				'number': map(str, range(1, len(subset) + 1)),
+				'both': map(inflection.ordinalize, range(1, len(subset) + 1)),
+			}, index=sorted_dates.index).agg(set, axis='columns')
+
+			is_first_call = sorted_dates.eq(sorted_dates.min())
+
+			num = cfps.loc[subset, 'cfp'].map(operator.attrgetter('number')).rename('number')
+			match_num = num.combine(exp, set.intersection).str.len().gt(0)
+			match_kw = topic.isin({'round', 'deadline', 'submission'}).groupby(level=0).any().reindex(sorted_dates.index, fill_value=False)
+
+			if all(match_num == match_kw) and all(match_num | is_first_call):
+				return sorted_dates.index
+
+		# Otherwise, warn
+		cfp = cfps.loc[maxlen_candidates[0][0], 'cfp']
+		start, end = dates.loc[maxlen_candidates[0][0], ['conf_start', 'conf_end']]
+		err = (
+			f'{cfp.acronym} {cfp.year} ({start} -- {end})', f'{len(maxlen_candidates[0])} compatible deadlines '
+			f'without keywords confirming multiple-deadline calls;{cfp.url_cfp};ignored'
+		)
+
+		clean_print(': '.join(err))
+		CallForPapers._errors.append('; '.join(err))
 
 
 	@classmethod
 	def get_cfp(cls, conf: Conference, year: int | str, debug: bool = False) -> tuple[CallForPapers, float, int]:
 		""" Fetch the cfp from wiki-cfp for the given conference at the given year.  """
 		try:
-			cfp, cmp, miss = cls.find_link(conf, year, debug=debug)
-			cfp.fetch_cfp_data(debug=debug)
-			return cfp, cmp, miss
+			for (cfp, cmp, miss) in cls.find_link(conf, year, debug=debug):
+				cfp.fetch_cfp_data(debug=debug)
+				yield cfp, cmp, miss
 
 		except requests.exceptions.ConnectionError:
 			raise CFPNotFoundError('Connection error when fetching CFP for {} {}'.format(conf.acronym, year))
@@ -1632,13 +1748,13 @@ def cfps(out_file: str, debug: bool = False):
 	conf_matching = []
 	with progressbar as conf_iterator:
 		for conf_id, conf in conf_iterator:
+			nrounds = 1
 			for year in search_years:
 				if debug:
 					clean_print(f'\nLooking up CFP {conf} {year}')
-				try:
-					cfp, cmp, miss = WikicfpCFP.get_cfp(conf, year, debug=debug)
 
-					assert cfp.url_cfp is not None, 'By definition of a fetched CFP'
+				try:
+					matches = list(WikicfpCFP.get_cfp(conf, year, debug=debug))
 
 				except CFPNotFoundError as err:
 					if debug:
@@ -1648,7 +1764,10 @@ def cfps(out_file: str, debug: bool = False):
 					if debug:
 						print('> Found')
 
-					conf_matching.append((conf_id, cfp.id, year, cmp, miss))
+					nrounds = len(matches)
+					for round_, (cfp, cmp, miss) in enumerate(matches):
+						conf_matching.append((conf_id, cfp.id, year, round_, cmp, miss))
+
 					continue
 
 				# possibly try other CFP providers?
@@ -1660,16 +1779,19 @@ def cfps(out_file: str, debug: bool = False):
 				if debug:
 					print(f'> Adding empty cfp')
 
-				cfp = CallForPapers.build(conf.acronym, year)
-				print(year, cfp)
-				conf_matching.append((conf_id, cfp.id, year, 999, len(cfp.__slots__)))
+				for n in range(nrounds):
+					cfp = CallForPapers.build(conf.acronym, year)
+					conf_matching.append((conf_id, cfp.id, year, n, 999, len(cfp.__slots__)))
+
+	with open('parsing_errors.txt', 'w') as errlog:
+		print(*CallForPapers._errors, sep='\n', file=errlog)
 
 	with open('parsing_errors.txt', 'w') as errlog:
 		print(*CallForPapers._errors, sep='\n', file=errlog)
 
 	conf_matching_df = pd.DataFrame(
-		conf_matching, columns=['conf_id', 'cfp_id', 'year', 'score', 'missing']
-	).set_index(['conf_id', 'year'])
+		conf_matching, columns=['conf_id', 'cfp_id', 'year', 'round', 'score', 'missing']
+	).set_index(['conf_id', 'year', 'round'])
 
 	# In some cases we have 2 related conferences that are thus close in terms of acronym, description, etc.
 	# E.g. “INFOCOM” and “INFOCOM WKSHPS“ or “USENIX ATC” and “USENIX-STX“ so ensure we only output each cfp once.
@@ -1679,7 +1801,7 @@ def cfps(out_file: str, debug: bool = False):
 	conf_matching_df = conf_matching_df[~conf_matching_df['missing'].ge(8).groupby(level='conf_id').transform('all')]
 
 	def extrapolate(cfps: pd.Series[CallForPapers], n: int) -> pd.Series[CallForPapers]:
-		prev_cfps = cfps.groupby(level=['conf_id']).shift(periods=n)
+		prev_cfps = cfps.groupby(level=['conf_id', 'round']).shift(periods=n)
 		return cfps.combine(prev_cfps, CallForPapers.extrapolate_missing)
 
 	# Complete missing cfp info with previous iterations
@@ -1688,11 +1810,12 @@ def cfps(out_file: str, debug: bool = False):
 
 	# Convert all cfps / confs to lists of data to be written out
 	cfp_data = full_cfps.map(CallForPapers.values).unstack('year', fill_value=[None] * len(CallForPapers.columns()))
+	cfp_data = cfp_data.groupby(level='conf_id').agg(list)
 	conf_data = cfp_data.index.to_series(name='conf').map(confs.to_dict()).map(Conference.values).map(list)
 
 	# Combine all conference / cfp data and sort based on acronym
 	out_years = [year for year in search_years if year >= today.year]
-	all_data = conf_data.add(cfp_data[out_years].agg(list, axis='columns')).reindex_like(conf_data.str[0].sort_values())
+	all_data = conf_data.add(cfp_data[out_years].sum(axis='columns')).reindex_like(conf_data.str[0].sort_values())
 
 	try:
 		min_ctime = min(os.path.getctime(f) for f in glob.glob('cache/cfp_*.html'))
