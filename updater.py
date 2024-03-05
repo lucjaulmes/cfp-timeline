@@ -1056,6 +1056,21 @@ class CallForPapers(ConfMetaData):
 		# Likely to be another type of submission.
 		dates = cfps['cfp'].apply(lambda cfp: pd.Series(cfp.dates, index=Dates.__slots__, dtype='datetime64[ns]'))
 
+		# NB. There seem to be 2 entirely synonymous yet different ICDM (Industrial Conference on Data Mining).
+		# TODO: compare links
+		# links = cfps['cfp'].apply(operator.attrgetter('link'))
+
+		# Issues comparing links
+		# - case ( http://www.ITNG.info vs https://itng.info/ )
+		# - variations in prefix (www.), protocol (http / https), and sometimes suffix (i.e. with/without cfp path)
+		#    -> parse URL, compare domain stripping www. + path prefixes
+		# - invalid URL ( http://ttps://lrec-coling-2024.org/ vs https://lrec-coling-2024.org/ )
+		# - submission site ( https://aime24.aimedicine.info/ vs https://easychair.org/cfp/AIME2024 )
+		# - ieee site ( https://attend.ieee.org/ssci-2023 vs
+		#				https://conferences.ieee.org/conferences_events/conferences/conferencedetails/52147 )
+		#    -> ignore values
+
+
 		delay = pd.Timedelta(days=61)
 		compat_deadlines = (dates['submission'].notna() & dates['conf_start'].notna() &
 							dates['conf_start'].sub(dates['submission']).gt(delay))
