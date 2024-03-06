@@ -274,6 +274,9 @@ class ConfMetaData:
 	number: set[str]
 	type_: set[str]
 	qualifiers: list[str]
+	call_type: str | None
+
+	__slots__ = ('acronym_words', 'topic_keywords', 'organisers', 'number', 'type_', 'qualifiers', 'call_type')
 
 	def __init__(self, title: str, conf_acronym: str, year: str | int = ''):
 		super().__init__()
@@ -288,11 +291,88 @@ class ConfMetaData:
 		self.classify_words(title, normalize(conf_acronym), str(year))
 
 
+	@classmethod
+	def word_pos(cls, word_list, match_set: str | set[str]):
+		if isinstance(match_set, str):
+			try:
+				return word_list.index(match_set)
+			except ValueError:
+				return None
+		else:
+			# max() to catch “X and Y” cases with both X and Y in the match set
+			found = set(word_list) & match_set
+			if not found:
+				return None
+			return max(word_list.index(word) for word in found)
+
+	def classify_call(self, normalized: str, *ignored: str):
+		# Match call types in normalized, to distinguish between multi-word expressions:
+		# call for posters, call for [full] papers, phd symposium, etc.
+		normalized_text = ' '.join(normalized)
+		try:
+			pos = normalized_text.index('call for ')
+		except ValueError:
+			call_for_text = []
+		else:
+			call_from = len(normalized_text[:pos].split()) + 2
+			# NB: account for call for <conf | year | conf year | confyear> [interesting bit]
+			while normalized[call_from] in {*ignored, ''.join(ignored)}:
+				call_from += 1
+			# Only look at a few next words
+			call_for_text = normalized[call_from:call_from + 5]
+
+		if not call_for_text:
+			return None
+		elif (pos := self.word_pos(call_for_text, 'paper')) is not None:
+			# NB. could still be “workshop paper” etc.
+			call_for_text = call_for_text[:pos]
+			call_type = 'paper'
+		elif (pos := self.word_pos(call_for_text, 'poster')) is not None:
+			call_for_text = call_for_text[:pos]
+			call_type = 'poster'
+		elif (pos := self.word_pos(call_for_text, 'proposal')) is not None:
+			call_for_text = call_for_text[:pos]
+			call_type = 'proposal'
+		elif (pos := self.word_pos(call_for_text, {'exhibitor', 'patron', 'sponsor', 'speaker', 'panel', 'volunteer', 'reviewer', 'editor'})) is not None:
+			call_for_text = call_for_text[:pos + 1]
+			call_type = 'speaker'
+		elif (pos := self.word_pos(call_for_text, {'submission', 'contribution', 'proceeding', 'chapter', 'result'})) is not None:
+			call_for_text = call_for_text[:pos + 1]
+			call_type = 'paper'
+		elif (pos := self.word_pos(call_for_text, {'forum', 'workshop', 'tutorial', 'competition', 'session', 'issue', 'track', 'contest', 'challenge', 'course', 'exhibition'})) is not None:
+			# NB. Conservatively assuming paper but calls here could also proposals of workshops etc.
+			call_for_text = call_for_text[:pos + 1]
+			call_type = 'paper'
+		elif (pos := self.word_pos(call_for_text, {'demo', 'demonstration'})) is not None:
+			call_for_text = call_for_text[:pos]
+			call_type = 'demo'
+		elif (pos := self.word_pos(call_for_text, {'student', 'phd', 'doctoral'})) is not None:
+			call_for_text = call_for_text[:pos + 2]  # include next word
+			call_type = 'paper'
+		else:
+			return None
+
+		# refine papers if text contains student/phd/competition/etc, anything that is is not “main track”
+		if call_type != 'paper' or not call_for_text:
+			return call_type
+
+		if self.word_pos(call_for_text, {'student', 'phd', 'doctoral'}) is not None:
+			return 'student paper'
+		elif self.word_pos(call_for_text, {'workshop', 'tutorial', 'competition', 'contest', 'challenge', 'demo'}) is not None:
+			# NB. also other special tracks
+			return 'workshop paper'
+		else:
+			return 'paper'
+
+
 	def classify_words(self, string: str, *ignored: str):
 		# lower case, replace characters in dict by whitepace, repeated spaces will be removed by split()
-		normalized = (normalize(w) for w in string.translate({ord(c): ' ' for c in "-/&,():_~'\".[]|*@"}).split())
-		words = PeekIter(w for w in normalized
-						 if w not in {'', 'the', 'on', 'for', 'of', 'in', 'and', 'its', *ignored, ''.join(ignored)})
+		normalized = [normalize(w) for w in string.translate({ord(c): ' ' for c in "-/&,():_~'\".[]|*@"}).split()]
+		self.call_type = self.classify_call(normalized, *ignored)
+
+		words = PeekIter(w for w in normalized if w not in {
+			'', 'the', 'on', 'for', 'of', 'in', 'and', 'its', *ignored, ''.join(ignored)
+		})
 
 		# semantically filter conference editors/organisations, special interest groups (sig...), etc.
 		for w in words:
@@ -309,9 +389,6 @@ class ConfMetaData:
 			if w in self._meeting_types:
 				self.type_.add(w)
 				continue
-
-			# TODO: match call types, possibly using peekiter to distinguish between multi-word expressions
-			# call for posters, call for [full] papers, phd symposium, etc.
 
 			# Also seen but risk colliding with topic words: Mini Conference, Working Conference
 			if w in self._qualifiers:
