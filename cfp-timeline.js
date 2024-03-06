@@ -566,6 +566,12 @@ function sortConferences(sortIdx = [subIdx, abstIdx, startIdx, endIdx], after = 
 	// Apply sort to timeline rows
 	const rowList = [...timeline.children];
 	sortdates.map(idx => rowList[idx]).forEach(row => timeline.appendChild(row));
+
+	// Apply sort to filtered conferences
+	const filterList = [...filtered_confs.children];
+	sortdates.map(idx => filterList[idx]).forEach(
+		conf => filtered_confs.insertBefore(conf, filtered_confs.lastChild.previousSibling)
+	);
 }
 
 function populatePage(json)
