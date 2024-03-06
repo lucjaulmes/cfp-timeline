@@ -100,7 +100,8 @@ class PeekIter(Generic[T]):
 		Raises:
 			IndexError: There are no further elements (only if n = 0).
 		"""
-		if n < 0: raise ValueError('n < 0 but can not peek back, only ahead')
+		if n < 0:
+			raise ValueError('n < 0 but can not peek back, only ahead')
 
 		try:
 			self._ahead.extend(next(self._it) for _ in range(n - len(self._ahead) + 1))
@@ -363,7 +364,8 @@ class ConfMetaData:
 						self.number.add(w + '-' + m.group(0))
 						next(words)
 						continue
-				except IndexError: pass
+				except IndexError:
+					pass
 
 
 			if w.isnumeric():
@@ -373,6 +375,10 @@ class ConfMetaData:
 						continue
 				except IndexError:
 					pass
+
+				# Pure numeric
+				self.number.add(w)
+				continue
 
 			m = ConfMetaData._ordinal.match(w)
 			if m:
