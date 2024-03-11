@@ -572,6 +572,11 @@ function sortConferences(sortIdx = [subIdx, abstIdx, startIdx, endIdx], after = 
 	sortdates.map(idx => filterList[idx]).forEach(
 		conf => filtered_confs.insertBefore(conf, filtered_confs.lastChild.previousSibling)
 	);
+
+	const suggestionsList = [...suggestions.children];
+	sortdates.map(idx => suggestionsList[idx]).forEach(
+		item => suggestions.appendChild(item)
+	);
 }
 
 function populatePage(json)
