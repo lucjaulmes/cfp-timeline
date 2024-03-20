@@ -1126,14 +1126,21 @@ class CallForPapers(ConfMetaData):
 				return sorted_dates.index
 
 			# Expected ordinals
-			exp = pd.DataFrame({
+			ordinals = pd.DataFrame({
 				'ordinal': cls._ordinal_list[:len(subset)],
 				'number': map(str, range(1, len(subset) + 1)),
 				'both': map(inflection.ordinalize, range(1, len(subset) + 1)),
-			}, index=sorted_dates.index).agg(set, axis='columns')
+			}, index=sorted_dates.index)
+
+			# Some write “r1”, “r2”, etc.
+			short_round = ordinals['number'].radd('r')
+			short_round_match = topic_diff == topic_diff.index.to_series().map(short_round.to_dict())
+			if short_round_match.groupby(level=0).any().all():
+				return sorted_dates.index
 
 			is_first_call = sorted_dates.eq(sorted_dates.min())
 
+			exp = ordinals.agg(set, axis='columns')
 			num = cfps.loc[subset, 'cfp'].map(operator.attrgetter('number')).rename('number')
 			match_num = num.combine(exp, set.intersection).str.len().gt(0)
 			match_kw = topic.isin({'round', 'deadline', 'submission'}).groupby(level=0).any().reindex(sorted_dates.index, fill_value=False)
