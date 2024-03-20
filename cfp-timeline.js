@@ -320,15 +320,22 @@ function makeSuggestionItem(row)
 	item.children[2].textContent = row[fieldIdx] == '(missing)' ? '': row[fieldIdx];
 	item.children[3].textContent = row[titleIdx];
 
-	const opt = Array.from(form.querySelector('select[name="conf"]').options).find(opt => opt.value === row[confIdx]);
-	item.onclick = () =>
-	{
-		opt.selected = true;
-		opt.parentNode.onchange();
-		form.querySelector('input[name="search"]').value = '';
-	}
-
 	return suggestions.appendChild(item);
+}
+
+
+function onSuggestionClick()
+{
+	Array.from(suggestions.children).forEach((item, idx) =>
+	{
+		const opt = Array.from(form.querySelector('select[name="conf"]').options).find(opt => opt.value === data[idx][confIdx]);
+		item.onclick = () =>
+		{
+			opt.selected = true;
+			opt.parentNode.onchange();
+			form.querySelector('input[name="search"]').value = '';
+		}
+	})
 }
 
 
@@ -577,6 +584,8 @@ function sortConferences(sortIdx = [subIdx, abstIdx, startIdx, endIdx], after = 
 	sortdates.map(idx => suggestionsList[idx]).forEach(
 		item => suggestions.appendChild(item)
 	);
+
+	onSuggestionClick();
 }
 
 function populatePage(json)
