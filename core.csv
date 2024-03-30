@@ -281,7 +281,6 @@ EPIA;Portuguese Conference on Artificial Intelligence;CORE2023;National: Portuga
 ER;International Conference on Conceptual Modelling;CORE2023;A;Data management and data science
 ESA;European Symposium on Algorithms;CORE2023;A;Theory of computation
 ESANN;European Symposium on Artificial Neural Networks;CORE2023;B;Machine learning
-ESEC/FSE;European Software Engineering Conference and the ACM SIGSOFT Symposium on the Foundations of Software Engineering;CORE2023;A*;Software engineering
 ESEM;International Symposium on Empirical Software Engineering and Measurement;CORE2023;A;Software engineering
 ESOP;European Symposium on Programming;CORE2023;A;Software engineering
 ESORICS;European Symposium On Research In Computer Security;CORE2023;A;Cybersecurity and privacy
@@ -337,6 +336,7 @@ FOSSACS;Foundations of Software Science and Computational Structures;CORE2023;A;
 FQAS;Flexible Query-Answering Systems;CORE2023;C;Data management and data science
 FRUCT;IEEE Conference of the Open Innovations Association FRUCT;CORE2023;Regional;Distributed computing and systems software
 FSCD;International Conference on Formal Structures for Computation and Deduction;CORE2023;B;Theory of computation
+FSE;ACM International Conference on the Foundations of Software Engineering;CORE2023;A*;Software engineering
 FSE;International Workshop on Fast Software Encryption;CORE2023;;Cybersecurity and privacy
 FSR;International Conference on Field and Service Robotics;CORE2018;A;Artificial intelligence
 FST&TCS;Foundations of Software Technology and Theoretical Computer Science;CORE2023;National: India;Theory of computation
