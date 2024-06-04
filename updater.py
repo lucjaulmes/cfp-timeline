@@ -726,6 +726,11 @@ class CallForPapers(ConfMetaData):
 	url_cfp: str | None
 	date_errors: bool | None
 
+	# Hardcoding because we can modify cfps but it doesn’t trickle up to the search results
+	_hardcoded_exceptions = (
+		('ASPLOS', 2025, 3),
+	)
+
 	def __init__(self, acronym: str, year: int | str, id_: int, desc: str = '',
 				 url_cfp: str | None = None, link: str | None = None):
 		# Initialize parent parsing with the description
@@ -955,7 +960,7 @@ class CallForPapers(ConfMetaData):
 			delay = (start - deadline).days
 			if delay < 0:
 				err.append(f'{name} ({deadline}) after conference start')
-			elif delay > 396:  # Accept deadlines up to 1 year and 1 month before conference
+			elif delay > 440:  # Accept deadlines up to 1 year and 2.5 months before conference
 				err.append(f'{name} ({deadline}) too long before conference')
 			else:
 				continue
@@ -1147,6 +1152,9 @@ class CallForPapers(ConfMetaData):
 
 			if all(match_num == match_kw) and all(match_num | is_first_call):
 				return sorted_dates.index
+
+		if (cfp.acronym, cfp.year, len(dates)) in self._hardcoded_exceptions:
+			return dates.index
 
 		# Otherwise, warn
 		cfp = cfps.loc[maxlen_candidates[0][0], 'cfp']
