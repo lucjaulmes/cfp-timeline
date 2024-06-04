@@ -1595,6 +1595,11 @@ class CoreRanking(Ranking):
 
 
 	@classmethod
+	def _load_confs(cls) -> pd.DataFrame:
+		return super()._load_confs().fillna({'field': '(missing)'})
+
+
+	@classmethod
 	def _fetch_confs(cls) -> pd.DataFrame:
 		""" Fetch unparsed conference info from the core website """
 		# fetch page 1 outside loop to get page/result counts, will be in cache for loop access
@@ -1662,7 +1667,7 @@ class CoreRanking(Ranking):
 		with open(cls._for_file, 'r') as f:
 			forcodes = json.load(f)
 
-		cfps['field'] = cfps['field'].map(forcodes)
+		cfps['field'] = cfps['field'].map(forcodes).fillna('(missing)')
 
 		text_ranks = cfps['rank']
 		non_standard_ranks = cfps['rank'][text_ranks.isna() & cfps['rank'].notna()].value_counts()
@@ -1804,9 +1809,6 @@ def cfps(out_file: str, debug: bool = False):
 				for n in range(nrounds):
 					cfp = CallForPapers.build(conf.acronym, year)
 					conf_matching.append((conf_id, cfp.id, year, n, 999, len(cfp.__slots__)))
-
-	with open('parsing_errors.txt', 'w') as errlog:
-		print(*CallForPapers._errors, sep='\n', file=errlog)
 
 	with open('parsing_errors.txt', 'w') as errlog:
 		print(*CallForPapers._errors, sep='\n', file=errlog)
