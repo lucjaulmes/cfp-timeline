@@ -34,7 +34,7 @@ AIAI;Artificial Intelligence Applications and Innovations;CORE2023;C;Applied com
 AICCSA;ACS/IEEE International Conference on Computer Systems and Applications;CORE2023;C;Information And Computing Sciences
 AICE;Australian Institute of Computer Ethics Conference;CORE2023;Australasian C;Human-centred computing
 AIED;International Conference on Artificial Intelligence in Education;CORE2023;A;Applied computing
-AIME;Artificial Intelligence in Medicine in Europe;CORE2023;B;Applied computing
+AIME;International Conference on Artificial Intelligence in Medicine;CORE2023;B;Applied computing
 AIMSA;International Conference on Artificial Intelligence: Methodology, Systems, Applications;CORE2023;National: Bulgaria;Artificial intelligence
 AINA;International Conference on Advanced Information Networking and Applications;CORE2023;B;Distributed computing and systems software
 AIRS;Asia Information Retrieval Symposium;CORE2023;C;Data management and data science
@@ -106,7 +106,7 @@ CALCO;Conference on Algebra and Coalgebra in Computer Science;CORE2023;B;Theory 
 CANS;International Conference on Cryptology and Network Security;CORE2023;B;Cybersecurity and privacy
 CARDIS;Smart Card Research and Advanced Application Conference;CORE2023;C;Cybersecurity and privacy
 CASC;Computer Algebra in Scientific Computing;CORE2023;B;Theory of computation
-CASE;IEEE International Conference on Automation Science and Engineering;CORE2023;;
+CASE;IEEE International Conference on Automation Science and Engineering;CORE2023;;(missing)
 CASES;International Conference on Compilers, Architecture, and Synthesis for Embedded Systems;CORE2023;B;Distributed computing and systems software
 CATA;International Conference on Computers and their Applications;CORE2023;National: USA;Applied computing
 CAV;Computer Aided Verification;CORE2023;A*;Software engineering
@@ -158,7 +158,7 @@ CN;International Science Conference on Computer Networks;CORE2023;National: Pola
 CNSM;International Conference on Network and Service Management;CORE2023;B;Distributed computing and systems software
 COCOA;Conference on Combinatorial Optimization and Applications;CORE2023;C;Artificial intelligence
 COCOON;International Conference on Computing and Combinatorics;CORE2023;National: China;Theory of computation
-CODES+ISSS;International Conference on Hardware/Software Codesign and System Synthesis;CORE2023;C;
+CODES+ISSS;International Conference on Hardware/Software Codesign and System Synthesis;CORE2023;C;(missing)
 COG;Conference on Games;CORE2023;C;Graphics, augmented reality and games
 COINE;International Workshop on Coordination, Organizations, Institutions, Norms and Ethics for Governance of Multi-Agent Systems (Ethics added 2020);CORE2023;C;Artificial intelligence
 COLING;International Conference on Computational Linguistics;CORE2023;B;Artificial intelligence
@@ -202,7 +202,7 @@ CogSci;Annual Meeting of the Cognitive Science Society;CORE2023;B;Artificial int
 CollaborateCom;International Conference on Collaborative Computing: Networks, Applications and Worksharing;CORE2023;C;Distributed computing and systems software
 CoopIS;International Conference on Cooperative Information Systems;CORE2023;B;Human-centred computing
 Coordination;International Conference on Coordination Models and Languages;CORE2023;C;Distributed computing and systems software
-DAC;Design Automation Conf;CORE2023;;
+DAC;Design Automation Conf;CORE2023;;(missing)
 DAC;Design Automation Conference;CORE2018;A;Distributed computing and systems software
 DAFX;Digital Audio Effects Conference;CORE2023;C;Computer vision and multimedia computation
 DAIS;IFIP International Conference on Distributed Applications and Interoperable Systems;CORE2023;C;Distributed computing and systems software
@@ -210,7 +210,7 @@ DAS;International Workshop on Document Analysis Systems;CORE2023;B;Data manageme
 DASC;International Conference on Dependable, Autonomic and Secure Computing;CORE2023;C;Cybersecurity and privacy
 DASFAA;International Conference on Database Systems for Advanced Applications;CORE2023;B;Data management and data science
 DATA;International Conference on Data Science, Technology and Applications;CORE2023;C;Data management and data science
-DATE;Design, Automation and Test in Europe Conference;CORE2023;B;
+DATE;Design, Automation and Test in Europe Conference;CORE2023;B;(missing)
 DB&IS;International Baltic Conference on Databases and Information Systems;CORE2023;Regional: Baltic;Data management and data science
 DBSEC;IFIP WG 11.3 Working Conference on Data and Applications Security (also known as DBSEC);CORE2023;B;Cybersecurity and privacy
 DC;International Conference on Dublin Core and Metadata Applications;CORE2023;C;Data management and data science
@@ -256,7 +256,7 @@ ECDG;European Conference on Digital Government;CORE2023;C;Applied computing
 ECIR;European Conference on Information Retrieval;CORE2023;A;Data management and data science
 ECMFA;European Conference on Modelling Foundations and Applications;CORE2023;;Software engineering
 ECML PKDD;European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in Database;CORE2023;A;Machine learning
-ECMS;International Conference on Modelling and Simulation;CORE2023;C;Artificial intelligence
+ECMS;International Conference on Modelling and Simulation;CORE2023;;Artificial intelligence
 ECOOP;European Conference on Object-Oriented Programming;CORE2023;A;Software engineering
 ECRTS;Euromicro Conference on Real-Time Systems;CORE2023;B;Distributed computing and systems software
 ECSA;European Conference on Software Architecture;CORE2023;A;Software engineering
@@ -287,10 +287,10 @@ ESEM;International Symposium on Empirical Software Engineering and Measurement;C
 ESOP;European Symposium on Programming;CORE2023;A;Software engineering
 ESORICS;European Symposium On Research In Computer Security;CORE2023;A;Cybersecurity and privacy
 ESWC;Extended Semantic Web Conference;CORE2023;B;Data management and data science
-ETFA;IEEE International Conference on Emerging Technologies and Factory Automation;CORE2023;;
+ETFA;IEEE International Conference on Emerging Technologies and Factory Automation;CORE2023;;(missing)
 ETHICOMP;ETHICOMP Conference;CORE2023;C;Human-centred computing
 ETRA;Eye Tracking Research and Applications;CORE2023;B;Human-centred computing
-ETS;IEEE European Test Symposium;CORE2023;;
+ETS;IEEE European Test Symposium;CORE2023;;(missing)
 EUC;IEEE/IFIP International Conference on Embedded and Ubiquitous Computing;CORE2023;C;Distributed computing and systems software
 EUMAS;European Conference on Multi-Agent Systems;CORE2023;C;Artificial intelligence
 EURO;European Conference on Operations Research;CORE2023;C;Artificial intelligence
@@ -317,7 +317,7 @@ FASE;Fundamental Approaches to Software Engineering;CORE2023;B;Software engineer
 FAST;Conference on File and Storage Technologies;CORE2023;A;Data management and data science
 FAW;International Frontiers of Algorithmics Workshop;CORE2023;National: China;Theory of computation
 FC;Financial Cryptography and Data Security Conference;CORE2023;A;Cybersecurity and privacy
-FCCM;IEEE Symposium on Field Programmable Custom Computing Machines;CORE2023;B;
+FCCM;IEEE Symposium on Field Programmable Custom Computing Machines;CORE2023;B;(missing)
 FCT;International Symposium on Fundamentals of Computation Theory;CORE2023;B;Theory of computation
 FDG;International Conference on the Foundations of Digital Games;CORE2023;C;Graphics, augmented reality and games
 FDL;Forum on Specification and Design Languages;CORE2023;C;Software engineering
@@ -337,8 +337,8 @@ FOGA;Foundations of Genetic Algorithms;CORE2023;A;Artificial intelligence
 FOIS;International Conference on Formal Ontology in Information Systems;CORE2023;B;Artificial intelligence
 FORTE;IFIP Joint International Conference on Formal Description Techniques and Protocol Specification, Testing, And Verification;CORE2023;C;Software engineering
 FOSSACS;Foundations of Software Science and Computational Structures;CORE2023;A;Theory of computation
-FPGA;ACM Int'l Symposium on Field Programmable Gate Arrays;CORE2023;;
-FPL;Field Programmable Logic and Applications;CORE2023;;
+FPGA;ACM Int'l Symposium on Field Programmable Gate Arrays;CORE2023;;(missing)
+FPL;Field Programmable Logic and Applications;CORE2023;;(missing)
 FQAS;Flexible Query-Answering Systems;CORE2023;C;Data management and data science
 FRUCT;IEEE Conference of the Open Innovations Association FRUCT;CORE2023;Regional;Distributed computing and systems software
 FSCD;International Conference on Formal Structures for Computation and Deduction;CORE2023;B;Theory of computation
@@ -381,7 +381,7 @@ HOTI;IEEE Symposium on High-Performance Interconnects;CORE2023;National: USA;Dis
 HOTMOBILE;Workshop on Mobile Computing Systems and Applications;CORE2023;National: USA;Distributed computing and systems software
 HOTNETS;ACM Workshop on Hot Topics in Networks;CORE2023;National: USA;Distributed computing and systems software
 HPC Asia;International Conference and Exhibition on High Performance Computing in the Asia-Pacific Region;CORE2023;C;Distributed computing and systems software
-HPCA;International Symposium on High Performance Computer Architecture;CORE2023;A*;
+HPCA;International Symposium on High Performance Computer Architecture;CORE2023;A*;(missing)
 HPCC;IEEE International Conference on High Performance Computing and Communications;CORE2023;C;Distributed computing and systems software
 HPCS;IEEE International Conference on High Performance Computing and Simulation;CORE2023;C;Distributed computing and systems software
 HPDC;ACM International Symposium on High Performance Distributed Computing;CORE2023;A;Distributed computing and systems software
@@ -413,13 +413,13 @@ ICARCV;International Conference on Control, Automation, Robotics and Vision;CORE
 ICASSP;IEEE International Conference on Acoustics, Speech and Signal Processing;CORE2018;B;Communications engineering
 ICBC;IEEE International Conference on Blockchain and Cryptocurrency;CORE2023;C;Distributed computing and systems software
 ICC;IEEE International Conference on Communications;CORE2018;B;Communications engineering
-ICCAD;IEEE/ACM International Conference on Computer-Aided Design;CORE2023;A;
+ICCAD;IEEE/ACM International Conference on Computer-Aided Design;CORE2023;A;(missing)
 ICCAM;International Congress on Computational and Applied Mathematics;CORE2023;C;Theory of computation
 ICCBR;International Conference on Case-Based Reasoning;CORE2023;C;Artificial intelligence
 ICCC;International Conference on Computational Creativity;CORE2023;C;Information And Computing Sciences
 ICCCI;International Conference on Computational Collective Intelligence;CORE2023;B;Artificial intelligence
 ICCCN;International Conference on Computer Communication and Networks;CORE2023;B;Distributed computing and systems software
-ICCD;IEEE International Conference on Computer Design;CORE2023;;
+ICCD;IEEE International Conference on Computer Design;CORE2023;;(missing)
 ICCE;International Conference on Computers in Education;CORE2023;C;Applied computing
 ICCHP;International Conference on Computers Helping People with Special Needs;CORE2023;C;Applied computing
 ICCI;IEEE International Conference on Cognitive Informatics;CORE2023;C;Artificial intelligence
@@ -493,7 +493,7 @@ ICPP;International Conference on Parallel Processing;CORE2023;B;Distributed comp
 ICPR;International Conference on Pattern Recognition;CORE2023;B;Computer vision and multimedia computation
 ICPRAM;International Conference on Pattern Recognition Applications and Methods;CORE2023;C;Computer vision and multimedia computation
 ICRA;IEEE International Conference on Robotics and Automation;CORE2023;A*;Artificial intelligence
-ICS;ACM International Conference on Supercomputing;CORE2023;A;
+ICS;ACM International Conference on Supercomputing;CORE2023;A;(missing)
 ICSA;International Conference on Software Architecture;CORE2023;A;Software engineering
 ICSE;International Conference on Software Engineering;CORE2023;A*;Software engineering
 ICSEA;International Conference on Software Engineering Advances;CORE2023;C;Software engineering
@@ -525,7 +525,7 @@ IDEAS;International Database Engineering and Applications Symposium;CORE2023;C;D
 IE;Interactive Entertainment;CORE2023;Australasian C;Graphics, augmented reality and games
 IE;The International Conference on Intelligent Environments;CORE2023;B;Artificial intelligence
 IEA/AIE;International Conference on Industrial and Engineering Applications of Artificial Intelligence and Expert Systems;CORE2023;C;Artificial intelligence
-IECON;IEEE Industrial Electronics Society;CORE2023;;
+IECON;IEEE Industrial Electronics Society;CORE2023;;(missing)
 IES;Asia Pacific Symposium on Intelligent and Evolutionary Systems;CORE2023;C;Artificial intelligence
 IFIP SEC;IFIP Information Security & Privacy Conference;CORE2023;B;Cybersecurity and privacy
 IFM;Integrated Formal Methods;CORE2023;B;Software engineering
@@ -546,7 +546,7 @@ IM;IFIP/IEEE International Symposium on Integrated Management (even years sharin
 IMACC;IMA International Conference on Cryptography and Coding;CORE2023;C;Cybersecurity and privacy
 IMC;Internet Measurement Conference;CORE2023;A;Distributed computing and systems software
 IMVIP;International Machine Vision and Image Processing Conference;CORE2023;National: Ireland;Computer vision and multimedia computation
-INDIN;IEEE International Conference on Industrial Informatics;CORE2023;;
+INDIN;IEEE International Conference on Industrial Informatics;CORE2023;;(missing)
 INDOCRYPT;International Conference on Cryptology in India;CORE2023;National: India;Cybersecurity and privacy
 INFOCOM;IEEE International Conference on Computer Communications;CORE2023;A*;Distributed computing and systems software
 INFOCOMP;International Conference on Advanced Communications and Computation;CORE2023;;Information And Computing Sciences
@@ -573,8 +573,8 @@ ISAT;International Conference Information Systems Architecture and Technology;CO
 ISC;ISC High Performance;CORE2023;C;Distributed computing and systems software
 ISC;Industrial Simulation Conference;CORE2023;C;Artificial intelligence
 ISC;Information Security Conference;CORE2023;C;Cybersecurity and privacy
-ISCA;ACM International Symposium on Computer Architecture;CORE2023;A*;
-ISCAS;IEEE International Symposium on Circuits and Systems;CORE2023;;
+ISCA;ACM International Symposium on Computer Architecture;CORE2023;A*;(missing)
+ISCAS;IEEE International Symposium on Circuits and Systems;CORE2023;;(missing)
 ISCC;IEEE Symposium on Computers and Communications;CORE2023;C;Distributed computing and systems software
 ISCO;International Symposium on Combinatorial Optimisation;CORE2023;C;Theory of computation
 ISDA;International Conference on Intelligent Systems Designs and Applications;CORE2023;C;Artificial intelligence
@@ -611,7 +611,7 @@ ISWC;IEEE International Symposium on Wearable Computers;CORE2023;;Human-centred 
 ISWC;International Semantic Web Conference;CORE2023;A;Data management and data science
 ISoLA;International Symposium on Leveraging Applications of Formal Methods, Verification and Validation;CORE2023;C;Software engineering
 ITA;International Conference on Internet Technologies and Applications;CORE2023;National: USA;Information And Computing Sciences
-ITC;IEEE International Test Conference;CORE2023;;
+ITC;IEEE International Test Conference;CORE2023;;(missing)
 ITC;International Teletraffic Congress;CORE2023;;Distributed computing and systems software
 ITCS;Innovations in Theoretical Computer Science;CORE2023;A;Theory of computation
 ITNAC;International Telecommunication Networks and Applications Conference;CORE2023;Australasian C;Distributed computing and systems software
@@ -687,7 +687,7 @@ MFPS;International Conference on Mathematical Foundations of Programming Semanti
 MICC;Malaysia International Conference on Communications;CORE2023;Regional;Distributed computing and systems software
 MICCAI;Medical Image Computing and Computer-Assisted Intervention;CORE2023;A;Applied computing
 MICRO;International Symposium on Microarchitecture;CORE2018;A;Applied computing
-MICRO;International Symposium on Microarchitecture;CORE2023;;
+MICRO;International Symposium on Microarchitecture;CORE2023;;(missing)
 MIS4TEL;International Conference in Methodologies and Intelligent Systems for Technology Enhanced Learning;CORE2023;National: Spain;Applied computing
 MISE;International Workshop on Modelling in Software Engineering;CORE2023;C;Software engineering
 MISSI;Multimedia and Network Information Systems;CORE2023;National: Poland;Computer vision and multimedia computation
@@ -791,7 +791,7 @@ PerDis;INTERNATIONAL SYMPOSIUM ON PERVASIVE DISPLAYS;CORE2023;B;Human-centred co
 Petri Nets;International Conference on the Application and Theory of Petri Nets and Concurrency;CORE2023;B;Distributed computing and systems software
 PoEM;IFIP WG8.1 Working Conference on the Practice of Enterprise Modeling;CORE2023;;Information And Computing Sciences
 ProvSec;International Conference on Provable Security;CORE2023;C;Cybersecurity and privacy
-QCE;IEEE International Conference on Quantum Computing and Engineering;CORE2023;;
+QCE;IEEE International Conference on Quantum Computing and Engineering;CORE2023;;(missing)
 QRS;Software Quality, Reliability, and Security;CORE2023;C;Software engineering
 QUATIC;International Conference on the Quality of Information and Communications Technology;CORE2023;C;Software engineering
 QoMEX;International Conference on Quality of Multimedia Experience;CORE2023;B;Human-centred computing
@@ -808,7 +808,7 @@ REFSQ;International Workshop on Requirements Engineering: Foundation for Softwar
 RFID;IEEE International Conference on Radio Frequency Identification;CORE2018;B;Communications engineering
 RSP;IEEE International Symposium on Rapid System Prototyping;CORE2023;C;Software engineering
 RSS;Robotics: Science and Systems;CORE2018;A*;Machine learning
-RSS;Robotics: Science and Systems;CORE2023;;
+RSS;Robotics: Science and Systems;CORE2023;;(missing)
 RTAS;IEEE Real-Time and Embedded Technology and Applications Symposium;CORE2023;A;Distributed computing and systems software
 RTCSA;International Conference on Embedded and Real Time Computing Systems and Applications;CORE2023;B;Distributed computing and systems software
 RTNS;International Conference on Real-Time and Network Systems;CORE2023;National: France;Distributed computing and systems software
@@ -832,7 +832,7 @@ SAS;Static Analysis Symposium;CORE2023;B;Software engineering
 SASHIMI;Simulation and Synthesis in Medical Imaging;CORE2023;C;Artificial intelligence
 SAT;International Conference on Theory and Applications of Satisfiability Testing;CORE2023;A;Artificial intelligence
 SBAC-PAD;International Symposium on Computer Architecture and High Performance Computing;CORE2023;C;Distributed computing and systems software
-SC;International Conference for High Performance Computing, Networking, Storage and Analysis;CORE2023;A;
+SC;International Conference for High Performance Computing, Networking, Storage and Analysis;CORE2023;A;(missing)
 SCA;ACM SIGGRAPH/Eurographics Symposium on Computer Animation;CORE2023;B;Graphics, augmented reality and games
 SCAM;IEEE International Working Conference on Source Code Analysis and Manipulation;CORE2023;C;Software engineering
 SCN;Conference on Security and Cryptography for Networks;CORE2023;National: Italy;Cybersecurity and privacy
@@ -957,7 +957,7 @@ VMCAI;Verification, Model Checking and Abstract Interpretation;CORE2023;B;Softwa
 VR;IEEE Conference on Virtual Reality and 3D User Interfaces;CORE2023;A*;Graphics, augmented reality and games
 VRST;ACM Virtual Reality Software and Technology;CORE2023;A;Graphics, augmented reality and games
 VTC;IEEE Vehicular Technology Conference;CORE2023;B;Distributed computing and systems software
-VTS;IEEE VLSI Test Symposium;CORE2023;;
+VTS;IEEE VLSI Test Symposium;CORE2023;;(missing)
 VizSec;International Workshop on Visualization for Cyber Security;CORE2023;C;Human-centred computing
 W2GIS;International Workshop on Web and Wireless Geographical Information Systems;CORE2023;C;Applied computing
 WABI;Workshop on Algorithms in Bioinformatics;CORE2023;C;Applied computing
