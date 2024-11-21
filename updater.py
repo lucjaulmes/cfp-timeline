@@ -1155,7 +1155,7 @@ class CallForPapers(ConfMetaData):
 
 		# Otherwise, warn
 		cfp = cfps.loc[maxlen_candidates[0][0], 'cfp']
-		if (cfp.acronym, cfp.year, len(dates)) in self._hardcoded_exceptions:
+		if (cfp.acronym, cfp.year, len(dates)) in cls._hardcoded_exceptions:
 			return dates.index
 
 		start, end = dates.loc[maxlen_candidates[0][0], ['conf_start', 'conf_end']]
