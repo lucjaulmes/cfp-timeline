@@ -169,7 +169,6 @@ CPM;Combinatorial Pattern Matching;CORE2023;B;Computer vision and multimedia com
 CRITIS;International Workshop on Critical Information Infrastructures Security;CORE2023;C;Cybersecurity and privacy
 CRYPTO;Advances in Cryptology;CORE2023;A*;Cybersecurity and privacy
 CRiSIS;International Conference on Risks and Security of Internet and Systems;CORE2023;C;Cybersecurity and privacy
-CSCL;Computer Supported Collaborative Learning;CORE2023;B;Human-centred computing
 CSCW;ACM Conference on Computer Supported Cooperative Work;CORE2023;A;Human-centred computing
 CSCWD;International Conference on Computer Supported Cooperative Work in Design;CORE2023;C;Human-centred computing
 CSEDU;International Conference on Computer Supported Education;CORE2023;B;Human-centred computing
@@ -246,7 +245,7 @@ ECCO;European Chapter on Combinatorial Optimization;CORE2023;C;Theory of computa
 ECCV;European Conference on Computer Vision;CORE2023;A*;Computer vision and multimedia computation
 ECDG;European Conference on Digital Government;CORE2023;C;Applied computing
 ECIR;European Conference on Information Retrieval;CORE2023;A;Data management and data science
-ECMFA;European Conference on Modelling Foundations and Applications;CORE2023;;Software engineering
+ECMFA;European Conference on Modelling Foundations and Applications;CORE2023;B;Software engineering
 ECML PKDD;European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in Database;CORE2023;A;Machine learning
 ECMS;International Conference on Modelling and Simulation;CORE2023;;Artificial intelligence
 ECOOP;European Conference on Object-Oriented Programming;CORE2023;A;Software engineering
@@ -297,7 +296,7 @@ EuroCrypt;International Conference on the Theory and Application of Cryptographi
 EuroMPI;European MPI Users' Group Conference;CORE2023;C;Distributed computing and systems software
 EuroPLop;European Conference on Pattern Languages of Programs;CORE2023;National: Germany;Software engineering
 EuroPar;International European Conference on Parallel and Distributed Computing;CORE2023;B;Distributed computing and systems software
-EuroS&P;IEEE European Symposium on Security and Privacy;CORE2023;;Cybersecurity and privacy
+EuroS&P;IEEE European Symposium on Security and Privacy;CORE2023;A;Cybersecurity and privacy
 EuroSPI;European SPI;CORE2023;B;Software engineering
 EuroSys;Eurosys Conference;CORE2023;A;Distributed computing and systems software
 EuroVA;Visual Analytics;CORE2023;C;Human-centred computing
@@ -392,7 +391,6 @@ IC-AI;International Conference on Artificial Intelligence;CORE2023;National: USA
 IC3K;International Joint Conference on Knowledge Discovery, Knowledge Engineering and Knowledge Management;CORE2023;C;Data management and data science
 ICA3PP;International Conference on Algorithms and Architectures for Parallel Processing;CORE2023;C;Distributed computing and systems software
 ICAART;International Conference on Agents and Artificial Intelligence;CORE2023;B;Artificial intelligence
-ICAC;IEEE International Conference on Autonomic Computing;CORE2023;B;Distributed computing and systems software
 ICAIL;International Conference on Artificial Intelligence and Law;CORE2023;C;Artificial intelligence
 ICAISC;International Conference on Artificial Intelligence and Soft Computing;CORE2023;National: Poland;Artificial intelligence
 ICALP;International Colloquium on Automata Languages and Programming;CORE2023;A;Theory of computation
@@ -650,7 +648,7 @@ LATA;International Conference on Language and Automata Theory and Applications;C
 LATIN;International Symposium on Latin American Theoretical Informatics;CORE2023;B;Theory of computation
 LCN;IEEE Conference on Local Computer Networks;CORE2023;B;Distributed computing and systems software
 LCTES;ACM SIGPLAN Conference on Languages, Tools, and Compilers for Embedded Systems;CORE2023;B;Distributed computing and systems software
-LDK;Language, Data and Knowledge;CORE2023;;Artificial intelligence
+LDK;Language, Data and Knowledge;CORE2023;C;Artificial intelligence
 LFCS;Logical Foundations of Computer Science;CORE2023;National: USA;Theory of computation
 LICS;IEEE Symposium on Logic in Computer Science;CORE2023;A*;Theory of computation
 LOPSTR;International Symposium on Logic-based Program Synthesis and Transformation;CORE2023;C;Theory of computation
@@ -856,7 +854,6 @@ SISY;International Symposium on Intelligent Systems and Informatics;CORE2023;Nat
 SLE;International Conference on Software Language Engineering;CORE2023;B;Software engineering
 SMC;IEEE Conference on Systems, Man and Cybernetics;CORE2023;B;Human-centred computing
 SNPD;International Conference on Software Engineering, Artificial Intelligence, Networking and Parallel/Distributed Computing;CORE2023;C;Software engineering
-SOCA;IEEE International Conference on Service-Oriented Computing and Applications;CORE2023;C;Distributed computing and systems software
 SODA;ACM/SIAM Symposium on Discrete Algorithms;CORE2023;A*;Theory of computation
 SOFA;International Workshop on Soft Computing Applications;CORE2023;National: Romania;Applied computing
 SOFSEM;Current Trends in Theory and Practice of Computer Science;CORE2023;B;Information And Computing Sciences
@@ -902,7 +899,7 @@ TIME;International Symposium on Temporal Representation and Reasoning;CORE2023;C
 TPDL;International Conference on Theory and Practice of Digital Libraries;CORE2023;B;Data management and data science
 TRB;International Visualization in Transportation Symposium;CORE2023;National: USA;Human-centred computing
 Tapia;Richard Tapia Celebration of Diversity in Computing Conference;CORE2023;National: USA;Information And Computing Sciences
-TechDebt;International Conference on Technical Debt;CORE2023;;Software engineering
+TechDebt;International Conference on Technical Debt;CORE2023;B;Software engineering
 Tencon;IEEE Region 10 Conference;CORE2023;C;Information And Computing Sciences
 TridentCom;Testbeds and Research Infrastructures for the Development of Networks and Communities;CORE2023;National: China;Distributed computing and systems software
 TrustBus;International Conference on Trust, Privacy and Security in Digital Business;CORE2023;B;Cybersecurity and privacy
