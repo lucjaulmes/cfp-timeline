@@ -1153,11 +1153,11 @@ class CallForPapers(ConfMetaData):
 			if all(match_num == match_kw) and all(match_num | is_first_call):
 				return sorted_dates.index
 
-		if (cfp.acronym, cfp.year, len(dates)) in self._hardcoded_exceptions:
+		cfp = cfps.loc[maxlen_candidates[0][0], 'cfp']
+		if (cfp.acronym, cfp.year, len(dates)) in cls._hardcoded_exceptions:
 			return dates.index
 
 		# Otherwise, warn
-		cfp = cfps.loc[maxlen_candidates[0][0], 'cfp']
 		start, end = dates.loc[maxlen_candidates[0][0], ['conf_start', 'conf_end']]
 		err = (
 			f'{cfp.acronym} {cfp.year} ({start} -- {end})', f'{len(maxlen_candidates[0])} compatible deadlines '
