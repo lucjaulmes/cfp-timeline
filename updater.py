@@ -1587,6 +1587,10 @@ class GGSRanking(Ranking):
 			   'acronym'] = 'AJCAI'
 		df['acronym'] = df['acronym'].str.replace('(_A|-AUS)$', '', regex=True)
 
+		# 4) Clarify USENIX (not searchable on wikicfp) vs. USENIX ATC (intended) vs. USENIX Security (same organiser)
+		df.loc[df['acronym'].eq('USENIX') & df['title'].eq('Usenix Annual Technical Conference'),
+			   'acronym'] = 'USENIX ATC'
+
 		def sort_ranks(series):
 			return series.map(Conference._ranks).fillna(len(Conference._ranks)) if series.name == 'rank' else series
 
