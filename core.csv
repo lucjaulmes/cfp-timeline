@@ -290,7 +290,7 @@ EUSFLAT;Conference of the European Society for Fuzzy Logic and Technologies;CORE
 EUSPN;International Conference on Emerging Ubiquitous Systems and Pervasive Networks;CORE2023;;Distributed computing and systems software
 EUroComb;EuroConference on Combinatorics, Graph Theory and Applications;CORE2023;C;Theory of computation
 EWSN;International Conference on Embedded Wireless Systems and Networks (wasEuropean Conference on Wireless Sensor Networks);CORE2023;B;Distributed computing and systems software
-Euro VR;Euro Virtual Reality;CORE2023;C;Graphics, augmented reality and games
+Euro XR;Euro XR International Conference;CORE2023;C;Graphics, augmented reality and games
 EuroCG;European Workshop on Computational Geometry;CORE2023;C;Theory of computation
 EuroCrypt;International Conference on the Theory and Application of Cryptographic Techniques;CORE2023;A*;Cybersecurity and privacy
 EuroMPI;European MPI Users' Group Conference;CORE2023;C;Distributed computing and systems software
@@ -539,7 +539,7 @@ INFOCOMP;International Conference on Advanced Communications and Computation;COR
 INISTA;International Symposium on Innovations in Intelligent Systems and Applications;CORE2023;C;Artificial intelligence
 INLG;International Natural Language Generation Conference;CORE2023;B;Artificial intelligence
 INOC;International Network Optimization Conference;CORE2023;C;Distributed computing and systems software
-IOLTS;IEEE International On-Line Testing Symposium;CORE2023;C;Software engineering
+IOLTS;On-Line Testing and Robust System Design;CORE2023;C;(missing)
 IPCCC;IEEE International Performance Computing and Communications Conference;CORE2023;C;Distributed computing and systems software
 IPCO;Conference on Integer Programming and Combinatorial Optimization;CORE2023;A;Theory of computation
 IPDPS;IEEE International Parallel and Distributed Processing Symposium;CORE2023;A;Distributed computing and systems software
@@ -648,7 +648,7 @@ LANMAN;IEEE LAN/MAN Workshop;CORE2023;C;Distributed computing and systems softwa
 LATA;International Conference on Language and Automata Theory and Applications;CORE2023;C;Theory of computation
 LATIN;International Symposium on Latin American Theoretical Informatics;CORE2023;B;Theory of computation
 LCN;IEEE Conference on Local Computer Networks;CORE2023;B;Distributed computing and systems software
-LCTES;ACM SIGPLAN Conference on Languages, Tools, and Compilers for Embedded Systems;CORE2023;B;Distributed computing and systems software
+LCTES;ACM SIGPLAN Conference on Languages, Compilers and Tools for Embedded Systems;CORE2023;B;Distributed computing and systems software
 LDK;Language, Data and Knowledge;CORE2023;C;Artificial intelligence
 LFCS;Logical Foundations of Computer Science;CORE2023;National: USA;Theory of computation
 LICS;IEEE Symposium on Logic in Computer Science;CORE2023;A*;Theory of computation
@@ -847,6 +847,7 @@ SIGSPATIAL;ACM International Conference on Advances in Geographic Information Sy
 SIGUCCS;ACM SIGUCCS Conference on User Services;CORE2023;National: USA;Applied computing
 SIGdial;Annual Meeting of the Special Interest Group on Discourse and Dialog;CORE2023;B;Artificial intelligence
 SIMULTECH;International Conference on Simulation and Modeling Methodologies, Technologies and Applications;CORE2021;C;Distributed computing and systems software
+SIMULTECH;International Conference on Simulation and Modeling Methodologies, Technologies and Applications;CORE2023;C;Distributed computing and systems software
 SIN;International Conference on Security of Information and Networks;CORE2023;C;Cybersecurity and privacy
 SIROCCO;International Colloquium on Structural Information and Communication Complexity;CORE2023;B;Theory of computation
 SIS;IEEE Swarm Intelligence Symposium;CORE2023;C;Artificial intelligence
